@@ -36,6 +36,15 @@ def event_list(request):
     free_only = request.GET.get('free')
     event_type = request.GET.get('event_type', '')  # online, local, or blank = both
     category = request.GET.get('category', '')
+    search_query = request.GET.get('q', '').strip()
+
+    if search_query:
+        from django.db.models import Q
+        events = events.filter(
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(location__icontains=search_query)
+        )
 
     if genre_id:
         events = events.filter(genres__id=genre_id)
@@ -103,6 +112,7 @@ def event_list(request):
         'selected_category': category,
         'free_only': free_only,
         'visit_count': visit_count,
+        'search_query': search_query,
     })
 
 

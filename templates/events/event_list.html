@@ -8,9 +8,9 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif}
-.header{padding:10px 20px;border-bottom:1px solid #1a1a1a}
-.header-inner{display:flex;align-items:center;gap:16px;justify-content:center;flex-wrap:wrap}
-.logo-link img{height:56px;width:auto;display:block}
+.header{padding:6px 16px;border-bottom:1px solid #1a1a1a}
+.header-inner{display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap}
+.logo-link img{height:38px;width:auto;display:block}
 .header-text{display:flex;flex-direction:column;gap:7px;flex:1;min-width:0}
 .header-text p{color:#888;font-size:.8em;line-height:1.65;margin:0}
 .header-btns{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:center;padding:6px 0 4px}
@@ -167,7 +167,12 @@ html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
 </div>
 
 <div class="filter-topbar">
-  <button type="button" class="filter-toggle" id="filter-toggle-btn" onclick="toggleFilters()">⚙ Filters</button>
+  <div style="display:flex;align-items:center;gap:6px">
+    <button type="button" class="filter-toggle" id="filter-toggle-btn" onclick="toggleFilters()">⚙ Filters</button>
+    <form method="get" action="/" style="display:flex;align-items:center;margin:0">
+      <input type="text" name="q" placeholder="🔍 Search events..." value="{{ search_query|default:'' }}" style="background:#222;border:1px solid #333;border-radius:6px;padding:5px 10px;color:#eee;font-size:.8em;width:180px">
+    </form>
+  </div>
   <div class="view-group">
     <button type="button" class="view-btn" id="list-btn" data-view="list" onclick="setView('list')">≡ List</button>
     <button type="button" class="view-btn" id="map-btn"  data-view="map"  onclick="setView('map')">⊙ Map</button>
