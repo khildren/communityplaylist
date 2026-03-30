@@ -105,6 +105,61 @@ h1{color:#ff6b35;font-size:1.6em;margin-bottom:8px}
   <div id="genre-tags" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"></div>
 </div>
 
+<div class="section">Artists</div>
+<div class="form-group">
+  <label>Performing artists <span style="color:#888;font-weight:400;font-size:.85em">— auto-detected from title, or search manually</span></label>
+  <input type="text" id="artist-search" placeholder="Search by name… (MusicBrainz if not found)" autocomplete="off">
+  <div id="artist-suggestions" style="background:#1a1a1a;border:1px solid #333;border-radius:6px;display:none;max-height:220px;overflow-y:auto;margin-top:4px"></div>
+  <div id="artist-tags" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"></div>
+  <div id="artist-detect-hint" style="color:#888;font-size:.8em;margin-top:6px"></div>
+</div>
+
+<div class="section">Recurring event</div>
+<div class="form-group">
+  <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+    <input type="checkbox" id="is-recurring" name="is_recurring" style="width:auto">
+    This is a recurring event
+  </label>
+</div>
+<div id="recurring-options" style="display:none">
+  <div class="form-row">
+    <div class="form-group">
+      <label>Frequency</label>
+      <select name="recur_frequency" id="recur-frequency">
+        <option value="weekly">Weekly</option>
+        <option value="daily">Daily</option>
+        <option value="monthly_date">Monthly (same date)</option>
+        <option value="monthly_weekday">Monthly (e.g. every 3rd Thursday)</option>
+        <option value="annually">Annually</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Every N <span id="recur-unit-label">weeks</span></label>
+      <input type="number" name="recur_interval" id="recur-interval" min="1" max="52" value="1" style="width:80px">
+    </div>
+  </div>
+  <div class="form-row" id="recur-weekday-row">
+    <div class="form-group">
+      <label>Day of week</label>
+      <select name="recur_day_of_week" id="recur-day-of-week">
+        <option value="0">Monday</option><option value="1">Tuesday</option>
+        <option value="2">Wednesday</option><option value="3">Thursday</option>
+        <option value="4">Friday</option><option value="5">Saturday</option><option value="6">Sunday</option>
+      </select>
+    </div>
+    <div class="form-group" id="recur-week-of-month-group" style="display:none">
+      <label>Which occurrence</label>
+      <select name="recur_week_of_month" id="recur-week-of-month">
+        <option value="1">1st</option><option value="2">2nd</option>
+        <option value="3">3rd</option><option value="4">4th</option><option value="5">Last</option>
+      </select>
+    </div>
+  </div>
+  <p style="color:#888;font-size:.82em;margin-top:4px">
+    Recurring events are reviewed by admins and then generate future instances automatically.
+  </p>
+</div>
+
 <div class="section">Links and media</div>
 <div class="form-group">
   <label>Website or ticket links</label>
@@ -305,6 +360,136 @@ if (locationField) {
     }, 900);
   });
 }
+
+// ── Artist autocomplete + auto-detect ────────────────────────────────────────
+const artistSearch      = document.getElementById('artist-search');
+const artistSuggestions = document.getElementById('artist-suggestions');
+const artistTags        = document.getElementById('artist-tags');
+const artistHint        = document.getElementById('artist-detect-hint');
+let selectedArtists = [];
+let artistDebounce;
+
+artistSearch.addEventListener('input', () => {
+  clearTimeout(artistDebounce);
+  const q = artistSearch.value.trim();
+  if (q.length < 2) { artistSuggestions.style.display='none'; return; }
+  artistDebounce = setTimeout(async () => {
+    const res  = await fetch(`/artists/?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    artistSuggestions.innerHTML = '';
+    const filtered = data.filter(a => !selectedArtists.find(s => s.id === a.id));
+    filtered.forEach(a => {
+      const div = document.createElement('div');
+      div.style = 'padding:10px 14px;cursor:pointer;color:#eee;font-size:.9em;display:flex;align-items:center;justify-content:space-between';
+      div.innerHTML = `<span>${a.name}</span>${a.mb_id ? '<span style="font-size:.75em;color:#888">MusicBrainz</span>' : ''}`;
+      div.onmouseover = () => div.style.background='#333';
+      div.onmouseout  = () => div.style.background='';
+      div.onclick = () => addArtist(a);
+      artistSuggestions.appendChild(div);
+    });
+    // "Add locally" if nothing found
+    if (filtered.length === 0) {
+      const add = document.createElement('div');
+      add.style = 'padding:10px 14px;cursor:pointer;color:#66bbff;font-size:.9em';
+      add.textContent = `➕ Add "${q}" as new artist`;
+      add.onclick = async () => {
+        const r = await fetch('/artists/add/', {
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value},
+          body: JSON.stringify({name: q}),
+        });
+        const a = await r.json();
+        addArtist(a);
+      };
+      artistSuggestions.appendChild(add);
+    }
+    artistSuggestions.style.display = artistSuggestions.children.length ? 'block' : 'none';
+  }, 220);
+});
+
+function addArtist(a) {
+  if (selectedArtists.find(s => s.id === a.id)) return;
+  selectedArtists.push(a);
+  updateArtistHidden();
+  const tag = document.createElement('span');
+  tag.style = 'background:#1a2a3a;color:#66bbff;border:1px solid #4499cc;padding:4px 10px;border-radius:20px;font-size:.85em;cursor:pointer';
+  tag.textContent = a.name + ' ×';
+  tag.onclick = () => { selectedArtists = selectedArtists.filter(s => s.id !== a.id); tag.remove(); updateArtistHidden(); };
+  artistTags.appendChild(tag);
+  artistSearch.value = '';
+  artistSuggestions.style.display = 'none';
+}
+
+function updateArtistHidden() {
+  document.querySelectorAll('.aid-inp').forEach(e => e.remove());
+  selectedArtists.forEach(a => {
+    const inp = document.createElement('input');
+    inp.type='hidden'; inp.name='artist_ids'; inp.value=a.id; inp.className='aid-inp';
+    document.getElementById('submit-form').appendChild(inp);
+  });
+}
+
+document.addEventListener('click', e => {
+  if (!artistSuggestions.contains(e.target) && e.target !== artistSearch)
+    artistSuggestions.style.display = 'none';
+});
+
+// Auto-detect artists from event title
+const titleField = document.getElementById('id_title');
+let detectTimer;
+if (titleField) {
+  titleField.addEventListener('input', () => {
+    clearTimeout(detectTimer);
+    detectTimer = setTimeout(() => autoDetectArtists(titleField.value), 700);
+  });
+}
+
+async function autoDetectArtists(title) {
+  // Extract names after: ft., feat., featuring, w/, with, presents, +, ×, x , vs.
+  const pattern = /(?:ft\.?|feat\.?|featuring|w\/|presents|vs\.?|\bx\b)\s+([^,\(\)\[\]]+?)(?=[,\(\[\+×]|$)/gi;
+  const names = [];
+  let m;
+  while ((m = pattern.exec(title)) !== null) {
+    const parts = m[1].split(/\s+(?:and|&|\+|×)\s+/i);
+    parts.forEach(p => { const n = p.trim().replace(/[,\.\s]+$/, ''); if (n.length > 1) names.push(n); });
+  }
+  if (!names.length) { artistHint.textContent = ''; return; }
+  artistHint.textContent = `Detected: ${names.join(', ')} — searching…`;
+  for (const name of names) {
+    if (selectedArtists.find(a => a.name.toLowerCase() === name.toLowerCase())) continue;
+    const res = await fetch(`/artists/?q=${encodeURIComponent(name)}`);
+    const data = await res.json();
+    if (data.length) { addArtist(data[0]); }
+  }
+  artistHint.textContent = names.length ? `Auto-detected from title` : '';
+}
+
+// ── Recurring event UI ────────────────────────────────────────────────────────
+const isRecurringCb     = document.getElementById('is-recurring');
+const recurringOptions  = document.getElementById('recurring-options');
+const recurFreq         = document.getElementById('recur-frequency');
+const recurWeekdayRow   = document.getElementById('recur-weekday-row');
+const recurWeekGroup    = document.getElementById('recur-week-of-month-group');
+const recurUnitLabel    = document.getElementById('recur-unit-label');
+const recurInterval     = document.getElementById('recur-interval');
+
+isRecurringCb.addEventListener('change', () => {
+  recurringOptions.style.display = isRecurringCb.checked ? '' : 'none';
+});
+
+const unitLabels = {
+  daily:'days', weekly:'weeks', monthly_date:'months',
+  monthly_weekday:'months', annually:'years',
+};
+
+function updateRecurUI() {
+  const freq = recurFreq.value;
+  recurUnitLabel.textContent = unitLabels[freq] || 'periods';
+  recurWeekdayRow.style.display = ['weekly','monthly_weekday'].includes(freq) ? '' : 'none';
+  recurWeekGroup.style.display  = freq === 'monthly_weekday' ? '' : 'none';
+}
+recurFreq.addEventListener('change', updateRecurUI);
+updateRecurUI();
 </script>
 </body>
 </html>

@@ -1,11 +1,12 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
+from django.utils.timezone import localtime
 from django.db.models import Prefetch
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import Event, EventPhoto, Genre, SiteStats, CalendarFeed
+from .models import Event, EventPhoto, Genre, Artist, SiteStats, CalendarFeed
 from .forms import EventSubmitForm, EventPhotoForm, RegisterForm, StyledAuthForm
 from .geocode import geocode_location
 from urllib.parse import quote
@@ -90,7 +91,7 @@ def event_list(request):
             'longitude': e.longitude,
             'slug': e.slug,
             'location': e.location,
-            'start_date': e.start_date.strftime('%b %d @ %I:%M %p'),
+            'start_date': localtime(e.start_date).strftime('%b %d @ %I:%M %p'),
             'flyer_url': e.approved_photos[0].image.url if e.approved_photos else '',
         }
         for e in events_list
@@ -146,7 +147,7 @@ def event_archive(request):
             'longitude': e.longitude,
             'slug': e.slug,
             'location': e.location,
-            'start_date': e.start_date.strftime('%b %d @ %I:%M %p'),
+            'start_date': localtime(e.start_date).strftime('%b %d @ %I:%M %p'),
         }
         for e in events.exclude(latitude=None)
     ]
@@ -180,9 +181,9 @@ def event_detail(request, slug):
             photos = event.photos.filter(approved=True)
 
     # Build Google Calendar add-event link
-    start_str = event.start_date.strftime('%Y%m%dT%H%M%S')
+    start_str = localtime(event.start_date).strftime('%Y%m%dT%H%M%S')
     end_dt = event.end_date if event.end_date else event.start_date + timedelta(hours=2)
-    end_str = end_dt.strftime('%Y%m%dT%H%M%S')
+    end_str = localtime(end_dt).strftime('%Y%m%dT%H%M%S')
     cal_url = (
         f"https://www.google.com/calendar/render?action=TEMPLATE"
         f"&text={quote(event.title)}"
@@ -236,10 +237,47 @@ def event_submit(request):
             genre_ids = request.POST.getlist('genre_ids')
             if genre_ids:
                 event.genres.set(Genre.objects.filter(id__in=genre_ids))
+            artist_ids = request.POST.getlist('artist_ids')
+            if artist_ids:
+                event.artists.set(Artist.objects.filter(id__in=artist_ids))
+
+            # Handle recurring event submission
+            if request.POST.get('is_recurring'):
+                from events.models import RecurringEvent
+                freq         = request.POST.get('recur_frequency', 'weekly')
+                interval     = max(1, int(request.POST.get('recur_interval', 1) or 1))
+                day_of_week  = request.POST.get('recur_day_of_week')
+                week_of_month = request.POST.get('recur_week_of_month')
+                rec = RecurringEvent.objects.create(
+                    title           = event.title,
+                    description     = event.description,
+                    location        = event.location,
+                    category        = event.category,
+                    is_free         = event.is_free,
+                    price_info      = event.price_info,
+                    website         = event.website,
+                    frequency       = freq,
+                    interval        = interval,
+                    day_of_week     = int(day_of_week) if day_of_week is not None else None,
+                    week_of_month   = int(week_of_month) if week_of_month else None,
+                    start_time      = event.start_date.time(),
+                    duration_minutes = int((event.end_date - event.start_date).total_seconds() // 60) if event.end_date else 120,
+                    submitted_by    = event.submitted_by,
+                    submitted_email = event.submitted_email,
+                    submitted_user  = event.submitted_user,
+                    auto_approve    = False,
+                )
+                if genre_ids:
+                    rec.genres.set(Genre.objects.filter(id__in=genre_ids))
+                if artist_ids:
+                    rec.residents.set(Artist.objects.filter(id__in=artist_ids))
+                event.recurring_event = rec
+                event.save(update_fields=['recurring_event'])
+
             notify_discord(
                 f"🎵 **New event submitted for review!**\n"
                 f"**{event.title}**\n"
-                f"📅 {event.start_date.strftime('%b %d %Y @ %I:%M %p')}\n"
+                f"📅 {localtime(event.start_date).strftime('%b %d %Y @ %I:%M %p')}\n"
                 f"📍 {event.location}\n"
                 f"👤 Submitted by: {event.submitted_by or 'Anonymous'}\n"
                 f"🔗 https://communityplaylist.com/admin/events/event/{event.id}/change/"
@@ -256,6 +294,67 @@ def genre_autocomplete(request):
         return JsonResponse([], safe=False)
     genres = Genre.objects.filter(name__icontains=q)[:10]
     return JsonResponse([{'id': g.id, 'name': g.name} for g in genres], safe=False)
+
+
+def artist_autocomplete(request):
+    """Local DB search + MusicBrainz fallback. Returns found=False flag when nothing found."""
+    q = request.GET.get('q', '')
+    if len(q) < 2:
+        return JsonResponse([], safe=False)
+
+    local = list(Artist.objects.filter(name__icontains=q)[:10])
+    if local:
+        return JsonResponse([{'id': a.id, 'name': a.name, 'mb_id': a.mb_id} for a in local], safe=False)
+
+    # Fallback: search MusicBrainz
+    try:
+        resp = requests.get(
+            'https://musicbrainz.org/ws/2/artist',
+            params={'query': q, 'fmt': 'json', 'limit': 8},
+            headers={'User-Agent': 'CommunityPlaylist/1.0 (hello@communityplaylist.com)', 'Accept': 'application/json'},
+            timeout=5,
+        )
+        data = resp.json()
+        results = []
+        for a in data.get('artists', []):
+            name = a.get('name', '')
+            mb_id = a.get('id', '')
+            artist, _ = Artist.objects.get_or_create(name=name, defaults={'mb_id': mb_id})
+            # Auto-link local-only artists if MusicBrainz now has them
+            if _ is False and not artist.mb_id and mb_id:
+                Artist.objects.filter(pk=artist.pk).update(mb_id=mb_id)
+                artist.mb_id = mb_id
+            results.append({'id': artist.id, 'name': artist.name, 'mb_id': artist.mb_id})
+        return JsonResponse(results, safe=False)
+    except Exception:
+        return JsonResponse([], safe=False)
+
+
+def artist_profile(request, pk):
+    artist = get_object_or_404(Artist, pk=pk)
+    now = timezone.now()
+    upcoming = artist.events.filter(status='approved', start_date__gte=now).order_by('start_date')
+    past     = artist.events.filter(status='approved', start_date__lt=now).order_by('-start_date')[:20]
+    recurring = artist.recurring_events.filter(active=True)
+    return render(request, 'events/artist_profile.html', {
+        'artist': artist, 'upcoming': upcoming, 'past': past, 'recurring': recurring,
+    })
+
+
+def artist_add(request):
+    """Create a local-only artist record (no MusicBrainz ID yet)."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    import json as _json
+    try:
+        body = _json.loads(request.body)
+    except Exception:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    name = body.get('name', '').strip()[:200]
+    if not name:
+        return JsonResponse({'error': 'Name required'}, status=400)
+    artist, created = Artist.objects.get_or_create(name=name)
+    return JsonResponse({'id': artist.id, 'name': artist.name, 'mb_id': artist.mb_id, 'created': created})
 
 
 # ── Auth views ──

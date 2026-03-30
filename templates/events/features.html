@@ -24,6 +24,13 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
 .feature-text a:hover{text-decoration:underline}
 .badge{display:inline-block;font-size:.65em;padding:1px 6px;border-radius:3px;vertical-align:middle;margin-left:6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
 .new{background:#1a2a1a;color:#4caf50}
+.coming{background:#2a2a1a;color:#aaa857}
+.profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.profile-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:14px;text-align:center;text-decoration:none;transition:border-color .2s}
+.profile-card:hover{border-color:#ff6b35}
+.profile-card .picon{font-size:1.8em;display:block;margin-bottom:6px}
+.profile-card .ptitle{color:#ff6b35;font-size:.85em;font-weight:600;display:block}
+.profile-card .pdesc{color:#555;font-size:.75em;margin-top:4px;line-height:1.5}
 .footer{text-align:center;margin-top:36px;padding-top:16px;border-top:1px solid #1a1a1a;font-size:.78em;color:#444}
 .footer a{color:#555;text-decoration:none}
 .footer a:hover{color:#ff6b35}
@@ -36,7 +43,33 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
 <a href="/" class="back">← Back to events</a>
 <h1>Features</h1>
 <p class="sub">Everything built into Community Playlist — submitted by the community, for the community.</p>
-<div class="version">v0.1 — Portland, OR</div>
+<div class="version">v0.2 — Portland, OR</div>
+
+<div class="section">Profiles <span class="badge coming">Coming soon</span></div>
+<p style="font-size:.8em;color:#555;margin-bottom:14px;line-height:1.6">Community Playlist is building a home for every part of the Portland scene. Set up a profile to claim your events, showcase your work, and connect with the community.</p>
+
+<div class="profile-grid">
+  <a href="/submit/" class="profile-card">
+    <span class="picon">🎤</span>
+    <span class="ptitle">Artist</span>
+    <span class="pdesc">Claim your events, list your genres, link your socials. Built from your performance history automatically.</span>
+  </a>
+  <a href="/submit/" class="profile-card">
+    <span class="picon">📣</span>
+    <span class="ptitle">Promoter</span>
+    <span class="pdesc">Showcase your events, build your audience, and get your shows in front of the people who show up.</span>
+  </a>
+  <a href="/submit/" class="profile-card">
+    <span class="picon">🏛</span>
+    <span class="ptitle">Venue</span>
+    <span class="pdesc">Verify your space, manage your calendar feed, and surface every event you host — automatically.</span>
+  </a>
+  <a href="/submit/" class="profile-card">
+    <span class="picon">🎛</span>
+    <span class="ptitle">Crew</span>
+    <span class="pdesc">Collectives, sound systems, labels — give your crew a home on the playlist and own your corner of PDX.</span>
+  </a>
+</div>
 
 <div class="section">Discover events</div>
 
@@ -44,15 +77,15 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
   <div class="icon">≡</div>
   <div class="feature-text">
     <h3>List, Map &amp; Hybrid views</h3>
-    <p>Browse upcoming events as a calm scrollable list, explore by map for discovery, or use hybrid mode for side-by-side research. Your preference is saved automatically.</p>
+    <p>Browse upcoming events as a calm scrollable list, explore by map for discovery, or use hybrid mode for side-by-side research.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">⚙</div>
+  <div class="icon">🔍</div>
   <div class="feature-text">
-    <h3>Smart filters</h3>
-    <p>Filter by genre, event type (Music / Bike / Fundraiser / Food / Hybrid), Online vs Local, neighborhood, and date range (Today / This Week / This Month / Any Future / All Past).</p>
+    <h3>Search &amp; smart filters</h3>
+    <p>Full-text search across title, description, and location. Filter by genre, category (Music / Arts / Bike / Fundraiser / Food / Hybrid), neighborhood, date range, and free-only.</p>
   </div>
 </div>
 
@@ -60,7 +93,7 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
   <div class="icon">🗺</div>
   <div class="feature-text">
     <h3>Interactive map</h3>
-    <p>Hover a list card to highlight its map marker. Click a marker to scroll the list to that event. Flyer thumbnails appear in map popups.</p>
+    <p>Hover a list card to highlight its marker. Click a marker to scroll to that event. Flyer thumbnails in popups. All powered by OpenStreetMap — no Google, no tracking.</p>
   </div>
 </div>
 
@@ -72,21 +105,47 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
   </div>
 </div>
 
+<div class="section">Submit &amp; manage</div>
+
+<div class="feature">
+  <div class="icon">✦</div>
+  <div class="feature-text">
+    <h3>Submit an event</h3>
+    <p>Address auto-geocodes with a live map preview. Neighborhood is auto-detected. Genre tags, artist tags (auto-detected from the event title), multiple links, flyer photo — all supported.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="icon">🎤</div>
+  <div class="feature-text">
+    <h3>Artist tagging <span class="badge new">New</span></h3>
+    <p>Tag performing artists on any event. Type a name and it searches our database, then MusicBrainz if not found. Artists are auto-detected from event titles (e.g. "ft.", "w/", "presents").</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="icon">🔁</div>
+  <div class="feature-text">
+    <h3>Recurring events <span class="badge new">New</span></h3>
+    <p>Mark an event as recurring — weekly, monthly, every 3rd Thursday, annually, and more. Future instances generate automatically. Resident artists are tagged on every instance.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="icon">🔑</div>
+  <div class="feature-text">
+    <h3>Claim your event</h3>
+    <p>Register with the email you used to submit and your events are automatically claimed. Edit details and track approval from your dashboard.</p>
+  </div>
+</div>
+
 <div class="section">Event pages</div>
 
 <div class="feature">
   <div class="icon">🌹</div>
   <div class="feature-text">
     <h3>The Flyer</h3>
-    <p>The first photo uploaded to an event is featured as "The Flyer" — full-width, orange-bordered, and labeled. Additional photos form a gallery below.</p>
-  </div>
-</div>
-
-<div class="feature">
-  <div class="icon">🔍</div>
-  <div class="feature-text">
-    <h3>Photo lightbox</h3>
-    <p>Click any photo to view it full-screen. Close with Escape or a click outside the image.</p>
+    <p>The first photo uploaded is featured as the flyer — full-width, orange-bordered. Additional photos form a gallery.</p>
   </div>
 </div>
 
@@ -94,7 +153,7 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
   <div class="icon">📍</div>
   <div class="feature-text">
     <h3>Smart location links</h3>
-    <p>Addresses link to OpenStreetMap directions. URLs entered as the location link directly to the website. Calendar icon adds the event to Google Calendar with one tap.</p>
+    <p>Addresses link to OpenStreetMap directions. Calendar icon adds the event to Google Calendar with one tap.</p>
   </div>
 </div>
 
@@ -102,33 +161,42 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
   <div class="icon">📸</div>
   <div class="feature-text">
     <h3>Community photo uploads</h3>
-    <p>Anyone can add photos to an event after it happens. Captions and submitter credit supported.</p>
+    <p>Anyone can add recap photos after an event happens. Captions and submitter credit supported.</p>
   </div>
 </div>
 
-<div class="section">Submit &amp; manage</div>
+<div class="section">The PDX event net</div>
+<p style="font-size:.78em;color:#555;margin-bottom:16px;line-height:1.7">Community Playlist automatically pulls events from across Portland so nothing slips through the cracks. All imports are geocoded, categorized, and genre-tagged automatically.</p>
 
 <div class="feature">
-  <div class="icon">✦</div>
+  <div class="icon">📡</div>
   <div class="feature-text">
-    <h3>Submit an event</h3>
-    <p>Address auto-geocodes as you type with a live map preview. Neighborhood is auto-detected. Genre tags, multiple links, event type, flyer photo — all supported.</p>
-  </div>
-</div>
-
-<div class="feature">
-  <div class="icon">🔑</div>
-  <div class="feature-text">
-    <h3>Claim your event <span class="badge new">New</span></h3>
-    <p>Register with the email you used to submit an event and it's automatically claimed. Edit details, track approval status, and manage from your dashboard.</p>
+    <h3>Venue iCal feeds</h3>
+    <p>Dozens of PDX venues, collectives, and promoters publish iCal feeds. We import them twice a week and auto-detect new ones monthly.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🎟</div>
+  <div class="icon">🎸</div>
   <div class="feature-text">
-    <h3>Event categories</h3>
-    <p>Music, Bike, Fundraiser, Food, and Hybrid — color-coded badges on every card and event page. Filter the whole list by category.</p>
+    <h3>MusicBrainz</h3>
+    <p>The open, community-maintained music encyclopedia. We pull Portland concert data and use it for artist search and tagging. Free, nonprofit. <a href="https://metabrainz.org/donate" target="_blank" rel="noopener">Donate to MetaBrainz →</a></p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="icon">📅</div>
+  <div class="feature-text">
+    <h3>Calagator</h3>
+    <p>Portland's own open-source community calendar, covering tech meetups, civic events, and workshops since 2008. We import their events automatically. <a href="https://calagator.org" target="_blank" rel="noopener">calagator.org →</a></p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="icon">🗺</div>
+  <div class="feature-text">
+    <h3>OpenStreetMap &amp; Nominatim</h3>
+    <p>All maps and geocoding run on OpenStreetMap — community-built, freely editable, no tracking. <a href="https://www.openstreetmap.org/about" target="_blank" rel="noopener">About OSM →</a></p>
   </div>
 </div>
 
@@ -138,7 +206,7 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
   <div class="icon">💬</div>
   <div class="feature-text">
     <h3>Discord community</h3>
-    <p>Ideas, feedback, and ticket suggestions live in <a href="https://discord.gg/WHhxRPDdFV" target="_blank" rel="noopener">#website-communications</a>. React 🌹 to vote for your favorites.</p>
+    <p>Ideas, feedback, and event chatter live in <a href="https://discord.gg/WHhxRPDdFV" target="_blank" rel="noopener">#website-communications</a>. New events ping the server for real-time visibility.</p>
   </div>
 </div>
 
@@ -146,42 +214,7 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
   <div class="icon">🌹</div>
   <div class="feature-text">
     <h3>Visitor counter</h3>
-    <p>A quiet count of unique visitors who've passed through — one per session, no tracking, no ads, no data sold.</p>
-  </div>
-</div>
-
-<div class="section">Open data &amp; community support</div>
-<p style="font-size:.78em;color:#555;margin-bottom:16px;line-height:1.7">This project runs on open data and community-built tools. No ads, no tracking, no investors — just people sharing what's happening. These are the shoulders we stand on. Please consider supporting them.</p>
-
-<div class="feature">
-  <div class="icon">🎵</div>
-  <div class="feature-text">
-    <h3>ArtistData <span class="badge" style="background:#1a2a3a;color:#6ab0f5">Support them</span></h3>
-    <p>ArtistData helps musicians manage and sync their tour dates across the web — keeping live music data open and accessible. We use their data to help surface Portland shows. <a href="https://www.artistdata.com" target="_blank" rel="noopener">Visit ArtistData →</a></p>
-  </div>
-</div>
-
-<div class="feature">
-  <div class="icon">🎸</div>
-  <div class="feature-text">
-    <h3>MusicBrainz</h3>
-    <p>The open, community-maintained music encyclopedia. We pull concert data from MusicBrainz to help populate Portland events. Free, nonprofit, no strings attached. <a href="https://metabrainz.org/donate" target="_blank" rel="noopener">Donate to MetaBrainz →</a></p>
-  </div>
-</div>
-
-<div class="feature">
-  <div class="icon">📅</div>
-  <div class="feature-text">
-    <h3>Calagator</h3>
-    <p>Portland's own open-source community calendar. Tech meetups, civic events, workshops — Calagator has been covering PDX since 2008. We import their events automatically. <a href="https://calagator.org" target="_blank" rel="noopener">calagator.org →</a></p>
-  </div>
-</div>
-
-<div class="feature">
-  <div class="icon">🗺</div>
-  <div class="feature-text">
-    <h3>OpenStreetMap</h3>
-    <p>All maps and geocoding on this site use OpenStreetMap — the community-built, freely editable map of the world. No Google, no tracking. <a href="https://www.openstreetmap.org/about" target="_blank" rel="noopener">About OSM →</a></p>
+    <p>A quiet count of unique visitors — one per session, no tracking, no ads, no data sold.</p>
   </div>
 </div>
 

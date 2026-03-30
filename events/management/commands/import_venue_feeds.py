@@ -21,6 +21,17 @@ import pytz
 PDX_TZ = pytz.timezone('America/Los_Angeles')
 
 
+def tag_feed_defaults(ev, feed):
+    """Apply default genres and resident artists from the feed to an event."""
+    if ev.category == 'music':
+        genres = feed.default_genres.all()
+        if genres:
+            ev.genres.add(*genres)
+    residents = feed.residents.all()
+    if residents:
+        ev.artists.add(*residents)
+
+
 def to_aware(dt):
     if isinstance(dt, datetime):
         if dt.tzinfo is None:
@@ -87,6 +98,7 @@ def import_ical(feed, now, stdout, stderr):
                 website=url_prop[:200] if url_prop else '',
             )
             enrich_event(ev, geocode=bool(location), save=True)
+            tag_feed_defaults(ev, feed)
             created += 1
         except Exception as e:
             stderr.write(f'    skipping event: {e}')
@@ -207,6 +219,7 @@ def import_musicbrainz(feed, now, stdout, stderr):
                     website=mb_url,
                 )
                 enrich_event(ev, geocode=bool(location), save=True)
+                tag_feed_defaults(ev, feed)
                 created += 1
             except Exception as e:
                 stderr.write(f'    skipping MusicBrainz event: {e}')
@@ -307,6 +320,7 @@ def import_eventbrite(feed, now, stdout, stderr):
                     website=ev_url[:200],
                 )
                 enrich_event(ev, geocode=bool(location), save=True)
+                tag_feed_defaults(ev, feed)
                 created += 1
             except Exception as e:
                 stderr.write(f'    skipping Eventbrite event: {e}')

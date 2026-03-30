@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ artist.name }} — Community Playlist{% endblock %}
+{% block content %}
+<div style="max-width:860px;margin:0 auto;padding:20px">
+
+  <a href="/" style="color:#ff6b35;font-size:.85em">← Back to events</a>
+
+  <div style="margin:20px 0 30px;display:flex;align-items:center;gap:20px">
+    <div>
+      <h1 style="color:#ff6b35;margin:0 0 6px">{{ artist.name }}</h1>
+      {% if artist.mb_id %}
+        <a href="https://musicbrainz.org/artist/{{ artist.mb_id }}" target="_blank"
+           style="color:#888;font-size:.8em">MusicBrainz profile ↗</a>
+      {% endif %}
+      {% if artist.website %}
+        <a href="{{ artist.website }}" target="_blank"
+           style="color:#888;font-size:.8em;margin-left:12px">Website ↗</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if artist.bio %}
+    <p style="color:#ccc;line-height:1.6;margin-bottom:24px">{{ artist.bio }}</p>
+  {% endif %}
+
+  {% if recurring %}
+    <h2 style="color:#eee;font-size:1em;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Recurring Events</h2>
+    {% for r in recurring %}
+      <div style="background:#1a1a1a;border-radius:8px;padding:14px;margin-bottom:10px">
+        <strong style="color:#ff6b35">{{ r.title }}</strong>
+        <span style="color:#888;font-size:.85em;margin-left:10px">{{ r.get_frequency_display }}
+          {% if r.day_of_week is not None %} · {{ r.get_day_of_week_display }}s{% endif %}
+          {% if r.week_of_month %} · {{ r.get_week_of_month_display }}{% endif %}
+          · {{ r.start_time|time:"g:i A" }}
+        </span>
+        {% if r.location %}<div style="color:#888;font-size:.8em;margin-top:4px">📍 {{ r.location }}</div>{% endif %}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% if upcoming %}
+    <h2 style="color:#eee;font-size:1em;text-transform:uppercase;letter-spacing:.08em;margin:24px 0 12px">Upcoming Events</h2>
+    {% for e in upcoming %}
+      <a href="{% url 'event_detail' e.slug %}" style="display:block;background:#1a1a1a;border-radius:8px;padding:14px;margin-bottom:8px;text-decoration:none">
+        <div style="color:#ff6b35;font-weight:600">{{ e.title }}</div>
+        <div style="color:#888;font-size:.85em;margin-top:4px">
+          📅 {{ e.start_date|date:"D, M j Y @ g:i A" }} &nbsp;·&nbsp; 📍 {{ e.location|truncatechars:60 }}
+        </div>
+      </a>
+    {% endfor %}
+  {% endif %}
+
+  {% if past %}
+    <h2 style="color:#eee;font-size:1em;text-transform:uppercase;letter-spacing:.08em;margin:24px 0 12px">Past Events</h2>
+    {% for e in past %}
+      <a href="{% url 'event_detail' e.slug %}" style="display:block;background:#111;border-radius:8px;padding:12px;margin-bottom:6px;text-decoration:none;opacity:.75">
+        <div style="color:#ccc;font-weight:500">{{ e.title }}</div>
+        <div style="color:#666;font-size:.82em;margin-top:3px">{{ e.start_date|date:"D, M j Y @ g:i A" }}</div>
+      </a>
+    {% endfor %}
+  {% endif %}
+
+  {% if not upcoming and not past %}
+    <p style="color:#666">No events yet for this artist.</p>
+  {% endif %}
+
+</div>
+{% endblock %}
