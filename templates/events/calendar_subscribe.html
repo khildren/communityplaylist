@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subscribe to Events - Community Playlist</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:640px;margin:0 auto}
+.header{text-align:center;padding:16px 0 20px}
+.header img{max-width:150px;width:100%}
+.back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:20px}
+.back:hover{text-decoration:underline}
+h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
+.sub{color:#666;font-size:.85em;margin-bottom:28px}
+.card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:20px;margin-bottom:16px}
+.card h3{color:#ff6b35;font-size:.95em;margin-bottom:10px}
+.feed-url{display:flex;gap:8px;align-items:center}
+.feed-url input{flex:1;background:#111;border:1px solid #333;border-radius:6px;padding:8px 12px;color:#aaa;font-size:.82em;font-family:monospace}
+.copy-btn{background:#ff6b35;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:.8em;white-space:nowrap;flex-shrink:0}
+.copy-btn:hover{background:#e55a25}
+.copy-btn.copied{background:#2a5a2a;color:#4caf50}
+.section-label{font-size:.75em;color:#555;text-transform:uppercase;letter-spacing:.08em;margin:24px 0 10px}
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.filter-row select{background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:7px 10px;color:#eee;font-size:.82em}
+.filter-row select:focus{outline:none;border-color:#ff6b35}
+.build-btn{background:transparent;border:1px solid #ff6b35;color:#ff6b35;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:.82em}
+.build-btn:hover{background:#ff6b35;color:#fff}
+.how{background:#111;border:1px solid #222;border-radius:8px;padding:16px;margin-top:24px}
+.how h3{color:#aaa;font-size:.85em;margin-bottom:10px}
+.how ol{padding-left:18px;color:#666;font-size:.82em;line-height:1.9}
+.how a{color:#ff6b35;text-decoration:none}
+.gcal-btn{display:inline-flex;align-items:center;gap:8px;background:#4285F4;color:#fff;padding:9px 18px;border-radius:6px;text-decoration:none;font-size:.85em;margin-top:10px}
+.gcal-btn:hover{background:#3367d6}
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
+</div>
+<a href="/" class="back">← Back to events</a>
+<h1>Subscribe to PDX Events</h1>
+<p class="sub">Add Community Playlist events to your calendar app — they update automatically as new events are approved.</p>
+
+<div class="card">
+  <h3>🌹 All upcoming events</h3>
+  <div class="feed-url">
+    <input type="text" id="url-all" value="https://communityplaylist.com/feed/events.ics" readonly>
+    <button class="copy-btn" onclick="copyFeed('url-all', this)">Copy</button>
+  </div>
+</div>
+
+<div class="section-label">Build a custom feed</div>
+<div class="card">
+  <h3>Filter by category or genre</h3>
+  <div class="filter-row">
+    <select id="f-category">
+      <option value="">All types</option>
+      <option value="music">🎵 Music</option>
+      <option value="bike">🚲 Bike</option>
+      <option value="fund">💛 Fundraiser</option>
+      <option value="food">🍜 Food</option>
+      <option value="hybrid">✨ Hybrid</option>
+    </select>
+    <select id="f-genre">
+      <option value="">All genres</option>
+      {% for g in genres %}
+      <option value="{{ g.id }}">{{ g.name }}</option>
+      {% endfor %}
+    </select>
+    <select id="f-free">
+      <option value="">Any cost</option>
+      <option value="1">Free only</option>
+    </select>
+    <button class="build-btn" onclick="buildFeed()">Build feed</button>
+  </div>
+  <div class="feed-url" id="custom-feed-wrap" style="display:none">
+    <input type="text" id="url-custom" readonly>
+    <button class="copy-btn" id="copy-custom" onclick="copyFeed('url-custom', this)">Copy</button>
+  </div>
+</div>
+
+<div class="how">
+  <h3>How to subscribe in Google Calendar</h3>
+  <ol>
+    <li>Copy the feed URL above</li>
+    <li>Open <a href="https://calendar.google.com" target="_blank" rel="noopener">Google Calendar</a></li>
+    <li>Click <strong>+ Other calendars</strong> → <strong>From URL</strong></li>
+    <li>Paste the URL and click <strong>Add calendar</strong></li>
+    <li>Events sync automatically — usually within a few hours</li>
+  </ol>
+  <a href="https://calendar.google.com/calendar/r/settings/addbyurl" target="_blank" rel="noopener" class="gcal-btn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+    Open Google Calendar → Add by URL
+  </a>
+</div>
+
+<script>
+function copyFeed(inputId, btn) {
+  const val = document.getElementById(inputId).value;
+  navigator.clipboard.writeText(val).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function buildFeed() {
+  const cat  = document.getElementById('f-category').value;
+  const genre = document.getElementById('f-genre').value;
+  const free  = document.getElementById('f-free').value;
+  const params = new URLSearchParams();
+  if (cat)   params.set('category', cat);
+  if (genre) params.set('genre', genre);
+  if (free)  params.set('free', free);
+  const url = 'https://communityplaylist.com/feed/events.ics' + (params.toString() ? '?' + params.toString() : '');
+  document.getElementById('url-custom').value = url;
+  document.getElementById('custom-feed-wrap').style.display = 'flex';
+}
+</script>
+</body>
+</html>

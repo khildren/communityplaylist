@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Submit an Event - Community Playlist</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:700px;margin:0 auto}
+.header{text-align:center;padding:20px 0 16px}
+.header img{max-width:180px;width:100%;display:block;margin:0 auto}
+h1{color:#ff6b35;font-size:1.6em;margin-bottom:8px}
+.sub{color:#aaa;font-size:.9em;margin-bottom:30px;text-align:center}
+.back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:24px}
+.back:hover{text-decoration:underline}
+.form-group{margin-bottom:18px}
+.form-group label{display:block;font-size:.85em;color:#aaa;margin-bottom:5px}
+.form-group input,.form-group textarea,.form-group select{width:100%;background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:10px 12px;color:#eee;font-size:.95em}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:none;border-color:#ff6b35}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.checkbox-group{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.checkbox-group input{width:auto}
+.checkbox-group label{font-size:.95em;color:#ccc;margin:0}
+.btn{background:#ff6b35;color:#fff;border:none;padding:12px 32px;border-radius:6px;cursor:pointer;font-size:1em;width:100%;margin-top:10px}
+.btn:hover{background:#e55a25}
+.section{color:#ff6b35;font-size:.8em;text-transform:uppercase;letter-spacing:.1em;margin:24px 0 14px;border-bottom:1px solid #222;padding-bottom:6px}
+/* Location map preview */
+#location-status{font-size:.78em;margin-top:5px;min-height:1.2em}
+#location-status.ok{color:#4caf50}
+#location-status.err{color:#e55a25}
+#location-status.searching{color:#888}
+#location-map{height:110px;border-radius:8px;margin-top:10px;border:1px solid #333;display:none}
+/* Multi-link rows */
+.link-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.link-row input{flex:1}
+.link-remove{background:transparent;border:1px solid #444;color:#888;width:28px;height:28px;border-radius:5px;cursor:pointer;font-size:1em;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.link-remove:hover{color:#ff6b35;border-color:#ff6b35}
+.add-link-btn{background:transparent;border:1px solid #444;color:#aaa;padding:5px 14px;border-radius:6px;cursor:pointer;font-size:.82em;margin-top:2px}
+.add-link-btn:hover{border-color:#ff6b35;color:#ff6b35}
+@media(max-width:500px){.form-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
+</div>
+<a href="/" class="back">← Back to events</a>
+<h1>Submit an Event</h1>
+<p class="sub">All events are reviewed before publishing. Usually approved within 24 hours.</p>
+<form method="post" enctype="multipart/form-data" id="submit-form">
+{% csrf_token %}
+
+<div class="section">Event details</div>
+<div class="form-group">
+  <label>Event name *</label>
+  {{ form.title }}
+</div>
+<div class="form-group">
+  <label>Event type</label>
+  {{ form.category }}
+</div>
+<div class="form-group">
+  <label>Description *</label>
+  {{ form.description }}
+</div>
+<div class="form-row">
+  <div class="form-group">
+    <label>Start date and time *</label>
+    {{ form.start_date }}
+  </div>
+  <div class="form-group">
+    <label>End date and time</label>
+    {{ form.end_date }}
+  </div>
+</div>
+
+<div class="section">Location</div>
+<div class="form-group">
+  <label>Venue and address *</label>
+  {{ form.location }}
+  <div id="location-status"></div>
+  <div id="location-map"></div>
+</div>
+<div class="form-group">
+  <label>Neighborhood <span style="color:#555;font-size:.85em">(auto-detected from address)</span></label>
+  {{ form.neighborhood }}
+</div>
+
+<div class="section">Tickets and cost</div>
+<div class="checkbox-group">
+  {{ form.is_free }}
+  <label>This event is free</label>
+</div>
+<div class="form-group">
+  <label>Price info</label>
+  {{ form.price_info }}
+</div>
+
+<div class="section" id="genre-section" style="display:none">Genre tags</div>
+<div class="form-group" id="genre-group" style="display:none">
+  <label>Search and add genres</label>
+  <input type="text" id="genre-search" placeholder="e.g. drum and bass, house, hip hop..." autocomplete="off">
+  <div id="genre-suggestions" style="background:#1a1a1a;border:1px solid #333;border-radius:6px;display:none;max-height:200px;overflow-y:auto;margin-top:4px"></div>
+  <div id="genre-tags" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"></div>
+</div>
+
+<div class="section">Links and media</div>
+<div class="form-group">
+  <label>Website or ticket links</label>
+  <div id="link-list">
+    <div class="link-row">
+      <input type="url" name="extra_links" placeholder="https://" autocomplete="off">
+    </div>
+  </div>
+  <button type="button" class="add-link-btn" id="add-link-btn">+ Add another link</button>
+</div>
+<div class="form-group">
+  <label>Event photo or flyer</label>
+  {{ form.photo }}
+</div>
+
+<div class="section">About you</div>
+<div class="form-row">
+  <div class="form-group">
+    <label>Your name</label>
+    {{ form.submitted_by }}
+  </div>
+  <div class="form-group">
+    <label>Your email (not published)</label>
+    {{ form.submitted_email }}
+  </div>
+</div>
+<button type="submit" class="btn">Submit Event</button>
+</form>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── Genre show/hide based on category ──
+const categorySelect = document.getElementById('id_category');
+const genreSection   = document.getElementById('genre-section');
+const genreGroup     = document.getElementById('genre-group');
+
+function updateGenreVisibility() {
+  const show = categorySelect.value === 'music';
+  genreSection.style.display = show ? '' : 'none';
+  genreGroup.style.display   = show ? '' : 'none';
+}
+categorySelect.addEventListener('change', updateGenreVisibility);
+updateGenreVisibility();
+
+// ── Genre autocomplete ──
+const search = document.getElementById('genre-search');
+const suggestions = document.getElementById('genre-suggestions');
+const tagsContainer = document.getElementById('genre-tags');
+let selected = [];
+
+search.addEventListener('input', async () => {
+  const q = search.value.trim();
+  if (q.length < 2) { suggestions.style.display='none'; return; }
+  const res = await fetch(`/genres/?q=${encodeURIComponent(q)}`);
+  const data = await res.json();
+  suggestions.innerHTML = '';
+  if (!data.length) { suggestions.style.display='none'; return; }
+  data.forEach(g => {
+    if (selected.find(s => s.id === g.id)) return;
+    const div = document.createElement('div');
+    div.textContent = g.name;
+    div.style = 'padding:10px 14px;cursor:pointer;color:#eee;font-size:.9em';
+    div.onmouseover = () => div.style.background='#333';
+    div.onmouseout  = () => div.style.background='';
+    div.onclick = () => addGenre(g);
+    suggestions.appendChild(div);
+  });
+  suggestions.style.display = 'block';
+});
+
+function addGenre(g) {
+  if (selected.find(s => s.id === g.id)) return;
+  selected.push(g);
+  updateHidden();
+  const tag = document.createElement('span');
+  tag.style = 'background:#2a1a0a;color:#ff6b35;border:1px solid #ff6b35;padding:4px 10px;border-radius:20px;font-size:.85em;cursor:pointer';
+  tag.textContent = g.name + ' ×';
+  tag.onclick = () => { selected = selected.filter(s => s.id !== g.id); tag.remove(); updateHidden(); };
+  tagsContainer.appendChild(tag);
+  search.value = '';
+  suggestions.style.display = 'none';
+}
+
+function updateHidden() {
+  document.querySelectorAll('.gid-inp').forEach(e => e.remove());
+  selected.forEach(s => {
+    const inp = document.createElement('input');
+    inp.type='hidden'; inp.name='genre_ids'; inp.value=s.id; inp.className='gid-inp';
+    document.getElementById('submit-form').appendChild(inp);
+  });
+}
+
+document.addEventListener('click', e => {
+  if (!suggestions.contains(e.target) && e.target !== search)
+    suggestions.style.display = 'none';
+});
+
+// ── Multiple links ──
+const linkList  = document.getElementById('link-list');
+const addLinkBtn = document.getElementById('add-link-btn');
+const MAX_LINKS = 10;
+
+function updateAddBtn() {
+  addLinkBtn.style.display = linkList.children.length >= MAX_LINKS ? 'none' : '';
+}
+
+addLinkBtn.addEventListener('click', () => {
+  if (linkList.children.length >= MAX_LINKS) return;
+  const row = document.createElement('div');
+  row.className = 'link-row';
+  row.innerHTML = `<input type="url" name="extra_links" placeholder="https://" autocomplete="off">
+    <button type="button" class="link-remove" title="Remove">✕</button>`;
+  row.querySelector('.link-remove').onclick = () => { row.remove(); updateAddBtn(); };
+  linkList.appendChild(row);
+  updateAddBtn();
+  row.querySelector('input').focus();
+});
+
+// ── Address geocode + neighborhood autodetect + map preview ──
+let previewMap = null;
+let previewMarker = null;
+let geocodeTimer = null;
+const locationField    = document.getElementById('id_location');
+const neighborhoodField = document.getElementById('id_neighborhood');
+const statusEl = document.getElementById('location-status');
+const mapEl    = document.getElementById('location-map');
+
+function isURL(s) { return /^(https?:\/\/|www\.)/i.test(s.trim()); }
+
+async function tryGeocode(query) {
+  const r = await fetch(
+    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&addressdetails=1`,
+    { headers: { 'Accept-Language': 'en' } }
+  );
+  return r.json();
+}
+
+// Detect if string already contains a state abbreviation or zip code
+function hasLocation(s) { return /\b[A-Z]{2}\b|\b\d{5}\b/.test(s); }
+
+function pickNeighborhood(result) {
+  const a = result.address || {};
+  return a.suburb || a.neighbourhood || a.quarter || a.city_district || a.town || a.village || '';
+}
+
+function initPreviewMap(lat, lon) {
+  if (!previewMap) {
+    mapEl.style.display = 'block';
+    previewMap = L.map(mapEl, { zoomControl:false, dragging:false, scrollWheelZoom:false, doubleClickZoom:false, boxZoom:false, keyboard:false, tap:false });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution:'© CARTO' }).addTo(previewMap);
+    previewMarker = L.circleMarker([lat, lon], { radius:8, color:'#ff6b35', fillColor:'#ff6b35', fillOpacity:1 }).addTo(previewMap);
+  } else {
+    previewMarker.setLatLng([lat, lon]);
+  }
+  previewMap.setView([lat, lon], 15);
+  setTimeout(() => previewMap.invalidateSize(), 50);
+}
+
+if (locationField) {
+  locationField.addEventListener('input', () => {
+    clearTimeout(geocodeTimer);
+    const val = locationField.value.trim();
+    if (!val || isURL(val)) {
+      statusEl.textContent = '';
+      statusEl.className = '';
+      mapEl.style.display = 'none';
+      return;
+    }
+    statusEl.textContent = 'Looking up address…';
+    statusEl.className = 'searching';
+    geocodeTimer = setTimeout(async () => {
+      try {
+        // Try as-is first; only append Portland OR if address has no city/state/zip
+        let data = await tryGeocode(val);
+        if (!data.length && !hasLocation(val)) {
+          data = await tryGeocode(val + ', Portland, OR');
+        }
+        if (!data.length) {
+          statusEl.textContent = 'Address not found — try adding city and state (e.g. Portland, OR).';
+          statusEl.className = 'err';
+          mapEl.style.display = 'none';
+          return;
+        }
+        const result = data[0];
+        const lat = parseFloat(result.lat);
+        const lon = parseFloat(result.lon);
+        statusEl.textContent = '✓ ' + result.display_name;
+        statusEl.className = 'ok';
+        initPreviewMap(lat, lon);
+        if (!neighborhoodField.value.trim()) {
+          const hood = pickNeighborhood(result);
+          if (hood) neighborhoodField.value = hood;
+        }
+      } catch(e) {
+        statusEl.textContent = 'Could not reach geocoder — check your connection.';
+        statusEl.className = 'err';
+      }
+    }, 900);
+  });
+}
+</script>
+</body>
+</html>

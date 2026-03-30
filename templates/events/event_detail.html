@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ event.title }} - Community Playlist</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:860px;margin:0 auto}
+.back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:20px}
+.back:hover{text-decoration:underline}
+h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
+.meta{font-size:.85em;color:#888;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;line-height:1.6}
+.meta span{white-space:nowrap}
+.meta a{color:#aaa;text-decoration:none;border-bottom:1px dotted #555}
+.meta a:hover{color:#ff6b35;border-color:#ff6b35}
+@media(max-width:600px){
+  body{padding:14px}
+  h1{font-size:1.4em}
+  .meta{flex-direction:column;align-items:flex-start;gap:6px}
+  .meta span{white-space:normal}
+}
+.free{background:#1a3a1a;color:#4caf50;padding:2px 8px;border-radius:3px}
+.desc{line-height:1.7;color:#ccc;margin-bottom:30px}
+.promo-photo img{max-width:100%;border-radius:10px;margin-bottom:30px}
+.section-title{color:#ff6b35;font-size:1.1em;margin-bottom:16px;border-bottom:1px solid #222;padding-bottom:8px}
+.flyer-wrap{margin-bottom:30px}
+.flyer-label{display:inline-block;background:#ff6b35;color:#fff;font-size:.75em;font-weight:bold;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:4px 4px 0 0;margin-bottom:0}
+.flyer-img{display:block;max-width:100%;border-radius:0 10px 10px 10px;border:2px solid #ff6b35;cursor:zoom-in}
+.flyer-caption{font-size:.8em;color:#888;margin-top:6px}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:30px}
+.photo-grid img{width:100%;border-radius:8px;object-fit:cover;aspect-ratio:4/3;cursor:zoom-in}
+.photo-grid .caption{font-size:.8em;color:#666;margin-top:4px}
+.add-photo{background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:20px;margin-bottom:30px}
+.add-photo h3{color:#ff6b35;margin-bottom:16px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:.85em;color:#aaa;margin-bottom:4px}
+.form-group input,.form-group textarea{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:10px;color:#eee;font-size:.9em}
+.form-group input:focus,.form-group textarea:focus{outline:none;border-color:#ff6b35}
+.btn{background:#ff6b35;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:.9em}
+.btn:hover{background:#e55a25}
+.more-link{display:inline-block;margin-top:16px;color:#ff6b35;text-decoration:none;font-size:.9em}
+.cat-badge{display:inline-block;padding:3px 10px;border-radius:4px;font-size:.75em;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
+.cat-music{background:#1e1228;color:#cc88ff}
+.cat-arts{background:#1a1a2a;color:#66bbff}
+.cat-bike{background:#122212;color:#55dd55}
+.cat-fund{background:#121228;color:#6699ff}
+.cat-food{background:#252210;color:#ddaa33}
+.cat-hybrid{background:#251810;color:#ff9944}
+/* Lightbox */
+#lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:1000;align-items:center;justify-content:center;cursor:zoom-out}
+#lb.open{display:flex}
+#lb img{max-width:92vw;max-height:92vh;border-radius:8px;object-fit:contain;box-shadow:0 0 40px rgba(0,0,0,.8)}
+#lb-close{position:fixed;top:16px;right:20px;color:#fff;font-size:2em;cursor:pointer;line-height:1;opacity:.7}
+#lb-close:hover{opacity:1}
+#lb-caption{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#ccc;font-size:.85em;text-align:center;max-width:80vw}
+</style>
+</head>
+<body>
+<a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist" style="height:36px;width:auto;display:block;margin-bottom:14px;opacity:.85"></a>
+<a href="/" class="back">← Back to all events</a>
+{% if event.category %}<span class="cat-badge cat-{{ event.category }}">{{ event.get_category_display }}</span>{% endif %}
+<h1>{% if upload_success %}
+<div style="background:#1a3a1a;color:#4caf50;padding:10px 16px;border-radius:6px;margin-bottom:16px">
+  ✓ Photo uploaded successfully!
+</div>
+{% endif %}{{ event.title }}</h1>
+<div class="meta">
+<span>📅 <a href="{{ cal_url }}" target="_blank" rel="noopener" title="Add to Google Calendar">{{ event.start_date|date:"l, F j, Y @ g:i A" }}</a></span>
+{% if event.end_date %}<span>until {{ event.end_date|date:"g:i A" }}</span>{% endif %}
+<span>📍 <a href="{{ maps_url }}" target="_blank" rel="noopener" title="Get directions">{{ event.location }}</a></span>
+{% if event.neighborhood %}<span>{{ event.neighborhood }}</span>{% endif %}
+{% if event.is_free %}<span class="free">FREE</span>{% else %}{% if event.price_info %}<span>{{ event.price_info }}</span>{% endif %}{% endif %}
+</div>
+{% if event.photo %}
+<div class="promo-photo"><img src="{{ event.photo.url }}" alt="{{ event.title }}" class="lb-trigger" data-caption="{{ event.title }}"></div>
+{% endif %}
+<p class="desc">{{ event.description }}</p>
+{% if event.website %}
+<a href="{{ event.website }}" target="_blank" class="more-link">More info / Tickets →</a>
+{% endif %}
+{% if event.extra_links %}
+{% for link in event.extra_links %}
+<a href="{{ link }}" target="_blank" class="more-link" style="margin-left:12px">{{ link|truncatechars:50 }} →</a>
+{% endfor %}
+{% endif %}
+{% if user.is_authenticated and not event.submitted_user and event.submitted_email == user.email %}
+<div style="margin-top:20px;padding:12px 16px;background:#1a1a10;border:1px solid #444;border-radius:8px;font-size:.85em;color:#aaa">
+  🌹 This looks like your event. <a href="/events/{{ event.slug }}/claim/" style="color:#ff6b35;text-decoration:none;font-weight:600">Claim it to manage it →</a>
+</div>
+{% elif user.is_authenticated and event.submitted_user == user %}
+<div style="margin-top:20px;padding:10px 16px;background:#1a1a1a;border:1px solid #333;border-radius:8px;font-size:.82em;color:#666;display:flex;justify-content:space-between;align-items:center">
+  <span>You own this event</span>
+  <a href="/events/{{ event.slug }}/edit/" style="color:#ff6b35;text-decoration:none;font-size:.9em">Edit →</a>
+</div>
+{% endif %}
+{% if flyer_photo %}
+<h2 class="section-title" style="margin-top:30px">📸 Event Photos</h2>
+<div class="flyer-wrap">
+  <span class="flyer-label">The Flyer</span>
+  <img class="flyer-img lb-trigger" src="{{ flyer_photo.image.url }}" alt="{{ flyer_photo.caption|default:event.title }}" data-caption="{{ flyer_photo.caption|default:'' }}">
+  {% if flyer_photo.caption %}<p class="flyer-caption">{{ flyer_photo.caption }}</p>{% endif %}
+</div>
+{% if gallery_photos %}
+<div class="photo-grid">
+{% for photo in gallery_photos %}
+<div>
+<img class="lb-trigger" src="{{ photo.image.url }}" alt="{{ photo.caption }}" data-caption="{{ photo.caption }}">
+{% if photo.caption %}<p class="caption">{{ photo.caption }}</p>{% endif %}
+</div>
+{% endfor %}
+</div>
+{% endif %}
+{% endif %}
+<div class="add-photo">
+<h3>📷 Add your photos</h3>
+<form method="post" enctype="multipart/form-data">
+{% csrf_token %}
+<div class="form-group">
+<label>Photo</label>
+{{ photo_form.image }}
+</div>
+<div class="form-group">
+<label>Caption</label>
+{{ photo_form.caption }}
+</div>
+<div class="form-group">
+<label>Your name</label>
+{{ photo_form.submitted_by }}
+</div>
+<button type="submit" class="btn">Upload Photo</button>
+</form>
+</div>
+
+<!-- Lightbox -->
+<div id="lb">
+  <span id="lb-close">✕</span>
+  <img id="lb-img" src="" alt="">
+  <p id="lb-caption"></p>
+</div>
+
+<script>
+const lb = document.getElementById('lb');
+const lbImg = document.getElementById('lb-img');
+const lbCap = document.getElementById('lb-caption');
+
+document.querySelectorAll('.lb-trigger').forEach(img => {
+  img.addEventListener('click', () => {
+    lbImg.src = img.src;
+    lbCap.textContent = img.dataset.caption || '';
+    lb.classList.add('open');
+  });
+});
+
+function closeLb() { lb.classList.remove('open'); lbImg.src = ''; }
+lb.addEventListener('click', e => { if (e.target !== lbImg) closeLb(); });
+document.getElementById('lb-close').addEventListener('click', closeLb);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); });
+</script>
+</body>
+</html>

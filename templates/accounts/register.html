@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Account - Community Playlist</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:440px;margin:0 auto}
+.header{text-align:center;padding:20px 0 24px}
+.header img{max-width:160px;width:100%}
+h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
+.sub{color:#666;font-size:.85em;margin-bottom:28px;text-align:center}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:.82em;color:#aaa;margin-bottom:5px}
+.form-group input{width:100%;background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:10px 12px;color:#eee;font-size:.95em}
+.form-group input:focus{outline:none;border-color:#ff6b35}
+.btn{background:#ff6b35;color:#fff;border:none;padding:11px;border-radius:6px;cursor:pointer;font-size:.95em;width:100%;margin-top:6px}
+.btn:hover{background:#e55a25}
+.errors{background:#2a1010;border:1px solid #5a2020;border-radius:6px;padding:10px 14px;margin-bottom:18px;font-size:.85em;color:#ff8888}
+.errors li{list-style:none;padding:2px 0}
+.link{text-align:center;margin-top:18px;font-size:.85em;color:#666}
+.link a{color:#ff6b35;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
+</div>
+<h1>Create an account</h1>
+<p class="sub">Use the email you submitted events with to auto-claim them.</p>
+{% if form.errors %}
+<ul class="errors">
+  {% for field in form %}{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}{% endfor %}
+  {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+</ul>
+{% endif %}
+<form method="post">
+{% csrf_token %}
+<div class="form-group"><label>Email address</label>{{ form.email }}</div>
+<div class="form-group"><label>Password</label>{{ form.password }}</div>
+<div class="form-group"><label>Confirm password</label>{{ form.confirm }}</div>
+<button type="submit" class="btn">Create account</button>
+</form>
+<p class="link">Already have an account? <a href="/login/">Sign in</a></p>
+</body>
+</html>

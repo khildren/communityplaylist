@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Archive - Community Playlist</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif}
+.header{text-align:center;padding:30px 20px 20px}
+.header img{max-width:220px;width:100%;margin-bottom:12px}
+.back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin:0 auto 10px}
+.filters{background:#1a1a1a;border-bottom:1px solid #222;padding:12px 20px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center}
+.filters select{background:#222;border:1px solid #333;border-radius:6px;padding:7px 12px;color:#eee;font-size:.85em}
+.filter-btn{background:#ff6b35;color:#fff;border:none;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:.85em}
+.clear-btn{background:transparent;color:#aaa;border:1px solid #333;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:.85em;text-decoration:none}
+.events-grid{max-width:860px;margin:0 auto;padding:20px}
+.event{border:1px solid #2a2a2a;border-radius:10px;padding:18px;margin-bottom:14px;transition:border-color .2s;text-decoration:none;display:block;color:inherit;opacity:.8}
+.event:hover{border-color:#ff6b35;opacity:1}
+.event h2{color:#888;font-size:1.1em;margin-bottom:6px}
+.event:hover h2{color:#ff6b35}
+.meta{font-size:.82em;color:#666;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:8px}
+.genre-tag{background:#1a1a2a;color:#6666aa;padding:1px 7px;border-radius:3px;font-size:.78em}
+.empty{text-align:center;padding:60px;color:#555}
+.page-title{color:#555;font-size:1.1em;text-align:center;padding:16px;border-bottom:1px solid #1a1a1a}
+</style>
+</head>
+<body>
+<div class="header">
+<img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist">
+<br>
+<a href="/" class="back">← Upcoming events</a>
+</div>
+<div class="page-title">📼 Past Events Archive</div>
+<form method="get" action="/archive/">
+<div class="filters">
+  <select name="genre">
+    <option value="">All genres</option>
+    {% for g in genres %}
+    <option value="{{ g.id }}" {% if selected_genre == g.id|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>
+    {% endfor %}
+  </select>
+  <select name="neighborhood">
+    <option value="">All neighborhoods</option>
+    {% for n in neighborhoods %}
+    <option value="{{ n }}" {% if selected_neighborhood == n %}selected{% endif %}>{{ n }}</option>
+    {% endfor %}
+  </select>
+  <label style="color:#aaa;font-size:.85em;display:flex;align-items:center;gap:6px">
+    <input type="checkbox" name="free" value="1" {% if free_only %}checked{% endif %}> Free only
+  </label>
+  <button type="submit" class="filter-btn">Filter</button>
+  <a href="/archive/" class="clear-btn">Clear</a>
+</div>
+</form>
+<div class="events-grid">
+{% if events %}
+{% for event in events %}
+<a href="/events/{{ event.slug }}/" class="event">
+  <h2>{{ event.title }}</h2>
+  <div class="meta">
+    <span>📅 {{ event.start_date|date:"D, N j, Y @ g:i A" }}</span>
+    {% if event.neighborhood %}<span>📍 {{ event.neighborhood }}</span>{% endif %}
+    <span>{{ event.location|truncatechars:40 }}</span>
+  </div>
+  {% if event.genres.all %}
+  <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+    {% for g in event.genres.all %}<span class="genre-tag">{{ g.name }}</span>{% endfor %}
+  </div>
+  {% endif %}
+</a>
+{% endfor %}
+{% else %}
+<div class="empty"><p>No past events found.</p></div>
+{% endif %}
+</div>
+</body>
+</html>

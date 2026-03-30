@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+*.egg-info/
+
+# Django
+*.sqlite3
+media/
+staticfiles/
+.env
+
+# Editor
+.vscode/
+*.swp
+
+# Server
+*.sock
+*.log
+communityplaylist.sock

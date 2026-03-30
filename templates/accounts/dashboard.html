@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Events - Community Playlist</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:760px;margin:0 auto}
+.header{text-align:center;padding:16px 0 20px}
+.header img{max-width:150px;width:100%}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;flex-wrap:wrap;gap:10px}
+h1{color:#ff6b35;font-size:1.4em}
+.topbar-right{display:flex;gap:10px;align-items:center;font-size:.85em}
+.topbar-right a{color:#aaa;text-decoration:none}
+.topbar-right a:hover{color:#ff6b35}
+.submit-btn{background:#ff6b35;color:#fff;padding:7px 16px;border-radius:6px;text-decoration:none;font-size:.85em}
+.submit-btn:hover{background:#e55a25}
+.msg{padding:10px 14px;border-radius:6px;margin-bottom:18px;font-size:.85em}
+.msg.success{background:#1a3a1a;color:#4caf50}
+.msg.error{background:#2a1010;color:#ff8888}
+.event-card{border:1px solid #2a2a2a;border-radius:10px;padding:16px 18px;margin-bottom:12px;display:flex;gap:14px;align-items:flex-start}
+.event-card:hover{border-color:#333}
+.event-info{flex:1;min-width:0}
+.event-title{color:#ff6b35;font-size:1em;font-weight:600;text-decoration:none;display:block;margin-bottom:4px}
+.event-title:hover{text-decoration:underline}
+.event-meta{font-size:.78em;color:#666;margin-bottom:8px}
+.status{display:inline-block;padding:2px 8px;border-radius:3px;font-size:.75em;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.status-pending{background:#2a2010;color:#ddaa33}
+.status-approved{background:#1a3a1a;color:#4caf50}
+.status-rejected{background:#2a1010;color:#ff6666}
+.actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.actions a{font-size:.8em;color:#aaa;text-decoration:none;border:1px solid #333;padding:4px 10px;border-radius:5px}
+.actions a:hover{color:#ff6b35;border-color:#ff6b35}
+.empty{text-align:center;padding:50px;color:#555}
+.empty a{color:#ff6b35;text-decoration:none}
+/* Profile / feeds */
+.section{color:#ff6b35;font-size:.75em;text-transform:uppercase;letter-spacing:.1em;margin:32px 0 12px;border-bottom:1px solid #1a1a1a;padding-bottom:6px}
+.feed-row{display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.feed-row input{flex:1;min-width:0;background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.82em}
+.feed-row input:focus{outline:none;border-color:#ff6b35}
+.feed-label{width:140px;flex-shrink:0}
+.feed-remove{background:transparent;border:1px solid #444;color:#888;width:28px;height:28px;border-radius:5px;cursor:pointer;flex-shrink:0}
+.feed-remove:hover{border-color:#ff6b35;color:#ff6b35}
+.add-feed-btn{background:transparent;border:1px solid #444;color:#aaa;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.8em;margin-top:4px}
+.add-feed-btn:hover{border-color:#ff6b35;color:#ff6b35}
+.save-btn{background:#ff6b35;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:.82em;margin-top:10px}
+.save-btn:hover{background:#e55a25}
+.existing-feed{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;margin-bottom:6px;font-size:.82em}
+.existing-feed .feed-info{flex:1;min-width:0}
+.existing-feed .feed-info strong{display:block;color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.existing-feed .feed-info span{color:#555;font-size:.85em}
+.hint{font-size:.75em;color:#444;margin-top:6px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
+</div>
+
+<div class="topbar">
+  <h1>My Events</h1>
+  <div class="topbar-right">
+    <span style="color:#555">{{ request.user.email }}</span>
+    <a href="/submit/" class="submit-btn">+ Submit new event</a>
+    <a href="/logout/">Sign out</a>
+  </div>
+</div>
+
+{% for message in messages %}
+<div class="msg {% if message.tags == 'error' %}error{% else %}success{% endif %}">{{ message }}</div>
+{% endfor %}
+
+{% if events %}
+{% for event in events %}
+<div class="event-card">
+  <div class="event-info">
+    <a href="/events/{{ event.slug }}/" class="event-title">{{ event.title }}</a>
+    <div class="event-meta">
+      📅 {{ event.start_date|date:"D, N j, Y @ g:i A" }}
+      {% if event.location %} · 📍 {{ event.location|truncatechars:40 }}{% endif %}
+    </div>
+    <span class="status status-{{ event.status }}">{{ event.get_status_display }}</span>
+    {% if event.status == 'pending' %}
+    <span style="font-size:.75em;color:#666;margin-left:8px">Usually reviewed within 24 hours</span>
+    {% endif %}
+    <div class="actions">
+      <a href="/events/{{ event.slug }}/">View</a>
+      <a href="/events/{{ event.slug }}/edit/">Edit</a>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty">
+  <p>No events yet. <a href="/submit/">Submit your first one!</a></p>
+</div>
+{% endif %}
+
+<!-- Calendar feeds section -->
+<div class="section">📅 My calendar feeds</div>
+<p style="font-size:.8em;color:#555;margin-bottom:14px">Paste iCal feed URLs from Google Calendar, Eventbrite, or any .ics source. Events are imported twice a week and submitted for review.</p>
+
+{% if feeds %}
+{% for feed in feeds %}
+<div class="existing-feed">
+  <div class="feed-info">
+    <strong>{{ feed.label|default:"Unnamed feed" }}</strong>
+    <span>{{ feed.url|truncatechars:60 }}</span>
+    {% if feed.last_synced %}<span style="margin-left:8px">Last synced {{ feed.last_synced|date:"N j @ g:i A" }}</span>{% endif %}
+  </div>
+  <form method="post" style="flex-shrink:0">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="remove_feed">
+    <input type="hidden" name="feed_id" value="{{ feed.id }}">
+    <button type="submit" class="feed-remove" title="Remove feed">✕</button>
+  </form>
+</div>
+{% endfor %}
+{% endif %}
+
+<form method="post" id="feed-form">
+{% csrf_token %}
+<input type="hidden" name="action" value="add_feed">
+<div id="feed-list">
+  <div class="feed-row">
+    <input type="url" name="feed_url" placeholder="https://calendar.google.com/…/basic.ics" autocomplete="off">
+    <input type="text" name="feed_label" placeholder="Label (optional)" class="feed-label">
+  </div>
+</div>
+<button type="button" class="add-feed-btn" id="add-feed-btn">+ Add another feed</button>
+<p class="hint">To get your Google Calendar iCal URL: Google Calendar → Settings → your calendar → "Secret address in iCal format"</p>
+<br>
+<button type="submit" class="save-btn">Save feeds</button>
+</form>
+
+<div style="text-align:center;margin-top:36px">
+  <a href="/" style="color:#555;font-size:.85em;text-decoration:none">← Back to all events</a>
+</div>
+
+<script>
+const feedList = document.getElementById('feed-list');
+const addFeedBtn = document.getElementById('add-feed-btn');
+const MAX_FEEDS = 10;
+function updateFeedBtn() { addFeedBtn.style.display = feedList.children.length >= MAX_FEEDS ? 'none' : ''; }
+addFeedBtn.addEventListener('click', () => {
+  if (feedList.children.length >= MAX_FEEDS) return;
+  const row = document.createElement('div');
+  row.className = 'feed-row';
+  row.innerHTML = `<input type="url" name="feed_url" placeholder="https://…/basic.ics" autocomplete="off">
+    <input type="text" name="feed_label" placeholder="Label (optional)" class="feed-label">
+    <button type="button" class="feed-remove" title="Remove">✕</button>`;
+  row.querySelector('.feed-remove').onclick = () => { row.remove(); updateFeedBtn(); };
+  feedList.appendChild(row);
+  updateFeedBtn();
+  row.querySelector('input').focus();
+});
+</script>
+</body>
+</html>
