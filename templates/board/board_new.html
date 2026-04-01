@@ -28,6 +28,7 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:6px}
 {% endif %}
 <h1>New Topic</h1>
 <p class="sub">No account needed — just share something good.</p>
+{% if rate_err %}<div style="background:#2a1010;border:1px solid #5a2020;border-radius:6px;padding:10px 14px;margin-bottom:16px;color:#ff6b6b;font-size:.85em">Too many posts — please wait a few minutes before trying again.</div>{% endif %}
 <form method="post">
   {% csrf_token %}
   <div class="form-group">

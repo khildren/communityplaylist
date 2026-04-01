@@ -66,6 +66,7 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:8px}
 
 <div class="reply-form">
   <h3>Leave a reply</h3>
+  {% if rate_err %}<div style="background:#2a1010;border:1px solid #5a2020;border-radius:6px;padding:10px 14px;margin-bottom:14px;color:#ff6b6b;font-size:.85em">Too many posts — please wait a few minutes.</div>{% endif %}
   <form method="post">
     {% csrf_token %}
     <div class="form-group">

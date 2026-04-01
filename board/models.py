@@ -42,7 +42,7 @@ class Topic(models.Model):
         return self.title
 
     def get_slug(self):
-        return slugify(self.title)
+        return slugify(self.title) or 'topic'
 
     def get_absolute_url(self):
         from django.urls import reverse
