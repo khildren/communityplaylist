@@ -24,6 +24,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         from events.models import RecurringEvent, Event
         from events.enrich import enrich_event
+        from events.geocode import NominatimRateLimited
 
         now      = localtime(timezone.now())
         today    = now.date()
@@ -74,12 +75,17 @@ class Command(BaseCommand):
                 while Event.objects.filter(slug=slug).exists():
                     slug = f"{slug_base}-{n}"; n += 1
 
+                # Auto-assign music category when genres present and no category set
+                category = rec.category
+                if not category and rec.genres.exists():
+                    category = 'music'
+
                 ev = Event.objects.create(
                     title           = rec.title,
                     slug            = slug,
                     description     = rec.description,
                     location        = rec.location,
-                    category        = rec.category,
+                    category        = category,
                     is_free         = rec.is_free,
                     price_info      = rec.price_info,
                     website         = rec.website,
@@ -103,7 +109,11 @@ class Command(BaseCommand):
                 if rec.residents.exists():
                     ev.artists.set(rec.residents.all())
 
-                enrich_event(ev, geocode=True, save=True)
+                try:
+                    enrich_event(ev, geocode=True, save=True)
+                except NominatimRateLimited:
+                    self.stdout.write('  ! Nominatim rate limit — skipping geocode for remaining events')
+                    enrich_event(ev, geocode=False, save=True)
                 created_total += 1
                 self.stdout.write(f'  + {ev.title} — {d}')
 

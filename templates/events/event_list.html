@@ -72,7 +72,7 @@ body{background:#111;color:#eee;font-family:sans-serif}
 .empty{text-align:center;padding:60px;color:#555}
 
 /* ── Single filter bar — always one line, scrolls horizontally if narrow ── */
-.filter-topbar{display:flex;align-items:center;background:#1a1a1a;border-bottom:1px solid #222;padding:0 10px;gap:5px;flex-wrap:nowrap;overflow-x:auto;overflow-y:visible;position:relative;z-index:900;scrollbar-width:none;-ms-overflow-style:none;white-space:nowrap;min-height:40px}
+.filter-topbar{display:flex;align-items:center;background:#1a1a1a;border-bottom:none;padding:0 10px;gap:5px;flex-wrap:nowrap;overflow-x:auto;overflow-y:visible;position:relative;z-index:900;scrollbar-width:none;-ms-overflow-style:none;white-space:nowrap;min-height:40px}
 .filter-topbar::-webkit-scrollbar{display:none}
 .filter-topbar .search-input{background:#222;border:1px solid #333;border-radius:6px;padding:4px 8px;color:#eee;font-size:.8em;width:130px;min-width:80px;flex-shrink:0}
 .filter-topbar .search-input:focus{outline:none;border-color:#ff6b35}
@@ -124,9 +124,23 @@ body.view-map #map{display:block!important;height:calc(100vh - var(--top-h, 200p
 html.is-hybrid,html.is-hybrid body{height:100%;overflow:hidden}
 html.is-hybrid body{display:flex;flex-direction:column}
 html.is-hybrid .hybrid-wrap{flex:1;display:flex;overflow:hidden;min-height:0}
-html.is-hybrid #events-list{width:420px;flex-shrink:0;overflow-y:auto;border-right:1px solid #222}
+html.is-hybrid #events-list{width:420px;flex-shrink:0;overflow-y:auto;border-right:1px solid #1a1a1a;scrollbar-width:thin;scrollbar-color:#2a2a2a #111}
+html.is-hybrid #events-list::-webkit-scrollbar{width:6px}
+html.is-hybrid #events-list::-webkit-scrollbar-track{background:#111}
+html.is-hybrid #events-list::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:3px}
+html.is-hybrid #events-list::-webkit-scrollbar-thumb:hover{background:#ff6b35}
 html.is-hybrid .events-grid{max-width:none;margin:0;padding:14px}
 html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
+
+/* ── Dark Leaflet zoom controls ── */
+.leaflet-bar{border:none!important;box-shadow:none!important}
+.leaflet-bar a{background:#1a1a1a!important;color:#aaa!important;border:1px solid #2a2a2a!important;border-bottom-color:#222!important}
+.leaflet-bar a:first-child{border-radius:6px 6px 0 0!important}
+.leaflet-bar a:last-child{border-radius:0 0 6px 6px!important;border-bottom-color:#2a2a2a!important}
+.leaflet-bar a:hover{background:#252525!important;color:#ff6b35!important}
+.leaflet-touch .leaflet-bar{border:none!important}
+.leaflet-control-attribution{background:rgba(17,17,17,.7)!important;color:#444!important}
+.leaflet-control-attribution a{color:#555!important}
 </style>
 </head>
 <body>

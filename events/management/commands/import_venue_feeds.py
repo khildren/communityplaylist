@@ -53,6 +53,10 @@ def tag_feed_defaults(ev, feed):
     residents = feed.residents.all()
     if residents:
         ev.artists.add(*residents)
+    # Auto-set music category when genres are present and no category assigned
+    if not ev.category and ev.genres.exists():
+        ev.category = 'music'
+        ev.save(update_fields=['category'])
 
 
 def to_aware(dt):

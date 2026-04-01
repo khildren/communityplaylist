@@ -10,7 +10,10 @@ body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:86
 .back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:20px}
 .back:hover{text-decoration:underline}
 h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
-.meta{font-size:.85em;color:#888;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;line-height:1.6}
+.meta{font-size:.85em;color:#888;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;line-height:1.6}
+.weather-row{font-size:.78em;color:#666;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:0 10px;align-items:center;line-height:1.6}
+.weather-hour{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.weather-hour .wt{color:#555;font-size:.9em}
 .meta span{white-space:nowrap}
 .meta a{color:#aaa;text-decoration:none;border-bottom:1px dotted #555}
 .meta a:hover{color:#ff6b35;border-color:#ff6b35}
@@ -79,6 +82,35 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
 {% if event.neighborhood %}<span>{{ event.neighborhood }}</span>{% endif %}
 {% if event.is_free %}<span class="free">FREE</span>{% else %}{% if event.price_info %}<span>{{ event.price_info }}</span>{% endif %}{% endif %}
 </div>
+{% if event.latitude and event.longitude %}
+<div class="weather-row" id="weather-row" style="display:none"></div>
+<script>
+(function(){
+  var lat={{ event.latitude }}, lon={{ event.longitude }};
+  var eventTs={{ event.start_date|date:"U" }}*1000;
+  var wmoCodes={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',77:'🌨️',80:'🌦️',81:'🌦️',82:'⛈️',85:'🌨️',86:'❄️',95:'⛈️',96:'⛈️',99:'⛈️'};
+  fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&hourly=temperature_2m,weathercode&temperature_unit=fahrenheit&timezone=America%2FLos_Angeles&forecast_days=3')
+    .then(function(r){return r.json()})
+    .then(function(d){
+      var times=d.hourly.time, temps=d.hourly.temperature_2m, codes=d.hourly.weathercode;
+      var eventDate=new Date(eventTs);
+      var eventHour=eventDate.getFullYear()+'-'+String(eventDate.getMonth()+1).padStart(2,'0')+'-'+String(eventDate.getDate()).padStart(2,'0')+'T'+String(eventDate.getHours()).padStart(2,'0')+':00';
+      var idx=times.indexOf(eventHour);
+      if(idx<0)return;
+      var html='';
+      for(var i=idx;i<Math.min(idx+5,times.length);i++){
+        var t=new Date(times[i]+'Z').getTime()+new Date().getTimezoneOffset()*60000;
+        var hr=new Date(times[i]).getHours();
+        var ampm=hr>=12?'pm':'am'; hr=hr%12||12;
+        var emoji=wmoCodes[codes[i]]||'🌡️';
+        var temp=Math.round(temps[i]);
+        html+='<span class="weather-hour">'+emoji+' <span class="wt">'+hr+ampm+'</span> '+temp+'°</span>';
+      }
+      if(html){var el=document.getElementById('weather-row');el.innerHTML=html;el.style.display='flex';}
+    }).catch(function(){});
+})();
+</script>
+{% endif %}
 {% if event.photo %}
 <div class="promo-photo"><img src="{{ event.photo.url }}" alt="{{ event.title }}" class="lb-trigger" data-caption="{{ event.title }}"></div>
 {% endif %}
