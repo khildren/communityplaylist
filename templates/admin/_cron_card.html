@@ -1,0 +1,28 @@
+<div class="cron-card {{ card_class }}" id="card-{{ job.command }}">
+  <div class="cron-header">
+    <div class="cron-dot {{ dot_class }}"></div>
+    <div class="cron-name">
+      {{ job.name }}
+      <span class="cron-badge {{ badge_class }}">{{ badge_text }}</span>
+      <span class="cron-schedule">{{ job.schedule }}</span>
+    </div>
+    <div class="cron-meta">
+      {% if job.mtime %}
+        <div class="mtime">Last run: {{ job.mtime|date:"D M j, g:i A" }}</div>
+      {% else %}
+        <div>No log yet</div>
+      {% endif %}
+      <div style="color:#444;font-size:.9em">{{ job.command }}</div>
+    </div>
+    <div class="cron-chevron">▶</div>
+  </div>
+  <div class="cron-log">
+    {% if job.lines %}
+      {% for line in job.lines %}
+        <div class="log-line {% if 'error' in line|lower or 'traceback' in line|lower or 'exception' in line|lower %}err{% elif '✓' in line or 'Done' in line or 'OK' in line %}ok{% endif %}">{{ line }}</div>
+      {% endfor %}
+    {% else %}
+      <div class="log-empty">No output captured yet.</div>
+    {% endif %}
+  </div>
+</div>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ topic.title }} — Community Board</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:860px;margin:0 auto}
+.back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:20px}
+.back:hover{text-decoration:underline}
+.cat-badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:.75em;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px}
+.cat-general{background:#1a1a1a;color:#888}
+.cat-aid{background:#0f1f0f;color:#4caf50}
+.cat-announce{background:#1a1a10;color:#ddaa33}
+.cat-question{background:#0f0f1f;color:#8888ff}
+h1{color:#ff6b35;font-size:1.5em;margin-bottom:8px}
+.topic-meta{font-size:.8em;color:#666;margin-bottom:20px}
+.topic-body{line-height:1.7;color:#ccc;margin-bottom:30px;white-space:pre-wrap}
+.divider{border:none;border-top:1px solid #1a1a1a;margin-bottom:24px}
+.section-title{color:#888;font-size:.85em;text-transform:uppercase;letter-spacing:.06em;margin-bottom:16px}
+.reply{border-left:2px solid #2a2a2a;padding:10px 0 10px 16px;margin-bottom:16px}
+.reply-meta{font-size:.78em;color:#555;margin-bottom:6px}
+.reply-meta strong{color:#aaa}
+.reply-body{line-height:1.65;color:#ccc;font-size:.9em;white-space:pre-wrap}
+.reply-form{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:20px;margin-top:30px}
+.reply-form h3{color:#ff6b35;margin-bottom:16px;font-size:1em}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:.8em;color:#888;margin-bottom:4px}
+.form-group input,.form-group textarea{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.9em;font-family:inherit}
+.form-group input:focus,.form-group textarea:focus{outline:none;border-color:#2563eb}
+.btn{background:#2563eb;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:.85em}
+.btn:hover{background:#1d4ed8}
+.empty-replies{color:#555;font-size:.85em;padding:10px 0}
+.banner{background:#0f1f0f;border:1px solid #1a3a1a;border-radius:6px;padding:8px 14px;margin-bottom:18px;color:#4caf50;font-size:.82em}
+.rec-link{display:inline-block;margin-top:16px;padding:6px 14px;border:1px solid #333;border-radius:6px;color:#aaa;text-decoration:none;font-size:.82em}
+.rec-link:hover{border-color:#ff6b35;color:#ff6b35}
+@media(max-width:600px){body{padding:14px}h1{font-size:1.2em}}
+</style>
+</head>
+<body>
+<a href="/board/" class="back">← Board</a>
+{% if banner %}
+<div class="banner">🌹 {{ banner.text }}</div>
+{% endif %}
+<span class="cat-badge cat-{{ topic.category }}">{{ topic.get_category_display }}</span>
+{% if topic.pinned %}<span style="color:#ff6b35;font-size:.8em;margin-left:6px">📌 Pinned</span>{% endif %}
+<h1>{{ topic.title }}</h1>
+<p class="topic-meta">Posted by <strong>{{ topic.author_name }}</strong> on {{ topic.created_at|date:"N j, Y" }}</p>
+{% if topic.recurring_event %}<a href="/?q={{ topic.recurring_event.title|urlencode }}" class="rec-link">🔁 See events in this series →</a>{% endif %}
+<p class="topic-body">{{ topic.body }}</p>
+
+<hr class="divider">
+<p class="section-title">{{ replies.count }} repl{{ replies.count|pluralize:"y,ies" }}</p>
+
+{% if replies %}
+{% for reply in replies %}
+<div class="reply">
+  <div class="reply-meta"><strong>{{ reply.author_name }}</strong> &middot; {{ reply.created_at|date:"N j, Y @ g:i A" }}</div>
+  <div class="reply-body">{{ reply.body }}</div>
+</div>
+{% endfor %}
+{% else %}
+<p class="empty-replies">No replies yet. Be the first!</p>
+{% endif %}
+
+<div class="reply-form">
+  <h3>Leave a reply</h3>
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+      <label>Your name</label>
+      {{ reply_form.author_name }}
+    </div>
+    <div class="form-group">
+      <label>Reply</label>
+      {{ reply_form.body }}
+    </div>
+    <button type="submit" class="btn">Post Reply</button>
+  </form>
+</div>
+</body>
+</html>

@@ -1,8 +1,11 @@
 from django.contrib import admin
 from django.utils.html import format_html, mark_safe
 from django.utils.timezone import localtime
+from django.template.response import TemplateResponse
 from django import forms
-from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent
+from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus
+import os
+import datetime
 import requests
 
 DISCORD_EVENTS = "https://discord.com/api/webhooks/1487258605102039051/aMDBINHJSRTE2DVRB7AIdEQpC-5pacJgEKwEn9_gf6nhJbCLlsXD41zADDIlP-5Md5CC"
@@ -143,3 +146,114 @@ class CalendarFeedAdmin(admin.ModelAdmin):
     list_display = ['user', 'label', 'url', 'last_synced', 'created_at']
     search_fields = ['user__email', 'label', 'url']
     readonly_fields = ['last_synced', 'created_at']
+
+
+# ── Cron Status dashboard ─────────────────────────────────────────────────────
+
+CRON_JOBS = [
+    {
+        'name':     'Import user feeds',
+        'command':  'import_feeds',
+        'log':      '/var/log/cp_import_feeds.log',
+        'schedule': 'Mon + Thu  6:00 AM',
+    },
+    {
+        'name':     'Import venue / PDX net feeds',
+        'command':  'import_venue_feeds',
+        'log':      '/var/log/cp_import_venues.log',
+        'schedule': 'Mon + Thu  7:00 AM',
+    },
+    {
+        'name':     'Generate recurring event instances',
+        'command':  'generate_recurring_events',
+        'log':      '/var/log/cp_recurring.log',
+        'schedule': 'Daily  6:05 AM',
+    },
+    {
+        'name':     'Geocode events (20/night)',
+        'command':  'geocode_events',
+        'log':      '/var/log/cp_geocode.log',
+        'schedule': 'Daily  2:00 AM',
+    },
+    {
+        'name':     'Fetch event images (og:image)',
+        'command':  'fetch_event_images',
+        'log':      '/var/log/cp_fetch_images.log',
+        'schedule': 'Daily  3:00 AM',
+    },
+    {
+        'name':     'Daily Discord digest',
+        'command':  'daily_digest',
+        'log':      '/var/log/cp_daily_digest.log',
+        'schedule': 'Daily  9:00 AM',
+    },
+    {
+        'name':     'Recheck inactive venue feeds',
+        'command':  'recheck_venue_feeds',
+        'log':      '/var/log/cp_recheck_feeds.log',
+        'schedule': '1st of month  8:00 AM',
+    },
+    {
+        'name':     'Discover new PDX feeds',
+        'command':  'discover_pdx_feeds',
+        'log':      '/var/log/cp_discover_feeds.log',
+        'schedule': '1st of month  8:05 AM',
+    },
+]
+
+
+def _parse_log(path, tail_lines=25):
+    """Read a log file. Returns (mtime_dt, last_lines, has_error)."""
+    if not os.path.exists(path):
+        return None, [], False
+    mtime = datetime.datetime.fromtimestamp(os.path.getmtime(path))
+    try:
+        with open(path, 'r', errors='replace') as f:
+            lines = f.readlines()
+    except Exception:
+        return mtime, [], False
+    last = [l.rstrip() for l in lines[-tail_lines:] if l.strip()]
+    has_error = any(
+        kw in l
+        for l in lines[-30:]
+        for kw in ('Traceback', 'SyntaxError', 'ImportError', 'ERROR:', 'Error:', 'FAILED')
+    )
+    return mtime, last, has_error
+
+
+@admin.register(CronStatus)
+class CronStatusAdmin(admin.ModelAdmin):
+    """Custom admin page — no DB table, just reads cron log files."""
+
+    def has_add_permission(self, _request):
+        return False
+
+    def has_delete_permission(self, _request, _obj=None):
+        return False
+
+    def has_change_permission(self, _request, _obj=None):
+        return False
+
+    def changelist_view(self, request, _extra_context=None):
+        if not request.user.is_staff:
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied
+
+        jobs = []
+        for job in CRON_JOBS:
+            mtime, lines, has_error = _parse_log(job['log'])
+            jobs.append({
+                **job,
+                'mtime':     mtime,
+                'lines':     lines,
+                'has_error': has_error,
+                'exists':    mtime is not None,
+            })
+
+        context = {
+            **self.admin_site.each_context(request),
+            'title': 'Cron Status',
+            'jobs':  jobs,
+            'now':   datetime.datetime.now(),
+        }
+        return TemplateResponse(request, 'admin/cron_status.html', context)

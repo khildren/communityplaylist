@@ -15,7 +15,8 @@ class Command(BaseCommand):
         if not events.exists():
             requests.post(WEBHOOK,json={"content":"📅 No events today — check upcoming at https://communityplaylist.com"})
             return
-        requests.post(WEBHOOK,json={"content":f"🌹 **Todays PDX Events — {localtime(now).strftime(\"%A, %B %d\")}**\nhttps://communityplaylist.com"})
+        date_str = localtime(now).strftime('%A, %B %d')
+        requests.post(WEBHOOK,json={"content":f"🌹 **Todays PDX Events — {date_str}**\nhttps://communityplaylist.com"})
         time.sleep(1)
         for e in events:
             genres=", ".join(e.genres.values_list("name",flat=True)) or "various"

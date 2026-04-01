@@ -9,11 +9,11 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif}
 .header{padding:6px 16px;border-bottom:1px solid #1a1a1a}
-.header-inner{display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap}
-.logo-link img{height:38px;width:auto;display:block}
-.header-text{display:flex;flex-direction:column;gap:7px;flex:1;min-width:0}
-.header-text p{color:#888;font-size:.8em;line-height:1.65;margin:0}
-.header-btns{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:center;padding:6px 0 4px}
+.header-inner{display:flex;align-items:center;gap:12px}
+.logo-link img{height:38px;width:auto;display:block;flex-shrink:0}
+.header-text{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+.header-text p{color:#888;font-size:.8em;line-height:1.5;margin:0}
+.header-btns{display:flex;gap:6px;align-items:center;flex-shrink:0}
 /* Header burger — mobile only */
 .header-burger{display:none;background:transparent;border:1px solid #444;color:#aaa;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:1.1em;line-height:1;flex-shrink:0}
 .header-burger.open{color:#ff6b35;border-color:#ff6b35}
@@ -23,6 +23,16 @@ body{background:#111;color:#eee;font-family:sans-serif}
 .submit-link:hover{background:#e55a25}
 .discord-link{display:inline-flex;align-items:center;gap:6px;background:#5865F2;color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;font-size:.8em;transition:background .2s}
 .discord-link:hover{background:#4752c4}
+.board-link{display:inline-flex;align-items:center;gap:5px;background:#2563eb;color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;font-size:.8em;transition:background .2s}
+.board-link:hover{background:#1d4ed8}
+/* Aid marquee */
+.aid-marquee-wrap{background:#0f1f0f;border-bottom:1px solid #1a3a1a;overflow:hidden;white-space:nowrap;padding:5px 0;width:100%}
+.aid-marquee-inner{display:inline-block;animation:marquee 55s linear infinite}
+.aid-marquee-inner:hover{animation-play-state:paused}
+.aid-marquee-inner a{color:#4caf50;text-decoration:none;font-size:.75em;font-weight:600;letter-spacing:.03em}
+.aid-marquee-inner a:hover{text-decoration:underline}
+.aid-marquee-sep{color:#1a4a1a;margin:0 20px;font-size:.75em;user-select:none}
+@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 .discord-link svg{width:14px;height:14px;flex-shrink:0}
 .discord-count{background:rgba(255,255,255,.18);border-radius:10px;padding:1px 6px;font-size:.8em;margin-left:2px}
 /* Category badges */
@@ -32,14 +42,8 @@ body{background:#111;color:#eee;font-family:sans-serif}
 .cat-fund  {background:#121228;color:#6699ff}
 .cat-food  {background:#252210;color:#ddaa33}
 .cat-hybrid{background:#251810;color:#ff9944}
-.cat-badge {display:inline-block;padding:2px 9px;border-radius:3px;font-size:.75em;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.cat-badge {display:inline-block;padding:2px 9px;border-radius:3px;font-size:.75em;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;cursor:pointer}
 
-/* Filter bar */
-.filters{background:#1a1a1a;border-bottom:1px solid #222;padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center}
-.filters select,.filters input{background:#222;border:1px solid #333;border-radius:6px;padding:6px 10px;color:#eee;font-size:.82em}
-.filters select:focus{outline:none;border-color:#ff6b35}
-.filter-btn{background:#ff6b35;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:.82em}
-.clear-btn{background:transparent;color:#aaa;border:1px solid #333;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:.82em;text-decoration:none}
 
 /* View toggle — tucked into filter bar as a group */
 .view-group{display:flex;gap:3px;border-left:1px solid #333;padding-left:10px;margin-left:4px}
@@ -67,49 +71,45 @@ body{background:#111;color:#eee;font-family:sans-serif}
 .archive-link a{color:#ff6b35;text-decoration:none}
 .empty{text-align:center;padding:60px;color:#555}
 
-/* ── Filter topbar (always visible — toggle on mobile, view group always) ── */
-.filter-topbar{display:flex;align-items:center;justify-content:flex-end;background:#1a1a1a;border-bottom:1px solid #222;padding:6px 14px;gap:8px;position:relative;z-index:900}
-.filter-toggle{display:inline-flex;align-items:center;gap:5px;background:#222;border:1px solid #333;color:#aaa;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.8em;white-space:nowrap}
-.filter-toggle.open{color:#ff6b35;border-color:#ff6b35}
-.filter-topbar .view-group{border-left:none;padding-left:0;margin-left:0}
-/* Burger — mobile only */
-.view-burger-wrap{display:none;position:relative}
-.view-burger{background:#222;border:1px solid #333;color:#aaa;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:.82em;display:flex;align-items:center;gap:4px;white-space:nowrap}
+/* ── Single filter bar — always one line, scrolls horizontally if narrow ── */
+.filter-topbar{display:flex;align-items:center;background:#1a1a1a;border-bottom:1px solid #222;padding:0 10px;gap:5px;flex-wrap:nowrap;overflow-x:auto;overflow-y:visible;position:relative;z-index:900;scrollbar-width:none;-ms-overflow-style:none;white-space:nowrap;min-height:40px}
+.filter-topbar::-webkit-scrollbar{display:none}
+.filter-topbar .search-input{background:#222;border:1px solid #333;border-radius:6px;padding:4px 8px;color:#eee;font-size:.8em;width:130px;min-width:80px;flex-shrink:0}
+.filter-topbar .search-input:focus{outline:none;border-color:#ff6b35}
+.filter-divider{width:1px;height:20px;background:#333;flex-shrink:0;margin:0 3px}
+.filter-topbar select{background:#222;border:1px solid #333;border-radius:6px;padding:4px 6px;color:#eee;font-size:.78em;flex-shrink:0;max-width:130px}
+.filter-topbar select:focus{outline:none;border-color:#ff6b35}
+.filter-topbar .free-label{color:#aaa;font-size:.78em;display:flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0}
+.filter-topbar .filter-btn{background:#ff6b35;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:.78em;flex-shrink:0;white-space:nowrap}
+.filter-topbar .clear-btn{background:transparent;color:#666;border:1px solid #2a2a2a;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:.78em;text-decoration:none;flex-shrink:0}
+.filter-topbar .view-group{display:flex;gap:3px;flex-shrink:0;margin-left:auto;padding-left:6px}
+/* Burger — hidden by default, shown below 820px */
+.view-burger-wrap{display:none;position:relative;flex-shrink:0}
+.view-burger{background:#222;border:1px solid #333;color:#aaa;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:.78em;display:flex;align-items:center;gap:3px;white-space:nowrap}
 .view-burger.has-active{color:#ff6b35;border-color:#ff6b35}
 .view-dropdown{display:none;position:absolute;right:0;top:calc(100% + 5px);background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:4px;z-index:1100;min-width:110px;box-shadow:0 4px 20px rgba(0,0,0,.7)}
 .view-dropdown.open{display:flex;flex-direction:column;gap:2px}
 .view-dropdown .view-btn{width:100%;justify-content:flex-start;border-color:transparent;border-radius:5px}
-@media(max-width:600px){
+@media(max-width:820px){
   .filter-topbar .view-group>.view-btn{display:none}
   .view-burger-wrap{display:block}
 }
-/* Filter body collapsed by default on all screen sizes */
-#filter-body{display:none}
-#filter-body.open{display:flex}
 
 /* ── Mobile ── */
 @media(max-width:600px){
   /* Header */
   .header{padding:8px 12px}
-  .header-inner{gap:10px;flex-wrap:nowrap;justify-content:flex-start}
+  .header-inner{gap:10px;flex-wrap:wrap;justify-content:flex-start}
   .logo-link img{height:40px}
   .header-text{gap:4px}
   .header-text p{font-size:.72em;line-height:1.45}
   /* Header burger visible, buttons hidden by default */
   .header-burger{display:inline-flex}
-  .header-btns{display:none;gap:6px;padding:8px 12px;border-top:1px solid #1a1a1a}
+  .header-btns{display:none;gap:6px;width:100%;padding:8px 0;border-top:1px solid #1a1a1a}
   .header-btns.open{display:flex;flex-wrap:wrap}
   .header-btns a{flex:1;min-width:140px;justify-content:center}
   .submit-link,.discord-link{padding:6px 12px;font-size:.78em;justify-content:center}
-  /* Topbar: toggle left, view group right */
-  .filter-topbar{justify-content:space-between;padding:6px 10px}
-  /* Filter layout: 2-col dropdowns */
-  .filters{gap:6px;padding:8px 10px}
-  .filters select{flex:1 1 calc(50% - 4px);min-width:0}
-  .filter-actions{display:flex;gap:6px;width:100%}
-  .filter-btn,.clear-btn{flex:1;text-align:center}
-  /* View buttons compact */
-  .view-btn{padding:5px 9px;font-size:.78em}
+  .view-btn{padding:4px 8px;font-size:.75em}
   /* Cards slimmer */
   .event{padding:10px 12px;gap:10px}
   .event-thumb{width:38px;height:68px}
@@ -139,15 +139,16 @@ html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
     <div class="header-text">
       <p>Portland community events.<br>Submitted by the people, for the people. 🌹</p>
     </div>
+    <div class="header-btns" id="header-btns">
+      <a href="/submit/" class="submit-link">+ Submit an Event</a>
+      <a href="https://discord.gg/WHhxRPDdFV" class="discord-link" id="discord-btn" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.033.056a19.908 19.908 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+        Discord<span class="discord-count" id="discord-count" style="display:none"></span>
+      </a>
+      <a href="https://discord.gg/WHhxRPDdFV" class="submit-link" target="_blank" rel="noopener">💬 Ideas &amp; Feedback</a>
+      <a href="/board/" class="board-link">📋 Board</a>
+    </div>
     <button type="button" class="header-burger" id="header-burger" onclick="toggleHeaderBtns()">☰</button>
-  </div>
-  <div class="header-btns" id="header-btns">
-    <a href="/submit/" class="submit-link">+ Submit an Event</a>
-    <a href="https://discord.gg/WHhxRPDdFV" class="discord-link" id="discord-btn" target="_blank" rel="noopener">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.033.056a19.908 19.908 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
-      Discord<span class="discord-count" id="discord-count" style="display:none"></span>
-    </a>
-    <a href="https://discord.gg/WHhxRPDdFV" class="submit-link" target="_blank" rel="noopener">💬 Ideas &amp; Feedback</a>
   </div>
 </div>
 <div class="site-meta">
@@ -165,19 +166,60 @@ html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
   <span><a href="/register/" style="color:#666;text-decoration:none">Register</a></span>
   {% endif %}
 </div>
-
-<div class="filter-topbar">
-  <div style="display:flex;align-items:center;gap:6px">
-    <button type="button" class="filter-toggle" id="filter-toggle-btn" onclick="toggleFilters()">⚙ Filters</button>
-    <form method="get" action="/" style="display:flex;align-items:center;margin:0">
-      <input type="text" name="q" placeholder="🔍 Search events..." value="{{ search_query|default:'' }}" style="background:#222;border:1px solid #333;border-radius:6px;padding:5px 10px;color:#eee;font-size:.8em;width:180px">
-    </form>
+{% if banners %}
+<div class="aid-marquee-wrap">
+  <div class="aid-marquee-inner">
+    {% for b in banners %}<a href="/board/aid/">🌹 {{ b.text }}</a><span class="aid-marquee-sep">✦</span>{% endfor %}{% for b in banners %}<a href="/board/aid/">🌹 {{ b.text }}</a><span class="aid-marquee-sep">✦</span>{% endfor %}
   </div>
+</div>
+{% endif %}
+
+<form method="get" action="/" id="filter-form">
+<div class="filter-topbar" id="filter-body">
+  <input type="text" name="q" class="search-input" placeholder="🔍 Search..." value="{{ search_query|default:'' }}">
+  <div class="filter-divider"></div>
+  <select name="genre">
+    <option value="">All genres</option>
+    {% for g in genres %}
+    <option value="{{ g.id }}" {% if selected_genre == g.id|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>
+    {% endfor %}
+  </select>
+  <select name="category">
+    <option value="" {% if not selected_category %}selected{% endif %}>All types</option>
+    <option value="music"  {% if selected_category == 'music'  %}selected{% endif %}>🎵 Music</option>
+    <option value="bike"   {% if selected_category == 'bike'   %}selected{% endif %}>🚲 Bike</option>
+    <option value="fund"   {% if selected_category == 'fund'   %}selected{% endif %}>💛 Fundraiser</option>
+    <option value="food"   {% if selected_category == 'food'   %}selected{% endif %}>🍜 Food</option>
+    <option value="hybrid" {% if selected_category == 'hybrid' %}selected{% endif %}>✨ Hybrid</option>
+  </select>
+  <select name="event_type">
+    <option value="" {% if not selected_event_type %}selected{% endif %}>Online &amp; Local</option>
+    <option value="local" {% if selected_event_type == 'local' %}selected{% endif %}>Local</option>
+    <option value="online" {% if selected_event_type == 'online' %}selected{% endif %}>Online</option>
+  </select>
+  <select name="neighborhood">
+    <option value="">All neighborhoods</option>
+    {% for n in neighborhoods %}
+    <option value="{{ n }}" {% if selected_neighborhood == n %}selected{% endif %}>{{ n }}</option>
+    {% endfor %}
+  </select>
+  <select name="date">
+    <option value="today" {% if selected_date == 'today' %}selected{% endif %}>Today</option>
+    <option value="week" {% if selected_date == 'week' %}selected{% endif %}>This Week</option>
+    <option value="month" {% if selected_date == 'month' %}selected{% endif %}>This Month</option>
+    <option value="future" {% if selected_date == 'future' or not selected_date %}selected{% endif %}>Any Future</option>
+    <option value="past" {% if selected_date == 'past' %}selected{% endif %}>Past</option>
+  </select>
+  <label class="free-label">
+    <input type="checkbox" name="free" value="1" {% if free_only %}checked{% endif %}> Free only
+  </label>
+  <button type="submit" class="filter-btn">Filter</button>
+  <a href="/" class="clear-btn">Clear</a>
+  <div class="filter-divider"></div>
   <div class="view-group">
     <button type="button" class="view-btn" id="list-btn" data-view="list" onclick="setView('list')">≡ List</button>
     <button type="button" class="view-btn" id="map-btn"  data-view="map"  onclick="setView('map')">⊙ Map</button>
     <button type="button" class="view-btn" id="hybrid-btn" data-view="hybrid" onclick="setView('hybrid')">⊟ Hybrid</button>
-    <!-- Mobile burger -->
     <div class="view-burger-wrap">
       <button type="button" class="view-burger" id="view-burger" onclick="toggleViewMenu()">
         <span id="view-icon">☰</span> ▾
@@ -188,55 +230,6 @@ html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
         <button type="button" class="view-btn" data-view="hybrid" onclick="setView('hybrid')">⊟ Hybrid</button>
       </div>
     </div>
-  </div>
-</div>
-
-<form method="get" action="/" id="filter-form">
-<div class="filters" id="filter-body">
-  <select name="genre">
-    <option value="">All genres</option>
-    {% for g in genres %}
-    <option value="{{ g.id }}" {% if selected_genre == g.id|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>
-    {% endfor %}
-  </select>
-
-  <select name="category">
-    <option value="" {% if not selected_category %}selected{% endif %}>All types</option>
-    <option value="music"  {% if selected_category == 'music'  %}selected{% endif %}>🎵 Music</option>
-    <option value="bike"   {% if selected_category == 'bike'   %}selected{% endif %}>🚲 Bike</option>
-    <option value="fund"   {% if selected_category == 'fund'   %}selected{% endif %}>💛 Fundraiser</option>
-    <option value="food"   {% if selected_category == 'food'   %}selected{% endif %}>🍜 Food</option>
-    <option value="hybrid" {% if selected_category == 'hybrid' %}selected{% endif %}>✨ Hybrid</option>
-  </select>
-
-  <select name="event_type">
-    <option value="" {% if not selected_event_type %}selected{% endif %}>Online &amp; Local</option>
-    <option value="local" {% if selected_event_type == 'local' %}selected{% endif %}>Local</option>
-    <option value="online" {% if selected_event_type == 'online' %}selected{% endif %}>Online</option>
-  </select>
-
-  <select name="neighborhood">
-    <option value="">All neighborhoods</option>
-    {% for n in neighborhoods %}
-    <option value="{{ n }}" {% if selected_neighborhood == n %}selected{% endif %}>{{ n }}</option>
-    {% endfor %}
-  </select>
-
-  <select name="date">
-    <option value="today" {% if selected_date == 'today' %}selected{% endif %}>PDX Today</option>
-    <option value="week" {% if selected_date == 'week' %}selected{% endif %}>This Week</option>
-    <option value="month" {% if selected_date == 'month' %}selected{% endif %}>This Month</option>
-    <option value="future" {% if selected_date == 'future' or not selected_date %}selected{% endif %}>Any Future</option>
-    <option value="past" {% if selected_date == 'past' %}selected{% endif %}>All Past</option>
-  </select>
-
-  <label style="color:#aaa;font-size:.82em;display:flex;align-items:center;gap:6px">
-    <input type="checkbox" name="free" value="1" {% if free_only %}checked{% endif %}> Free only
-  </label>
-
-  <div class="filter-actions">
-    <button type="submit" class="filter-btn">Filter</button>
-    <a href="/" class="clear-btn">Clear</a>
   </div>
 </div>
 </form>
@@ -250,10 +243,12 @@ html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
       <div class="event-thumb">
         {% if event.approved_photos %}
         <img src="{{ event.approved_photos.0.image.url }}" alt="{{ event.title }}">
+        {% elif event.photo %}
+        <img src="{{ event.photo.url }}" alt="{{ event.title }}">
         {% endif %}
       </div>
       <div class="event-body">
-        {% if event.category %}<span class="cat-badge cat-{{ event.category }}">{{ event.get_category_display }}</span>{% endif %}
+        {% if event.category %}<span class="cat-badge cat-{{ event.category }}" data-cat="{{ event.category }}" onclick="filterByCategory(event,this)">{{ event.get_category_display }}</span>{% endif %}
         <h2>{{ event.title }}</h2>
         <div class="meta">
           <span>📅 {{ event.start_date|date:"D, N j @ g:i A" }}</span>
@@ -355,6 +350,13 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
   });
 });
 
+// ── Category badge click → filter ──
+function filterByCategory(e, el) {
+  e.preventDefault();
+  e.stopPropagation();
+  window.location.href = '/?category=' + el.dataset.cat;
+}
+
 // ── Header buttons toggle (mobile) ──
 function toggleHeaderBtns() {
   const btns = document.getElementById('header-btns');
@@ -362,15 +364,6 @@ function toggleHeaderBtns() {
   const open = btns.classList.toggle('open');
   burger.classList.toggle('open', open);
   burger.textContent = open ? '✕' : '☰';
-}
-
-// ── Filter toggle (mobile) ──
-function toggleFilters() {
-  const body = document.getElementById('filter-body');
-  const btn  = document.getElementById('filter-toggle-btn');
-  const open = body.classList.toggle('open');
-  btn.classList.toggle('open', open);
-  btn.textContent = open ? '✕ Filters' : '⚙ Filters';
 }
 
 // ── View burger (mobile) ──

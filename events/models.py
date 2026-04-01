@@ -340,3 +340,12 @@ class EventPhoto(models.Model):
 
     def __str__(self):
         return f"{self.photo_type} photo for {self.event.title}"
+
+
+class CronStatus(models.Model):
+    """Proxy model — no DB table. Used only to hang a custom admin page off."""
+    class Meta:
+        managed = False
+        verbose_name = 'Cron Status'
+        verbose_name_plural = 'Cron Status'
+        app_label = 'events'

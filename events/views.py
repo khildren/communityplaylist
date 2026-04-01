@@ -92,7 +92,7 @@ def event_list(request):
             'slug': e.slug,
             'location': e.location,
             'start_date': localtime(e.start_date).strftime('%b %d @ %I:%M %p'),
-            'flyer_url': e.approved_photos[0].image.url if e.approved_photos else '',
+            'flyer_url': (e.approved_photos[0].image.url if e.approved_photos else (e.photo.url if e.photo else '')),
         }
         for e in events_list
         if e.latitude is not None
@@ -100,6 +100,9 @@ def event_list(request):
 
     SiteStats.record_visit(request)
     visit_count = f"{SiteStats.get_count():,}"
+
+    from board.models import BannerMessage
+    banners = list(BannerMessage.objects.filter(active=True).order_by('created_at'))
 
     return render(request, 'events/event_list.html', {
         'events': events_list,
@@ -114,6 +117,7 @@ def event_list(request):
         'free_only': free_only,
         'visit_count': visit_count,
         'search_query': search_query,
+        'banners': banners,
     })
 
 
@@ -208,6 +212,26 @@ def event_detail(request, slug):
     flyer_photo = photos_list[0] if photos_list else None
     gallery_photos = photos_list[1:] if len(photos_list) > 1 else []
 
+    # Recurring series — linked via FK (submitted form) OR same title+location (iCal imports)
+    recurring_instances = []
+    if event.recurring_event_id:
+        recurring_instances = list(
+            Event.objects.filter(
+                recurring_event_id=event.recurring_event_id,
+                status='approved',
+            ).order_by('start_date')
+        )
+    elif event.location:
+        # Auto-imported series: same title root (strip trailing date/number variants) + same location
+        # Match on exact title + exact location — reliable for iCal series like Gnosis
+        same_series = Event.objects.filter(
+            title=event.title,
+            location=event.location,
+            status='approved',
+        ).order_by('start_date')
+        if same_series.count() > 1:
+            recurring_instances = list(same_series)
+
     return render(request, 'events/event_detail.html', {
         'event': event,
         'photos': photos,
@@ -217,6 +241,8 @@ def event_detail(request, slug):
         'upload_success': upload_success,
         'cal_url': cal_url,
         'maps_url': maps_url,
+        'recurring_instances': recurring_instances,
+        'now': timezone.now(),
     })
 
 

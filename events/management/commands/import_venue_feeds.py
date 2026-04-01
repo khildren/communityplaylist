@@ -11,14 +11,37 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.utils.text import slugify
 from django.conf import settings
+from django.core.files.base import ContentFile
 from events.models import VenueFeed, Event
 from events.enrich import enrich_event
 import requests
 from icalendar import Calendar
 from datetime import datetime, date
+import mimetypes
+import os
 import pytz
 
 PDX_TZ = pytz.timezone('America/Los_Angeles')
+
+IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
+IMAGE_EXTS  = {'.jpg', '.jpeg', '.png', '.webp', '.gif'}
+
+
+def download_image(url, field_name='photo'):
+    """Download an image URL, return (filename, ContentFile) or (None, None)."""
+    try:
+        r = requests.get(url, timeout=10, stream=True,
+                         headers={'User-Agent': 'CommunityPlaylist/1.0 (communityplaylist.com)'})
+        r.raise_for_status()
+        ct = r.headers.get('content-type', '').split(';')[0].strip().lower()
+        if ct not in IMAGE_TYPES:
+            return None, None
+        ext = mimetypes.guess_extension(ct) or '.jpg'
+        ext = ext.replace('.jpe', '.jpg')
+        fname = f"{field_name}_{slugify(url[-40:])}{ext}"
+        return fname, ContentFile(r.content)
+    except Exception:
+        return None, None
 
 
 def tag_feed_defaults(ev, feed):
@@ -62,13 +85,20 @@ def import_ical(feed, now, stdout, stderr):
         if component.name != 'VEVENT':
             continue
         try:
-            summary   = str(component.get('summary', '')).strip()
-            dtstart   = to_aware(component.get('dtstart').dt)
-            dtend_raw = component.get('dtend')
-            dtend     = to_aware(dtend_raw.dt) if dtend_raw else None
-            desc      = str(component.get('description', '')).strip()
-            location  = str(component.get('location', '')).strip()
-            url_prop  = str(component.get('url', '')).strip()
+            summary    = str(component.get('summary', '')).strip()
+            dtstart    = to_aware(component.get('dtstart').dt)
+            dtend_raw  = component.get('dtend')
+            dtend      = to_aware(dtend_raw.dt) if dtend_raw else None
+            desc       = str(component.get('description', '')).strip()
+            location   = str(component.get('location', '')).strip()
+            url_prop   = str(component.get('url', '')).strip()
+            attach_raw = component.get('attach')
+            image_url  = None
+            if attach_raw:
+                attach_str = str(attach_raw).strip()
+                ext = os.path.splitext(attach_str.split('?')[0])[-1].lower()
+                if attach_str.startswith('http') and ext in IMAGE_EXTS:
+                    image_url = attach_str
 
             if not summary or not dtstart:
                 continue
@@ -97,6 +127,10 @@ def import_ical(feed, now, stdout, stderr):
                 category=feed.default_category,
                 website=url_prop[:200] if url_prop else '',
             )
+            if image_url:
+                fname, content = download_image(image_url)
+                if fname and content:
+                    ev.photo.save(fname, content, save=True)
             enrich_event(ev, geocode=bool(location), save=True)
             tag_feed_defaults(ev, feed)
             created += 1
@@ -236,10 +270,15 @@ def import_musicbrainz(feed, now, stdout, stderr):
 
 
 def import_eventbrite(feed, now, stdout, stderr):
-    """Query Eventbrite API for Portland events. Returns (created, skipped, error_str)."""
-    api_key = getattr(settings, 'EVENTBRITE_API_KEY', '')
-    if not api_key:
-        return 0, 0, 'EVENTBRITE_API_KEY not configured in settings'
+    """Query Eventbrite API for Portland events. Returns (created, skipped, error_str).
+
+    NOTE: Eventbrite deprecated the /v3/events/search/ public endpoint in 2023.
+    Personal tokens no longer have access. Instead, add individual Eventbrite
+    organiser iCal feeds as iCal-type VenueFeeds:
+      https://www.eventbrite.com/o/<organizer-slug>/icalendar.ics
+    This function is kept for forward-compatibility but returns early.
+    """
+    return 0, 0, 'Eventbrite public search API deprecated — use iCal feeds per organiser instead'
 
     created = skipped = 0
     status = 'approved' if feed.auto_approve else 'pending'
@@ -267,11 +306,13 @@ def import_eventbrite(feed, now, stdout, stderr):
 
         for ev in data.get('events', []):
             try:
-                title     = ev.get('name', {}).get('text', '').strip()
-                desc      = ev.get('description', {}).get('text', '') or ev.get('summary', '') or ''
-                ev_url    = ev.get('url', '')
-                start_raw = ev.get('start', {}).get('utc', '')
-                end_raw   = ev.get('end', {}).get('utc', '')
+                title      = ev.get('name', {}).get('text', '').strip()
+                desc       = ev.get('description', {}).get('text', '') or ev.get('summary', '') or ''
+                ev_url     = ev.get('url', '')
+                start_raw  = ev.get('start', {}).get('utc', '')
+                end_raw    = ev.get('end', {}).get('utc', '')
+                logo_url   = (ev.get('logo') or {}).get('url') or \
+                             (ev.get('logo') or {}).get('original', {}).get('url')
 
                 if not title or not start_raw:
                     continue
@@ -319,6 +360,10 @@ def import_eventbrite(feed, now, stdout, stderr):
                     category=feed.default_category,
                     website=ev_url[:200],
                 )
+                if logo_url:
+                    fname, content = download_image(logo_url)
+                    if fname and content:
+                        ev.photo.save(fname, content, save=True)
                 enrich_event(ev, geocode=bool(location), save=True)
                 tag_feed_defaults(ev, feed)
                 created += 1

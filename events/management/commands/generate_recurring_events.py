@@ -29,7 +29,22 @@ class Command(BaseCommand):
         today    = now.date()
         created_total = 0
 
+        from board.models import Topic
+
         for rec in RecurringEvent.objects.filter(active=True):
+            # Auto-create a board thread for this recurring event if none exists yet
+            if not Topic.objects.filter(recurring_event=rec).exists():
+                Topic.objects.create(
+                    title=f"{rec.title} — recurring event thread",
+                    body=(
+                        f"{rec.description}\n\n"
+                        f"Community thread for: {rec.title}\n"
+                        f"Location: {rec.location}"
+                    ),
+                    author_name='Community Playlist',
+                    category='general',
+                    recurring_event=rec,
+                )
             lookahead = today + timedelta(weeks=rec.lookahead_weeks)
             dates     = rec.next_dates(today, count=200)
             dates     = [d for d in dates if d <= lookahead]

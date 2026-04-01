@@ -81,8 +81,13 @@ def _extract_address(location_string):
     return s
 
 
+class NominatimRateLimited(Exception):
+    pass
+
+
 def geocode_location(location_string):
-    """Forward geocode. Returns (lat, lng) or (None, None)."""
+    """Forward geocode. Returns (lat, lng) or (None, None).
+    Raises NominatimRateLimited on HTTP 429 so callers can abort early."""
     if not location_string or location_string.startswith(('http://', 'https://', 'www.')):
         return None, None
     try:
@@ -96,9 +101,13 @@ def geocode_location(location_string):
             headers=NOMINATIM_HEADERS,
             timeout=5,
         )
+        if r.status_code == 429:
+            raise NominatimRateLimited('Nominatim rate limit hit (429)')
         data = r.json()
         if data:
             return float(data[0]['lat']), float(data[0]['lon'])
+    except NominatimRateLimited:
+        raise
     except Exception:
         pass
     return None, None

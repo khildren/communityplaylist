@@ -10,7 +10,7 @@ Run as needed or via cron after bulk imports.
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from events.models import Event
-from events.geocode import geocode_location, reverse_geocode_neighborhood
+from events.geocode import geocode_location, reverse_geocode_neighborhood, NominatimRateLimited
 import time
 
 
@@ -29,32 +29,51 @@ class Command(BaseCommand):
         if not options['all']:
             qs = qs.filter(status='approved')
 
+        # --- Deduplicate: geocode each unique location string once, then
+        # bulk-stamp all events that share it. One Nominatim call per venue
+        # instead of one per event instance — clears recurring-event backlogs fast.
+        unique_locations = list(
+            qs.values_list('location', flat=True).distinct()
+        )
         if options['limit']:
-            qs = qs[:options['limit']]
+            unique_locations = unique_locations[:options['limit']]
 
-        events = list(qs)
-        self.stdout.write(f'Geocoding {len(events)} events...')
+        self.stdout.write(
+            f'Geocoding {len(unique_locations)} unique locations '
+            f'(covering {qs.count()} events)...'
+        )
 
-        done = failed = hoods = 0
-        for i, ev in enumerate(events):
-            lat, lng = geocode_location(ev.location)
+        done_locs = failed = events_stamped = hoods = 0
+        rate_limited = False
+
+        for i, loc in enumerate(unique_locations):
+            try:
+                lat, lng = geocode_location(loc)
+            except NominatimRateLimited:
+                self.stderr.write(f'  Rate limited by Nominatim after {done_locs} locations — stopping early.')
+                rate_limited = True
+                break
+
             if lat:
-                ev.latitude = lat
-                ev.longitude = lng
                 hood = reverse_geocode_neighborhood(lat, lng)
-                if hood and not ev.neighborhood:
-                    ev.neighborhood = hood
+                matching = qs.filter(location=loc)
+                update_fields = {'latitude': lat, 'longitude': lng}
+                if hood:
+                    matching.filter(neighborhood='').update(neighborhood=hood)
                     hoods += 1
-                ev.save(update_fields=['latitude', 'longitude', 'neighborhood'])
-                done += 1
+                stamped = matching.update(**update_fields)
+                events_stamped += stamped
+                done_locs += 1
             else:
                 failed += 1
 
-            if (i + 1) % 25 == 0:
-                self.stdout.write(f'  {done} geocoded, {failed} failed...')
+            if (i + 1) % 10 == 0:
+                self.stdout.write(f'  {done_locs} locations done, {failed} failed, {events_stamped} events stamped...')
 
             time.sleep(1)  # Nominatim: max 1 req/sec
 
+        status = 'Stopped early (rate limited)' if rate_limited else 'Done'
         self.stdout.write(self.style.SUCCESS(
-            f'Done. {done} geocoded ({hoods} neighborhoods found), {failed} no result.'
+            f'{status}. {done_locs} locations geocoded → {events_stamped} events stamped '
+            f'({hoods} neighborhoods found), {failed} locations no result.'
         ))

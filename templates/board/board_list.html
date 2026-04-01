@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% if aid_filter %}Aid & Mutual Aid{% else %}Community Board{% endif %} — Community Playlist</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:860px;margin:0 auto}
+.back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:20px}
+.back:hover{text-decoration:underline}
+h1{color:#ff6b35;font-size:1.6em;margin-bottom:6px}
+.sub{color:#666;font-size:.85em;margin-bottom:24px}
+.new-btn{display:inline-block;background:#2563eb;color:#fff;padding:8px 18px;border-radius:6px;text-decoration:none;font-size:.85em;margin-bottom:20px}
+.new-btn:hover{background:#1d4ed8}
+.cat-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.cat-tab{padding:5px 12px;border-radius:6px;text-decoration:none;font-size:.8em;border:1px solid #333;color:#aaa}
+.cat-tab:hover{border-color:#ff6b35;color:#ff6b35}
+.cat-tab.active{background:#ff6b35;color:#fff;border-color:#ff6b35}
+.topic{border:1px solid #2a2a2a;border-radius:8px;padding:14px 16px;margin-bottom:10px;text-decoration:none;display:block;color:inherit;transition:border-color .2s}
+.topic:hover{border-color:#2563eb}
+.topic.pinned{border-color:#ff6b35;background:#1a1208}
+.topic-title{color:#eee;font-size:1em;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.pin-icon{color:#ff6b35;font-size:.85em}
+.topic-meta{font-size:.78em;color:#666;display:flex;gap:10px;flex-wrap:wrap}
+.cat-badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:.75em;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.cat-general{background:#1a1a1a;color:#888}
+.cat-aid{background:#0f1f0f;color:#4caf50}
+.cat-announce{background:#1a1a10;color:#ddaa33}
+.cat-question{background:#0f0f1f;color:#8888ff}
+.reply-count{color:#555;font-size:.8em}
+.empty{text-align:center;padding:40px;color:#555}
+.banner{background:#0f1f0f;border:1px solid #1a3a1a;border-radius:6px;padding:10px 16px;margin-bottom:20px;color:#4caf50;font-size:.85em}
+.banner a{color:#4caf50;font-weight:600}
+@media(max-width:600px){body{padding:14px}h1{font-size:1.3em}}
+</style>
+</head>
+<body>
+<a href="/" class="back">← Back to events</a>
+{% if banner %}
+<div class="banner">🌹 {{ banner.text }} — <a href="/board/aid/">See aid & mutual aid topics →</a></div>
+{% endif %}
+<h1>{% if aid_filter %}Aid &amp; Mutual Aid{% else %}Community Board{% endif %}</h1>
+<p class="sub">No account needed — just a name. Keep it kind.</p>
+
+<div class="cat-tabs">
+  <a href="/board/" class="cat-tab {% if not aid_filter %}active{% endif %}">All</a>
+  <a href="/board/aid/" class="cat-tab {% if aid_filter %}active{% endif %}">🌿 Aid &amp; Mutual Aid</a>
+</div>
+
+<a href="/board/new/" class="new-btn">+ New Topic</a>
+
+{% if topics %}
+{% for topic in topics %}
+<a href="{{ topic.get_absolute_url }}" class="topic{% if topic.pinned %} pinned{% endif %}">
+  <div class="topic-title">
+    {% if topic.pinned %}<span class="pin-icon">📌</span>{% endif %}
+    {{ topic.title }}
+    <span class="cat-badge cat-{{ topic.category }}">{{ topic.get_category_display }}</span>
+  </div>
+  <div class="topic-meta">
+    <span>by {{ topic.author_name }}</span>
+    <span>{{ topic.created_at|date:"M j, Y" }}</span>
+    <span class="reply-count">{{ topic.replies.count }} repl{{ topic.replies.count|pluralize:"y,ies" }}</span>
+  </div>
+</a>
+{% endfor %}
+{% else %}
+<p class="empty">No topics yet. Be the first to post!</p>
+{% endif %}
+</body>
+</html>
