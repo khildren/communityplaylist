@@ -17,6 +17,35 @@ body{background:#111;color:#eee;font-family:sans-serif}
 /* Header burger — mobile only */
 .header-burger{display:none;background:transparent;border:1px solid #444;color:#aaa;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:1.1em;line-height:1;flex-shrink:0}
 .header-burger.open{color:#ff6b35;border-color:#ff6b35}
+/* Weather widget */
+.header-weather-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;margin-left:auto;margin-right:8px}
+.header-weather-slogan{color:#555;font-size:.7em;white-space:nowrap;line-height:1;text-align:right}
+.header-weather{display:flex;align-items:center;gap:6px;font-size:.8em;color:#666;white-space:nowrap;flex-shrink:0;padding:6px 14px;background:#1a1a1a;border:1px solid #222;border-radius:6px}
+.header-weather .wicon{font-size:1.1em;line-height:1}
+.header-weather .wtemp{color:#ddd;font-weight:700}
+.header-weather .wcond{color:#888}
+.header-weather .wsep{color:#2a2a2a;margin:0 1px}
+.header-weather .wextra{color:#555;font-size:.92em}
+@media(max-width:960px){.header-weather .wextra,.header-weather .wsep{display:none}}
+@media(max-width:700px){.header-weather .wcond{display:none};.header-weather{padding:5px 10px}}
+@media(max-width:600px){.header-weather-slogan{display:none};.header-weather{padding:5px 9px}}
+/* Happening now strip */
+.now-strip{background:#1a1a0f;border-bottom:1px solid #2a2a10}
+.now-toggle{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;user-select:none;font-size:.8em;color:#ddaa33;font-weight:600;letter-spacing:.03em}
+.now-toggle:hover{color:#ffcc44}
+.now-dot{width:7px;height:7px;background:#ddaa33;border-radius:50%;animation:nowpulse 1.4s ease-in-out infinite;flex-shrink:0}
+@keyframes nowpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.now-arrow{margin-left:auto;transition:transform .2s;font-size:.85em;color:#666}
+.now-strip.open .now-arrow{transform:rotate(180deg)}
+.now-list{display:none;padding:0 14px 10px}
+.now-strip.open .now-list{display:block}
+.now-event{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #2a2a10;text-decoration:none;gap:8px;cursor:pointer}
+.now-event:last-child{border-bottom:none}
+.now-event:hover .now-title{color:#ffcc44}
+.now-title{color:#ddaa33;font-size:.85em;font-weight:600;transition:color .15s;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.now-meta{color:#666;font-size:.75em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.now-arr{color:#555;font-size:.9em;flex-shrink:0;transition:color .15s}
+.now-event:hover .now-arr{color:#ff6b35}
 .site-meta{text-align:center;font-size:.7em;color:#444;padding:4px 0;border-bottom:1px solid #1a1a1a;letter-spacing:.03em}
 .site-meta span{margin:0 6px}
 .submit-link{display:inline-flex;align-items:center;background:#ff6b35;color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;font-size:.8em;transition:background .2s}
@@ -71,29 +100,76 @@ body{background:#111;color:#eee;font-family:sans-serif}
 .archive-link a{color:#ff6b35;text-decoration:none}
 .empty{text-align:center;padding:60px;color:#555}
 
-/* ── Single filter bar — always one line, scrolls horizontally if narrow ── */
-.filter-topbar{display:flex;align-items:center;background:#1a1a1a;border-bottom:none;padding:0 10px;gap:5px;flex-wrap:nowrap;overflow-x:auto;overflow-y:visible;position:relative;z-index:900;scrollbar-width:none;-ms-overflow-style:none;white-space:nowrap;min-height:40px}
+/* ── Filter bar ── */
+.filter-topbar{display:flex;align-items:center;background:#1a1a1a;border-bottom:1px solid #222;padding:6px 10px;gap:6px;flex-wrap:nowrap;overflow-x:auto;overflow-y:visible;position:relative;z-index:900;scrollbar-width:none;-ms-overflow-style:none;white-space:nowrap}
 .filter-topbar::-webkit-scrollbar{display:none}
-.filter-topbar .search-input{background:#222;border:1px solid #333;border-radius:6px;padding:4px 8px;color:#eee;font-size:.8em;width:130px;min-width:80px;flex-shrink:0}
+.filter-topbar .search-input{background:#222;border:1px solid #333;border-radius:6px;padding:5px 9px;color:#eee;font-size:.82em;width:140px;min-width:80px;flex-shrink:0}
 .filter-topbar .search-input:focus{outline:none;border-color:#ff6b35}
-.filter-divider{width:1px;height:20px;background:#333;flex-shrink:0;margin:0 3px}
-.filter-topbar select{background:#222;border:1px solid #333;border-radius:6px;padding:4px 6px;color:#eee;font-size:.78em;flex-shrink:0;max-width:130px}
+.filter-topbar .search-input.mob-search-top{display:none}
+.filter-divider{width:1px;height:20px;background:#333;flex-shrink:0;margin:0 2px}
+.filter-topbar select{background:#222;border:1px solid #333;border-radius:6px;padding:5px 6px;color:#eee;font-size:.78em;flex-shrink:0;max-width:130px}
 .filter-topbar select:focus{outline:none;border-color:#ff6b35}
 .filter-topbar .free-label{color:#aaa;font-size:.78em;display:flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0}
-.filter-topbar .filter-btn{background:#ff6b35;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:.78em;flex-shrink:0;white-space:nowrap}
-.filter-topbar .clear-btn{background:transparent;color:#666;border:1px solid #2a2a2a;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:.78em;text-decoration:none;flex-shrink:0}
-.filter-topbar .view-group{display:flex;gap:3px;flex-shrink:0;margin-left:auto;padding-left:6px}
-/* Burger — hidden by default, shown below 820px */
+.filter-topbar .filter-btn{background:#ff6b35;color:#fff;border:none;padding:5px 11px;border-radius:6px;cursor:pointer;font-size:.78em;flex-shrink:0;white-space:nowrap}
+.filter-topbar .clear-btn{background:transparent;color:#666;border:1px solid #2a2a2a;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:.78em;text-decoration:none;flex-shrink:0}
+.filter-topbar .view-group{display:flex;gap:3px;flex-shrink:0;margin-left:auto;padding-left:6px;border-left:1px solid #333}
+/* View burger */
 .view-burger-wrap{display:none;position:relative;flex-shrink:0}
-.view-burger{background:#222;border:1px solid #333;color:#aaa;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:.78em;display:flex;align-items:center;gap:3px;white-space:nowrap}
+.view-burger{background:#222;border:1px solid #333;color:#aaa;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:.78em;display:flex;align-items:center;gap:3px;white-space:nowrap}
 .view-burger.has-active{color:#ff6b35;border-color:#ff6b35}
 .view-dropdown{display:none;position:absolute;right:0;top:calc(100% + 5px);background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:4px;z-index:1100;min-width:110px;box-shadow:0 4px 20px rgba(0,0,0,.7)}
 .view-dropdown.open{display:flex;flex-direction:column;gap:2px}
 .view-dropdown .view-btn{width:100%;justify-content:flex-start;border-color:transparent;border-radius:5px}
-@media(max-width:820px){
+
+/* ── Mobile filter panel ── */
+.mob-filter-btn{display:none;align-items:center;gap:5px;background:#222;border:1px solid #333;color:#aaa;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:.78em;white-space:nowrap;flex-shrink:0}
+.mob-filter-btn.active{border-color:#ff6b35;color:#ff6b35}
+.mob-badge{background:#ff6b35;color:#fff;border-radius:10px;padding:0 5px;font-size:.7em;font-weight:700;min-width:16px;text-align:center;line-height:1.5}
+.mob-filter-panel{display:none;background:#1a1a1a;border-bottom:1px solid #2a2a2a;padding:12px;z-index:890}
+.mob-filter-panel.open{display:block}
+.mob-filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.mob-filter-grid select,.mob-filter-panel .mob-search{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.85em}
+.mob-filter-panel .mob-search:focus,.mob-filter-grid select:focus{outline:none;border-color:#ff6b35}
+.mob-filter-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.mob-free-label{color:#aaa;font-size:.85em;display:flex;align-items:center;gap:6px}
+.mob-actions{display:flex;gap:8px}
+.mob-apply{flex:1;background:#ff6b35;color:#fff;border:none;padding:9px;border-radius:6px;cursor:pointer;font-size:.85em;font-weight:600}
+.mob-clear{background:transparent;color:#666;border:1px solid #2a2a2a;padding:9px 14px;border-radius:6px;cursor:pointer;font-size:.85em;text-decoration:none;text-align:center}
+
+@media(max-width:640px){
+  .filter-topbar .search-input,.filter-topbar select,.filter-topbar .free-label,
+  .filter-topbar .filter-btn,.filter-topbar .clear-btn,.filter-divider{display:none}
+  .filter-topbar .view-group>.view-btn{display:none}
+  .mob-filter-btn{display:flex}
+  .view-burger-wrap{display:block}
+  /* Remove overflow-x:auto so view dropdown isn't clipped */
+  .filter-topbar{gap:8px;padding:6px 10px;overflow:visible}
+  .filter-topbar .search-input.mob-search-top{display:block;flex:1;width:auto;min-width:0;font-size:.85em;padding:6px 10px}
+  /* Dropdown uses fixed positioning on mobile; top is set by JS below */
+  .view-dropdown{position:fixed;right:10px}
+}
+@media(min-width:641px) and (max-width:820px){
   .filter-topbar .view-group>.view-btn{display:none}
   .view-burger-wrap{display:block}
+  .filter-topbar{overflow:visible}
+  .view-dropdown{position:fixed;right:10px}
 }
+@media(min-width:821px){
+  .mob-filter-btn{display:none!important}
+  .mob-filter-panel{display:none!important}
+}
+
+/* ── Header collapse at ≤860px — burger replaces buttons ── */
+@media(max-width:860px){
+  .header-burger{display:inline-flex}
+  .header-btns{display:none;gap:6px;flex-wrap:wrap;padding:8px 0;border-top:1px solid #1a1a1a;width:100%}
+  .header-btns.open{display:flex}
+  .header-btns a{flex:1;min-width:130px;justify-content:center}
+}
+
+/* Weather pill in cycle mode: hide wind/feel */
+.header-weather.cycle-mode .wsep,
+.header-weather.cycle-mode .wextra{display:none!important}
 
 /* ── Mobile ── */
 @media(max-width:600px){
@@ -103,11 +179,6 @@ body{background:#111;color:#eee;font-family:sans-serif}
   .logo-link img{height:40px}
   .header-text{gap:4px}
   .header-text p{font-size:.72em;line-height:1.45}
-  /* Header burger visible, buttons hidden by default */
-  .header-burger{display:inline-flex}
-  .header-btns{display:none;gap:6px;width:100%;padding:8px 0;border-top:1px solid #1a1a1a}
-  .header-btns.open{display:flex;flex-wrap:wrap}
-  .header-btns a{flex:1;min-width:140px;justify-content:center}
   .submit-link,.discord-link{padding:6px 12px;font-size:.78em;justify-content:center}
   .view-btn{padding:4px 8px;font-size:.75em}
   /* Cards slimmer */
@@ -124,13 +195,16 @@ body.view-map #map{display:block!important;height:calc(100vh - var(--top-h, 200p
 html.is-hybrid,html.is-hybrid body{height:100%;overflow:hidden}
 html.is-hybrid body{display:flex;flex-direction:column}
 html.is-hybrid .hybrid-wrap{flex:1;display:flex;overflow:hidden;min-height:0}
-html.is-hybrid #events-list{width:420px;flex-shrink:0;overflow-y:auto;border-right:1px solid #1a1a1a;scrollbar-width:thin;scrollbar-color:#2a2a2a #111}
+html.is-hybrid #events-list{width:340px;flex-shrink:0;overflow-y:auto;border-right:1px solid #1a1a1a;scrollbar-width:thin;scrollbar-color:#2a2a2a #111}
 html.is-hybrid #events-list::-webkit-scrollbar{width:6px}
 html.is-hybrid #events-list::-webkit-scrollbar-track{background:#111}
 html.is-hybrid #events-list::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:3px}
 html.is-hybrid #events-list::-webkit-scrollbar-thumb:hover{background:#ff6b35}
 html.is-hybrid .events-grid{max-width:none;margin:0;padding:14px}
 html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
+
+/* Smooth route line fade-in/out */
+.leaflet-overlay-pane path{transition:opacity 0.5s ease}
 
 /* ── Dark Leaflet zoom controls ── */
 .leaflet-bar{border:none!important;box-shadow:none!important}
@@ -141,6 +215,10 @@ html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
 .leaflet-touch .leaflet-bar{border:none!important}
 .leaflet-control-attribution{background:rgba(17,17,17,.7)!important;color:#444!important}
 .leaflet-control-attribution a{color:#555!important}
+/* ── Dark popup ── */
+.leaflet-popup-content-wrapper{background:#1e1e1e!important;color:#ccc!important;border:1px solid #333!important;box-shadow:0 4px 20px rgba(0,0,0,.8)!important;border-radius:8px!important}
+.leaflet-popup-tip{background:#1e1e1e!important}
+.leaflet-popup-content{color:#ccc!important}
 </style>
 </head>
 <body>
@@ -150,8 +228,17 @@ html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
     <a href="/" class="logo-link">
       <img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist">
     </a>
-    <div class="header-text">
-      <p>Portland community events.<br>Submitted by the people, for the people. 🌹</p>
+    <div class="header-weather-wrap">
+      <div class="header-weather" id="header-weather" style="display:none">
+        <span class="wicon" id="hw-icon"></span>
+        <span class="wtemp" id="hw-temp"></span>
+        <span class="wcond" id="hw-cond"></span>
+        <span class="wsep">·</span>
+        <span class="wextra" id="hw-wind"></span>
+        <span class="wsep">·</span>
+        <span class="wextra" id="hw-feel"></span>
+      </div>
+      <span class="header-weather-slogan">Portland events · by the people, for the people 🌹</span>
     </div>
     <div class="header-btns" id="header-btns">
       <a href="/submit/" class="submit-link">+ Submit an Event</a>
@@ -161,12 +248,13 @@ html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
       </a>
       <a href="https://discord.gg/WHhxRPDdFV" class="submit-link" target="_blank" rel="noopener">💬 Ideas &amp; Feedback</a>
       <a href="/board/" class="board-link">📋 Board</a>
+      <a href="/neighborhoods/" class="board-link" style="background:#1a3a2a;border:1px solid #2a5a3a">📍 Hoods</a>
     </div>
     <button type="button" class="header-burger" id="header-burger" onclick="toggleHeaderBtns()">☰</button>
   </div>
 </div>
 <div class="site-meta">
-  <span>v0.2</span><span>·</span><span>🌹 {{ visit_count }} have crossed here</span>
+  <span>v0.3</span><span>·</span><span>🌹 {{ visit_count }} have crossed here</span>
   <span>·</span><span><a href="/subscribe/" style="color:#555;text-decoration:none">📅 Subscribe</a></span>
   <span>·</span><span><a href="/features/" style="color:#555;text-decoration:none">✨ Features</a></span>
   <span>·</span>
@@ -189,7 +277,15 @@ html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
 {% endif %}
 
 <form method="get" action="/" id="filter-form">
+<!-- Desktop + tablet filter bar -->
 <div class="filter-topbar" id="filter-body">
+  <!-- Mobile: full-width search replaces hidden desktop input -->
+  <input type="text" name="q" class="search-input mob-search-top" placeholder="🔍 Search..." value="{{ search_query|default:'' }}" id="mob-search-input">
+  <!-- Mobile: filter toggle button -->
+  <button type="button" class="mob-filter-btn {% if selected_genre or selected_category or selected_neighborhood or selected_event_type or free_only or selected_radius %}active{% endif %}" onclick="toggleMobFilters()" id="mob-filter-toggle">
+    ⚙ Filters{% if selected_genre or selected_category or selected_neighborhood or selected_event_type or free_only or selected_radius %} <span class="mob-badge" id="mob-badge"></span>{% endif %}
+  </button>
+  <!-- Desktop-only controls -->
   <input type="text" name="q" class="search-input" placeholder="🔍 Search..." value="{{ search_query|default:'' }}">
   <div class="filter-divider"></div>
   <select name="genre">
@@ -217,6 +313,15 @@ html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
     <option value="{{ n }}" {% if selected_neighborhood == n %}selected{% endif %}>{{ n }}</option>
     {% endfor %}
   </select>
+  <select name="radius" id="desk-radius">
+    <option value="">Any distance</option>
+    <option value="1">Within 1 mi</option>
+    <option value="5">Within 5 mi</option>
+    <option value="10">Within 10 mi</option>
+    <option value="15">Within 15 mi</option>
+    <option value="30">Within 30 mi</option>
+    <option value="60">Within 60 mi</option>
+  </select>
   <select name="date">
     <option value="today" {% if selected_date == 'today' %}selected{% endif %}>Today</option>
     <option value="week" {% if selected_date == 'week' %}selected{% endif %}>This Week</option>
@@ -234,26 +339,112 @@ html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
     <button type="button" class="view-btn" id="list-btn" data-view="list" onclick="setView('list')">≡ List</button>
     <button type="button" class="view-btn" id="map-btn"  data-view="map"  onclick="setView('map')">⊙ Map</button>
     <button type="button" class="view-btn" id="hybrid-btn" data-view="hybrid" onclick="setView('hybrid')">⊟ Hybrid</button>
-    <div class="view-burger-wrap">
-      <button type="button" class="view-burger" id="view-burger" onclick="toggleViewMenu()">
-        <span id="view-icon">☰</span> ▾
-      </button>
-      <div class="view-dropdown" id="view-dropdown">
-        <button type="button" class="view-btn" data-view="list" onclick="setView('list')">≡ List</button>
-        <button type="button" class="view-btn" data-view="map"  onclick="setView('map')">⊙ Map</button>
-        <button type="button" class="view-btn" data-view="hybrid" onclick="setView('hybrid')">⊟ Hybrid</button>
-      </div>
+  </div>
+  <div class="view-burger-wrap">
+    <button type="button" class="view-burger" id="view-burger" onclick="toggleViewMenu(event)">
+      <span id="view-icon">☰</span> ▾
+    </button>
+    <div class="view-dropdown" id="view-dropdown">
+      <button type="button" class="view-btn" data-view="list" onclick="setView('list')">≡ List</button>
+      <button type="button" class="view-btn" data-view="map"  onclick="setView('map')">⊙ Map</button>
+      <button type="button" class="view-btn" data-view="hybrid" onclick="setView('hybrid')">⊟ Hybrid</button>
     </div>
+  </div>
+</div>
+
+<!-- Mobile filter panel (below bar) -->
+<div class="mob-filter-panel" id="mob-filter-panel">
+  <div class="mob-filter-grid">
+    <select name="genre" id="mob-genre">
+      <option value="">All genres</option>
+      {% for g in genres %}
+      <option value="{{ g.id }}" {% if selected_genre == g.id|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="category" id="mob-category">
+      <option value="" {% if not selected_category %}selected{% endif %}>All types</option>
+      <option value="music"  {% if selected_category == 'music'  %}selected{% endif %}>🎵 Music</option>
+      <option value="bike"   {% if selected_category == 'bike'   %}selected{% endif %}>🚲 Bike</option>
+      <option value="fund"   {% if selected_category == 'fund'   %}selected{% endif %}>💛 Fundraiser</option>
+      <option value="food"   {% if selected_category == 'food'   %}selected{% endif %}>🍜 Food</option>
+      <option value="hybrid" {% if selected_category == 'hybrid' %}selected{% endif %}>✨ Hybrid</option>
+    </select>
+    <select name="neighborhood" id="mob-neighborhood">
+      <option value="">All neighborhoods</option>
+      {% for n in neighborhoods %}
+      <option value="{{ n }}" {% if selected_neighborhood == n %}selected{% endif %}>{{ n }}</option>
+      {% endfor %}
+    </select>
+    <select name="date" id="mob-date">
+      <option value="today" {% if selected_date == 'today' %}selected{% endif %}>Today</option>
+      <option value="week" {% if selected_date == 'week' %}selected{% endif %}>This Week</option>
+      <option value="month" {% if selected_date == 'month' %}selected{% endif %}>This Month</option>
+      <option value="future" {% if selected_date == 'future' or not selected_date %}selected{% endif %}>Any Future</option>
+      <option value="past" {% if selected_date == 'past' %}selected{% endif %}>Past</option>
+    </select>
+    <select name="event_type" id="mob-event-type">
+      <option value="" {% if not selected_event_type %}selected{% endif %}>Online &amp; Local</option>
+      <option value="local" {% if selected_event_type == 'local' %}selected{% endif %}>Local only</option>
+      <option value="online" {% if selected_event_type == 'online' %}selected{% endif %}>Online only</option>
+    </select>
+    <select name="radius" id="mob-radius">
+      <option value="">Any distance</option>
+      <option value="1">Within 1 mi</option>
+      <option value="5">Within 5 mi</option>
+      <option value="10">Within 10 mi</option>
+      <option value="15">Within 15 mi</option>
+      <option value="30">Within 30 mi</option>
+      <option value="60">Within 60 mi</option>
+    </select>
+  </div>
+  <div class="mob-filter-row">
+    <label class="mob-free-label">
+      <input type="checkbox" name="free" value="1" id="mob-free" {% if free_only %}checked{% endif %}> Free only
+    </label>
+  </div>
+  <div class="mob-actions">
+    <button type="submit" class="mob-apply">Apply filters</button>
+    <a href="/" class="mob-clear">Clear</a>
   </div>
 </div>
 </form>
 
+<!-- Location status pill — shown when geo filter is active -->
+<div id="loc-pill" style="display:none;align-items:center;gap:8px;padding:6px 14px;background:#0f1a0f;border:1px solid #2a3a2a;border-radius:20px;font-size:.78em;color:#4caf50;margin-bottom:10px;max-width:fit-content">
+  <span>📍</span>
+  <span id="loc-pill-text">Using your location</span>
+  <span style="color:#555;margin-left:4px">· not stored</span>
+  <button onclick="clearGeoFilter()" style="background:none;border:none;color:#555;cursor:pointer;font-size:.9em;padding:0 0 0 6px" title="Clear location filter">✕</button>
+</div>
+
 <div class="hybrid-wrap">
   <div id="events-list">
+
+    {% if happening_now %}
+    <div class="now-strip" id="now-strip">
+      <div class="now-toggle" onclick="document.getElementById('now-strip').classList.toggle('open')">
+        <span class="now-dot"></span>
+        Happening now &nbsp;<span style="color:#666;font-weight:400">({{ happening_now|length }})</span>
+        <span class="now-arrow">▼</span>
+      </div>
+      <div class="now-list">
+        {% for e in happening_now %}
+        <a href="/events/{{ e.slug }}/" class="now-event" data-end="{{ e.end_date|date:'U'|default:'' }}" data-start="{{ e.start_date|date:'U' }}">
+          <div style="min-width:0">
+            <div class="now-title">{{ e.title }}</div>
+            <div class="now-meta">📍 {{ e.location|truncatechars:45 }}</div>
+          </div>
+          <span class="now-arr">→</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
     <div class="events-grid">
     {% if events %}
     {% for event in events %}
-    <a href="/events/{{ event.slug }}/" class="event" data-slug="{{ event.slug }}">
+    <a href="/events/{{ event.slug }}/" class="event" data-slug="{{ event.slug }}" data-lat="{{ event.latitude|default:'' }}" data-lng="{{ event.longitude|default:'' }}">
       <div class="event-thumb">
         {% if event.approved_photos %}
         <img src="{{ event.approved_photos.0.image.url }}" alt="{{ event.title }}">
@@ -266,7 +457,7 @@ html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
         <h2>{{ event.title }}</h2>
         <div class="meta">
           <span>📅 {{ event.start_date|date:"D, N j @ g:i A" }}</span>
-          {% if event.neighborhood %}<span>📍 {{ event.neighborhood }}</span>{% endif %}
+          {% if event.neighborhood %}<span class="hood-tag" data-hood="{{ event.neighborhood }}">📍 {{ event.neighborhood }}</span>{% endif %}
           <span>{{ event.location|truncatechars:40 }}</span>
           {% if event.is_free %}<span class="free">FREE</span>{% endif %}
         </div>
@@ -294,13 +485,24 @@ html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
 const mapEvents = {{ map_events|safe }};
 let mapInitialized = false;
 let map;
+let tileLayer;
 const markersBySlug = {};
+const categoryBySlug = {};
 
-function makeIcon(active) {
+const CAT_COLORS = {
+  music: '#cc88ff',
+  arts:  '#66bbff',
+  bike:  '#55dd55',
+  fund:  '#6699ff',
+  food:  '#ddaa33',
+  hybrid:'#ff9944',
+};
+function makeIcon(active, category) {
   const size = active ? 24 : 18;
+  const color = active ? '#ff6b35' : (CAT_COLORS[category] || '#5865F2');
   return L.divIcon({
     className: '',
-    html: `<div style="width:${size}px;height:${size}px;background:${active ? '#ff6b35' : '#5865F2'};border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.7)"></div>`,
+    html: `<div style="width:${size}px;height:${size}px;background:${color};border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.7)"></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, -(size / 2 + 4)],
@@ -310,8 +512,9 @@ function makeIcon(active) {
 function highlightCard(slug) {
   const prev = document.querySelector('.event.highlighted');
   if (prev) {
-    const prevM = markersBySlug[prev.dataset.slug];
-    if (prevM) prevM.setIcon(makeIcon(false));
+    const prevSlug = prev.dataset.slug;
+    const prevM = markersBySlug[prevSlug];
+    if (prevM) prevM.setIcon(makeIcon(false, categoryBySlug[prevSlug]));
     prev.classList.remove('highlighted');
   }
   const card = document.querySelector(`.event[data-slug="${slug}"]`);
@@ -319,18 +522,18 @@ function highlightCard(slug) {
     card.classList.add('highlighted');
     card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     const m = markersBySlug[slug];
-    if (m) m.setIcon(makeIcon(true));
+    if (m) m.setIcon(makeIcon(true, categoryBySlug[slug]));
   }
 }
 
 function initMap() {
   if (mapInitialized) return;
   map = L.map('map').setView([45.5051, -122.6750], 12);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution: '© CARTO', crossOrigin: true,
   }).addTo(map);
   mapEvents.forEach(e => {
-    const marker = L.marker([e.latitude, e.longitude], { icon: makeIcon(false) }).addTo(map);
+    const marker = L.marker([e.latitude, e.longitude], { icon: makeIcon(false, e.category) }).addTo(map);
     const flyerHtml = e.flyer_url
       ? `<img src="${e.flyer_url}" style="width:36px;height:64px;object-fit:cover;border-radius:4px;flex-shrink:0">`
       : '';
@@ -347,6 +550,7 @@ function initMap() {
     `);
     marker.on('click', () => highlightCard(e.slug));
     markersBySlug[e.slug] = marker;
+    categoryBySlug[e.slug] = e.category;
   });
   mapInitialized = true;
 }
@@ -356,13 +560,373 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
   const slug = card.dataset.slug;
   card.addEventListener('mouseenter', () => {
     const m = markersBySlug[slug];
-    if (m) m.setIcon(makeIcon(true));
+    if (m) m.setIcon(makeIcon(true, categoryBySlug[slug]));
   });
   card.addEventListener('mouseleave', () => {
     const m = markersBySlug[slug];
-    if (m && !card.classList.contains('highlighted')) m.setIcon(makeIcon(false));
+    if (m && !card.classList.contains('highlighted')) m.setIcon(makeIcon(false, categoryBySlug[slug]));
   });
 });
+
+// ── Idle map cycle with GPS route animation ──────────────────────────────────
+(function() {
+  const IDLE_START_MS   = 8000;
+  const IDLE_RESUME_MS  = 120000;
+  const PER_EVENT_MS    = 6000;   // dwell on each event
+  const ROUTE_TRAVEL_MS = 5000;   // dot travel time along route
+  const FLY_DURATION    = 2.2;    // seconds for flyTo zoom-into-event
+  const FIT_DURATION    = 2.5;    // seconds for fitBounds zoom-to-route
+
+  let cycleTimer = null;
+  let idleTimer  = null;
+  let cycleIdx   = 0;
+  let cycling    = false;
+
+  // ── Route animation state ──
+  let routeLayer = null;
+  let travelDot  = null;
+  let travelAnim = null;
+  const routeCache    = {};
+  const pendingRoutes = {}; // key → [callbacks] while OSRM fetch is in-flight
+
+  function clearRoute() {
+    if (travelAnim) { cancelAnimationFrame(travelAnim); travelAnim = null; }
+    if (travelDot)  { try { map.removeLayer(travelDot);  } catch(e){} travelDot  = null; }
+    if (routeLayer) { try { map.removeLayer(routeLayer); } catch(e){} routeLayer = null; }
+  }
+
+  // Interpolate a point t∈[0,1] along an array of [lat,lng] points
+  function pointAlongLine(pts, t) {
+    if (t <= 0) return pts[0];
+    if (t >= 1) return pts[pts.length - 1];
+    let total = 0;
+    const segs = [];
+    for (let i = 1; i < pts.length; i++) {
+      const d = L.latLng(pts[i-1]).distanceTo(L.latLng(pts[i]));
+      segs.push(d); total += d;
+    }
+    let target = t * total, cum = 0;
+    for (let i = 0; i < segs.length; i++) {
+      if (cum + segs[i] >= target) {
+        const st = (target - cum) / segs[i];
+        const a = pts[i], b = pts[i+1];
+        return [a[0] + (b[0]-a[0])*st, a[1] + (b[1]-a[1])*st];
+      }
+      cum += segs[i];
+    }
+    return pts[pts.length - 1];
+  }
+
+  // Straight-line fallback path
+  function straightPath(from, to) {
+    const pts = [];
+    for (let i = 0; i <= 40; i++) {
+      const t = i / 40;
+      pts.push([from.lat + (to.lat - from.lat)*t, from.lng + (to.lng - from.lng)*t]);
+    }
+    return pts;
+  }
+
+  function animateAlongPath(pts, destLatLng, onDone) {
+    clearRoute();
+    if (!map) { onDone(); return; }
+
+    // Draw route line at opacity 0, fade in after map settles
+    routeLayer = L.polyline(pts, {
+      color: '#4caf50', weight: 3.5, opacity: 0, dashArray: '9 12'
+    }).addTo(map);
+
+    // Phase 1: zoom out to show full route, wait for map to fully settle
+    map.fitBounds(routeLayer.getBounds(), { padding: [65, 65], animate: true, duration: FIT_DURATION });
+
+    map.once('moveend', function() {
+      if (!cycling) { clearRoute(); return; }
+
+      // Wait for tiles to finish rendering before starting dot animation.
+      // tileLayer 'load' fires when all tiles for the current view are painted;
+      // fall back after 1000ms in case tiles are already cached and load fires early.
+      let tileReady = false;
+      function startDotPhase() {
+        if (tileReady) return;
+        tileReady = true;
+        if (!cycling || !routeLayer) return;
+
+        routeLayer.setStyle({ opacity: 0.65 });
+
+        travelDot = L.circleMarker(pts[0], {
+          radius: 7, color: '#fff', weight: 2.5, fillColor: '#4caf50', fillOpacity: 1
+        }).addTo(map);
+
+        const t0 = performance.now();
+        function step(now) {
+          if (!cycling) { clearRoute(); return; }
+          const frac = Math.min((now - t0) / ROUTE_TRAVEL_MS, 1);
+          const eased = frac < 0.5 ? 2*frac*frac : 1 - Math.pow(-2*frac+2, 2)/2;
+          travelDot.setLatLng(pointAlongLine(pts, eased));
+          if (frac < 1) {
+            travelAnim = requestAnimationFrame(step);
+          } else {
+            // Phase 3: dot arrived — fade route out, fly into destination
+            if (routeLayer) routeLayer.setStyle({ opacity: 0 });
+            setTimeout(function() {
+              clearRoute();
+              if (!cycling) return;
+              if (map && destLatLng) {
+                map.flyTo(destLatLng, 15, { animate: true, duration: FLY_DURATION });
+                map.once('moveend', function() {
+                  setTimeout(onDone, 200);
+                });
+              } else {
+                onDone();
+              }
+            }, 400);
+          }
+        }
+        travelAnim = requestAnimationFrame(step);
+      }
+
+      // Listen for tiles loaded; max wait 1000ms
+      const tileTimeout = setTimeout(startDotPhase, 1000);
+      if (tileLayer) {
+        tileLayer.once('load', function() {
+          clearTimeout(tileTimeout);
+          setTimeout(startDotPhase, 150); // small buffer after tiles paint
+        });
+      }
+    });
+  }
+
+  function routeKey(from, to) {
+    return from.lat.toFixed(4)+','+from.lng.toFixed(4)+'→'+to.lat.toFixed(4)+','+to.lng.toFixed(4);
+  }
+
+  // Fetch a route and notify all queued callbacks when done.
+  // Returns without launching a new fetch if one is already in-flight.
+  function fetchOSRM(from, to, cb) {
+    const key = routeKey(from, to);
+    if (routeCache[key]) { cb(routeCache[key]); return; }
+
+    if (pendingRoutes[key]) {
+      // Piggyback on the in-flight request
+      if (cb) pendingRoutes[key].push(cb);
+      return;
+    }
+
+    pendingRoutes[key] = cb ? [cb] : [];
+
+    const url = 'https://router.project-osrm.org/route/v1/driving/'
+      + from.lng+','+from.lat+';'+to.lng+','+to.lat+'?overview=full&geometries=geojson';
+
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const tId  = setTimeout(function() { if (ctrl) ctrl.abort(); }, 8000);
+
+    function resolve(pts) {
+      clearTimeout(tId);
+      routeCache[key] = pts;
+      const cbs = pendingRoutes[key] || [];
+      delete pendingRoutes[key];
+      cbs.forEach(function(fn) { fn(pts); });
+    }
+
+    fetch(url, ctrl ? { signal: ctrl.signal } : {})
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        resolve((d.routes && d.routes[0])
+          ? d.routes[0].geometry.coordinates.map(function(c){ return [c[1], c[0]]; })
+          : straightPath(from, to));
+      })
+      .catch(function() {
+        clearTimeout(tId);
+        resolve(straightPath(from, to));
+      });
+  }
+
+  function prefetchRoute(from, to) {
+    const key = routeKey(from, to);
+    if (routeCache[key] || pendingRoutes[key]) return;
+    fetchOSRM(from, to, null); // fire-and-forget; result lands in routeCache
+  }
+
+  function showRoute(from, to, onDone) {
+    fetchOSRM(from, to, function(pts) { animateAlongPath(pts, to, onDone); });
+  }
+
+  // ── Event weather ──
+  const WMO_ICONS  = {0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',77:'🌨️',80:'🌦️',81:'🌦️',82:'⛈️',85:'🌨️',86:'❄️',95:'⛈️',96:'⛈️',99:'⛈️'};
+  const WMO_LABELS = {0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',48:'Foggy',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',80:'Showers',81:'Showers',82:'Heavy showers',85:'Snow showers',86:'Heavy snow',95:'Thunderstorm',96:'Thunderstorm',99:'Thunderstorm'};
+  const wxCache = {};
+
+  function pad2(n) { return String(n).padStart(2,'0'); }
+
+  function fetchEventWeather(lat, lng, ts) {
+    const hw = document.getElementById('header-weather');
+    if (!hw) return;
+    hw.classList.add('cycle-mode');
+    const d = new Date(ts * 1000);
+    const ymd = d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+    const hourKey = ymd+'T'+pad2(d.getHours())+':00';
+    const key = lat+','+lng+','+hourKey;
+    if (wxCache[key]) { applyEventWx(wxCache[key]); return; }
+    const nd = new Date(d); nd.setDate(nd.getDate()+1);
+    const endYmd = nd.getFullYear()+'-'+pad2(nd.getMonth()+1)+'-'+pad2(nd.getDate());
+    fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+
+      '&hourly=temperature_2m,weather_code&temperature_unit=fahrenheit'+
+      '&timezone=America%2FLos_Angeles&start_date='+ymd+'&end_date='+endYmd)
+      .then(function(r){return r.json()})
+      .then(function(data){
+        const idx = data.hourly.time.indexOf(hourKey);
+        if (idx < 0) return;
+        const res = {code: data.hourly.weather_code[idx], temp: Math.round(data.hourly.temperature_2m[idx])};
+        wxCache[key] = res; applyEventWx(res);
+      }).catch(function(){});
+  }
+
+  function applyEventWx(data) {
+    const el = document.getElementById('header-weather');
+    if (!el || el.style.display==='none') return;
+    document.getElementById('hw-icon').textContent = WMO_ICONS[data.code] || '🌡️';
+    document.getElementById('hw-temp').textContent = data.temp + '°F';
+    document.getElementById('hw-cond').textContent = WMO_LABELS[data.code] || '';
+  }
+
+  function restoreCurrentWeather() {
+    const hw = document.getElementById('header-weather');
+    if (hw) hw.classList.remove('cycle-mode');
+    if (window._portlandWx) {
+      document.getElementById('hw-icon').textContent = window._portlandWx.icon;
+      document.getElementById('hw-temp').textContent = window._portlandWx.temp;
+      document.getElementById('hw-cond').textContent = window._portlandWx.cond;
+      document.getElementById('hw-wind').textContent = window._portlandWx.wind;
+      document.getElementById('hw-feel').textContent = window._portlandWx.feel;
+    }
+  }
+
+  // ── Cycle logic ──
+  function getCards() {
+    return Array.from(document.querySelectorAll('.event[data-slug]'));
+  }
+
+  function highlightEvent(slug, skipFly) {
+    document.querySelectorAll('.event.highlighted').forEach(function(c) {
+      const pm = markersBySlug[c.dataset.slug];
+      if (pm) { pm.setIcon(makeIcon(false, categoryBySlug[c.dataset.slug])); if(pm._icon) pm._icon.style.zIndex=''; }
+      c.classList.remove('highlighted');
+    });
+    const card = document.querySelector('.event[data-slug="'+slug+'"]');
+    if (card) {
+      card.classList.add('highlighted');
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    const m = markersBySlug[slug];
+    if (m) {
+      m.setIcon(makeIcon(true, categoryBySlug[slug]));
+      if (m._icon) m._icon.style.zIndex = 1000;
+      if (map && !skipFly) {
+        map.flyTo(m.getLatLng(), 15, { animate: true, duration: FLY_DURATION });
+        map.once('moveend', function() {
+          m.setIcon(makeIcon(true, categoryBySlug[slug]));
+          if (m._icon) m._icon.style.zIndex = 1000;
+        });
+      }
+    }
+  }
+
+  function cycleStep(prevEvData) {
+    const cards = getCards();
+    if (!cards.length || !mapInitialized) { cycling = false; return; }
+    if (cycleIdx >= cards.length) cycleIdx = 0;
+
+    const slug   = cards[cycleIdx].dataset.slug;
+    const evData = mapEvents.find(function(e){ return e.slug === slug; });
+
+    function arrive(skipFly) {
+      if (!cycling) return;
+      highlightEvent(slug, skipFly);
+      if (evData && evData.start_ts && evData.latitude) {
+        fetchEventWeather(evData.latitude, evData.longitude, evData.start_ts);
+      }
+      cycleIdx++;
+
+      // Open popup after map settles (~600ms), close it 1.5s before transition
+      const POPUP_DELAY  = 700;
+      const POPUP_CLOSE  = PER_EVENT_MS - 1500;
+      const m = markersBySlug[slug];
+      const popupOpen = setTimeout(function() {
+        if (!cycling || !m) return;
+        m.openPopup();
+      }, POPUP_DELAY);
+      const popupClose = setTimeout(function() {
+        if (m) m.closePopup();
+      }, POPUP_CLOSE);
+
+      // Pre-fetch route to the NEXT event while dwelling on this one
+      const nextCard = cards[cycleIdx < cards.length ? cycleIdx : 0];
+      if (nextCard && evData && evData.latitude) {
+        const nextEv = mapEvents.find(function(e){ return e.slug === nextCard.dataset.slug; });
+        if (nextEv && nextEv.latitude) {
+          const nf = L.latLng(evData.latitude, evData.longitude);
+          const nt = L.latLng(nextEv.latitude, nextEv.longitude);
+          if (nf.distanceTo(nt) > 150) {
+            setTimeout(function() { prefetchRoute(nf, nt); }, 300);
+          }
+        }
+      }
+
+      const capturedEvData = evData;
+      cycleTimer = setTimeout(function() {
+        clearTimeout(popupOpen);
+        clearTimeout(popupClose);
+        if (m) m.closePopup();
+        cycleStep(capturedEvData);
+      }, PER_EVENT_MS);
+    }
+
+    // Animate route from previous event → this one
+    if (prevEvData && prevEvData.latitude && evData && evData.latitude) {
+      const from = L.latLng(prevEvData.latitude, prevEvData.longitude);
+      const to   = L.latLng(evData.latitude, evData.longitude);
+      if (from.distanceTo(to) > 150) {
+        // Route animation flies into destination itself — skip flyTo in highlightEvent
+        showRoute(from, to, function() { arrive(true); });
+        return;
+      }
+    }
+    arrive(false);
+  }
+
+  function startCycle() {
+    if (cycling) return;
+    cycling = true;
+    cycleStep(null);
+  }
+
+  function stopCycle() {
+    if (!cycling) return;
+    cycling = false;
+    clearTimeout(cycleTimer);
+    clearRoute();
+    if (map) map.closePopup();
+    document.querySelectorAll('.event.highlighted').forEach(function(c) {
+      const pm = markersBySlug[c.dataset.slug];
+      if (pm) { pm.setIcon(makeIcon(false, categoryBySlug[c.dataset.slug])); if(pm._icon) pm._icon.style.zIndex=''; }
+      c.classList.remove('highlighted');
+    });
+    restoreCurrentWeather();
+    if (map) map.flyTo([45.5051, -122.6750], 12, { animate: true, duration: 1.0 });
+  }
+
+  function onInteraction() {
+    stopCycle();
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(startCycle, IDLE_RESUME_MS);
+  }
+
+  idleTimer = setTimeout(startCycle, IDLE_START_MS);
+
+  ['mousemove','mousedown','touchstart','keydown','wheel'].forEach(function(evt) {
+    document.addEventListener(evt, onInteraction, { passive: true });
+  });
+})();
 
 // ── Category badge click → filter ──
 function filterByCategory(e, el) {
@@ -370,6 +934,65 @@ function filterByCategory(e, el) {
   e.stopPropagation();
   window.location.href = '/?category=' + el.dataset.cat;
 }
+
+// ── Mobile filter panel ──
+function toggleMobFilters() {
+  const panel  = document.getElementById('mob-filter-panel');
+  const toggle = document.getElementById('mob-filter-toggle');
+  const open   = panel.classList.toggle('open');
+  toggle.classList.toggle('active', open);
+}
+
+// Before submit: disable the set of inputs NOT being used so each param
+// appears only once in the query string. Django takes the first value when
+// duplicates exist, so without this mobile values were silently ignored.
+document.getElementById('filter-form').addEventListener('submit', function() {
+  const isMob = window.innerWidth <= 640;
+
+  // radius is handled client-side (geo), always disable both to keep URL clean
+  ['desk-radius','mob-radius'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = true;
+  });
+
+  const mobIds   = ['mob-genre','mob-category','mob-neighborhood','mob-date','mob-event-type','mob-free','mob-search-input'];
+  const deskSels = [
+    '[name="genre"]:not(#mob-genre)',
+    '[name="category"]:not(#mob-category)',
+    '[name="neighborhood"]:not(#mob-neighborhood)',
+    '[name="date"]:not(#mob-date)',
+    '[name="event_type"]:not(#mob-event-type)',
+    'input[name="free"]:not(#mob-free)',
+    '.search-input:not(.mob-search-top)',
+  ];
+
+  if (isMob) {
+    // Disable desktop duplicates so only mobile values are submitted
+    deskSels.forEach(sel => {
+      const el = document.querySelector(sel);
+      if (el) el.disabled = true;
+    });
+  } else {
+    // Disable mobile duplicates so only desktop values are submitted
+    mobIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.disabled = true;
+    });
+  }
+});
+
+// Count active filters for the badge
+(function updateMobBadge() {
+  const badge  = document.getElementById('mob-badge');
+  if (!badge) return;
+  const params = new URLSearchParams(window.location.search);
+  let count = 0;
+  ['genre','category','neighborhood','event_type','free','radius'].forEach(k => { if (params.get(k)) count++; });
+  badge.textContent = count || '';
+  badge.style.display = count ? '' : 'none';
+  const toggle = document.getElementById('mob-filter-toggle');
+  if (toggle) toggle.classList.toggle('active', count > 0);
+})();
 
 // ── Header buttons toggle (mobile) ──
 function toggleHeaderBtns() {
@@ -381,11 +1004,19 @@ function toggleHeaderBtns() {
 }
 
 // ── View burger (mobile) ──
-function toggleViewMenu() {
-  document.getElementById('view-dropdown').classList.toggle('open');
+function toggleViewMenu(e) {
+  e.stopPropagation();
+  var dd = document.getElementById('view-dropdown');
+  var btn = document.getElementById('view-burger');
+  if (!dd.classList.contains('open')) {
+    var r = btn.getBoundingClientRect();
+    dd.style.top = (r.bottom + 6) + 'px';
+    dd.style.zIndex = 9999;
+  }
+  dd.classList.toggle('open');
 }
-document.addEventListener('click', e => {
-  if (!e.target.closest('.view-burger-wrap'))
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.view-burger-wrap') && !e.target.closest('#view-dropdown'))
     document.getElementById('view-dropdown').classList.remove('open');
 });
 
@@ -431,12 +1062,129 @@ function getDefaultView() {
   const saved = localStorage.getItem('cp_view');
   if (saved) return saved;
   const w = window.innerWidth;
-  if (w >= 1200) return 'hybrid';
-  if (w >= 768)  return 'map';
+  if (w >= 900) return 'hybrid';
+  if (w >= 768) return 'map';
   return 'list';
 }
 
 setView(getDefaultView());
+
+// ── Distance filter using browser geolocation ──────────────────────────────
+// Coords stay in JS memory only — never sent to the server, never stored.
+(function() {
+  var _userLat = null, _userLng = null, _activeRadius = null;
+
+  function haversine(lat1, lng1, lat2, lng2) {
+    var R = 3958.8; // Earth radius in miles
+    var dLat = (lat2 - lat1) * Math.PI / 180;
+    var dLng = (lng2 - lng1) * Math.PI / 180;
+    var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+            Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*
+            Math.sin(dLng/2)*Math.sin(dLng/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  function applyDistanceFilter() {
+    if (!_activeRadius) return;
+    var cards = document.querySelectorAll('.event[data-slug]');
+    var shown = 0, hidden = 0;
+    cards.forEach(function(card) {
+      var lat = parseFloat(card.dataset.lat);
+      var lng = parseFloat(card.dataset.lng);
+      if (!lat || !lng) {
+        // No coords — hide when filtering tightly, show for loose radii
+        card.style.display = (_activeRadius <= 5) ? 'none' : '';
+        return;
+      }
+      var dist = haversine(_userLat, _userLng, lat, lng);
+      if (dist <= _activeRadius) {
+        card.style.display = '';
+        shown++;
+      } else {
+        card.style.display = 'none';
+        hidden++;
+      }
+    });
+    var pill = document.getElementById('loc-pill');
+    var pillText = document.getElementById('loc-pill-text');
+    if (pill) {
+      pill.style.display = 'flex';
+      pillText.textContent = 'Within ' + _activeRadius + ' mi of you (' + shown + ' events)';
+    }
+  }
+
+  function clearGeoFilter() {
+    _activeRadius = null;
+    document.querySelectorAll('.event[data-slug]').forEach(function(c) { c.style.display = ''; });
+    var pill = document.getElementById('loc-pill');
+    if (pill) pill.style.display = 'none';
+    // Reset both radius selects
+    ['desk-radius','mob-radius'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+  }
+  window.clearGeoFilter = clearGeoFilter;
+
+  function requestAndFilter(miles) {
+    if (!navigator.geolocation) {
+      alert('Your browser doesn\'t support geolocation.');
+      return;
+    }
+    // If we already have coords, apply immediately
+    if (_userLat !== null) {
+      _activeRadius = miles;
+      applyDistanceFilter();
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        _userLat = pos.coords.latitude;
+        _userLng = pos.coords.longitude;
+        _activeRadius = miles;
+        applyDistanceFilter();
+      },
+      function(err) {
+        var msg = {
+          1: 'Location access was denied. Enable it in your browser settings to use distance filter.',
+          2: 'Couldn\'t determine your location.',
+          3: 'Location request timed out.'
+        }[err.code] || 'Location error.';
+        alert(msg);
+        // Reset the selects
+        ['desk-radius','mob-radius'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+    );
+  }
+
+  // Intercept radius select changes — use geo instead of form submit.
+  // Use a guard flag to prevent the cross-sync triggering a second change event.
+  var _syncing = false;
+  ['desk-radius','mob-radius'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', function() {
+      if (_syncing) return;
+      _syncing = true;
+      // Sync the other select silently
+      var otherId = (id === 'desk-radius') ? 'mob-radius' : 'desk-radius';
+      var other = document.getElementById(otherId);
+      if (other) other.value = el.value;
+      _syncing = false;
+
+      var val = parseInt(el.value);
+      if (!val) {
+        clearGeoFilter();
+      } else {
+        requestAndFilter(val);
+      }
+    });
+  });
+})();
 </script>
 <script>
 const DISCORD_SERVER_ID = '812440676158799882';
@@ -449,6 +1197,74 @@ fetch('https://discord.com/api/guilds/' + DISCORD_SERVER_ID + '/widget.json')
       el.style.display = 'inline';
     }
   }).catch(() => {});
+</script>
+<script>
+// ── Header weather (Portland, OR) — save to window._portlandWx for restore ──
+(function(){
+  var wmoCodes={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',77:'🌨️',80:'🌦️',81:'🌦️',82:'⛈️',85:'🌨️',86:'❄️',95:'⛈️',96:'⛈️',99:'⛈️'};
+  var wmoLabels={0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',48:'Foggy',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',80:'Showers',81:'Showers',82:'Heavy showers',85:'Snow showers',86:'Heavy snow',95:'Thunderstorm',96:'Thunderstorm',99:'Thunderstorm'};
+  fetch('https://api.open-meteo.com/v1/forecast?latitude=45.5051&longitude=-122.6750&current=temperature_2m,apparent_temperature,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FLos_Angeles')
+    .then(function(r){return r.json()})
+    .then(function(d){
+      var c=d.current; if(!c)return;
+      var code=c.weather_code;
+      var icon=wmoCodes[code]||'🌡️';
+      var temp=Math.round(c.temperature_2m)+'°F';
+      var cond=wmoLabels[code]||'';
+      var wind='💨 '+Math.round(c.wind_speed_10m)+' mph';
+      var feel='feels '+Math.round(c.apparent_temperature)+'°';
+      window._portlandWx={icon:icon,temp:temp,cond:cond,wind:wind,feel:feel};
+      document.getElementById('hw-icon').textContent=icon;
+      document.getElementById('hw-temp').textContent=temp;
+      document.getElementById('hw-cond').textContent=cond;
+      document.getElementById('hw-wind').textContent=wind;
+      document.getElementById('hw-feel').textContent=feel;
+      document.getElementById('header-weather').style.display='flex';
+    }).catch(function(){});
+})();
+
+// ── Pre-warm map tiles to reduce tearing on first switch ──
+window.addEventListener('load', function(){
+  setTimeout(function(){
+    if(!mapInitialized){
+      initMap();
+      // Map is hidden — invalidateSize so Leaflet knows its real dimensions when shown
+      setTimeout(function(){ map && map.invalidateSize({animate:false}); }, 300);
+    }
+  }, 1500);
+});
+
+// ── Happening-now client-side expiry ──
+(function(){
+  function checkNowEvents(){
+    var strip=document.getElementById('now-strip');
+    if(!strip)return;
+    var nowTs=Math.floor(Date.now()/1000);
+    var items=strip.querySelectorAll('.now-event');
+    items.forEach(function(el){
+      var endTs=parseInt(el.dataset.end,10);
+      var startTs=parseInt(el.dataset.start,10);
+      var expiresAt=endTs?endTs:(startTs+3*3600);
+      if(nowTs>expiresAt)el.style.display='none';
+    });
+    var visible=strip.querySelectorAll('.now-event:not([style*="display: none"])');
+    if(!visible.length)strip.style.display='none';
+  }
+  checkNowEvents();
+  setInterval(checkNowEvents,60000);
+})();
+</script>
+<script>
+// Neighborhood page links — wrap .hood-tag text in an <a> if a page exists
+(function(){
+  var pages = {{ neighborhood_pages|safe }};
+  document.querySelectorAll('.hood-tag').forEach(function(el) {
+    var key = el.dataset.hood.toLowerCase();
+    if (pages[key]) {
+      el.innerHTML = '📍 <a href="/neighborhoods/' + pages[key] + '/" style="color:inherit;text-decoration:none;border-bottom:1px dotted #555" onclick="event.stopPropagation()">' + el.dataset.hood + '</a>';
+    }
+  });
+})();
 </script>
 </body>
 </html>

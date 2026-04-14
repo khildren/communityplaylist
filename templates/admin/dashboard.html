@@ -1,0 +1,192 @@
+{% extends "admin/base_site.html" %}
+{% block title %}God Mode Dashboard{% endblock %}
+{% block content_title %}<h1 style="color:#ff6b35">⚡ God Mode Dashboard</h1>{% endblock %}
+
+{% block content %}
+<style>
+.gm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:28px}
+.gm-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:16px 20px}
+.gm-card.warn{border-color:#ff6b35}
+.gm-card.ok{border-color:#2a4a2a}
+.gm-label{color:#666;font-size:.72em;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.gm-val{color:#eee;font-size:1.6em;font-weight:700;line-height:1}
+.gm-sub{color:#555;font-size:.75em;margin-top:4px}
+.gm-bar-wrap{background:#111;border-radius:4px;height:6px;margin-top:8px;overflow:hidden}
+.gm-bar{height:6px;border-radius:4px;transition:width .4s}
+.gm-section{color:#ff6b35;font-size:.72em;text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid #1a1a1a;padding-bottom:6px;margin:28px 0 14px}
+.gm-table{width:100%;border-collapse:collapse;font-size:.85em}
+.gm-table th{color:#555;font-weight:600;text-align:left;padding:6px 10px;border-bottom:1px solid #1a1a1a}
+.gm-table td{color:#ccc;padding:7px 10px;border-bottom:1px solid #111}
+.gm-table tr:hover td{background:#1a1a1a}
+.gm-table td a{color:#ff6b35;text-decoration:none}
+.gm-table td a:hover{text-decoration:underline}
+.badge{display:inline-block;padding:1px 7px;border-radius:3px;font-size:.7em;font-weight:700;text-transform:uppercase}
+.badge-pending{background:#2a2010;color:#ddaa33}
+.badge-approved{background:#1a2a1a;color:#4caf50}
+.badge-rejected{background:#2a1010;color:#f55}
+.gm-btn{display:inline-block;padding:7px 16px;border-radius:6px;font-size:.82em;font-weight:600;text-decoration:none;cursor:pointer;border:none}
+.gm-btn-orange{background:#ff6b35;color:#fff}
+.gm-btn-orange:hover{background:#e55a25;color:#fff}
+.gm-btn-outline{background:transparent;border:1px solid #444;color:#aaa}
+.gm-btn-outline:hover{border-color:#ff6b35;color:#ff6b35}
+.compress-form{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:18px 22px;margin-bottom:28px}
+.compress-form label{color:#888;font-size:.8em;display:block;margin-bottom:4px}
+.compress-form input[type=number]{background:#111;border:1px solid #333;color:#eee;padding:5px 10px;border-radius:4px;width:100px;font-size:.85em}
+.compress-result{background:#1a2a1a;border:1px solid #2a4a2a;border-radius:6px;padding:10px 16px;color:#4caf50;font-size:.85em;margin-bottom:18px}
+</style>
+
+{% if compress_result %}
+<div class="compress-result">✓ {{ compress_result }}</div>
+{% endif %}
+
+{% if pending_total > 0 %}
+<div class="gm-section">🚨 Pending Action ({{ pending_total }})</div>
+<div class="gm-grid">
+  {% if events_pending %}
+  <div class="gm-card warn">
+    <div class="gm-label">Events Pending</div>
+    <div class="gm-val">{{ events_pending }}</div>
+    <div class="gm-sub"><a href="/admin/events/event/?status__exact=pending" style="color:#ff6b35">Review →</a></div>
+  </div>
+  {% endif %}
+  {% if venues_unverified %}
+  <div class="gm-card warn">
+    <div class="gm-label">Venues Unverified</div>
+    <div class="gm-val">{{ venues_unverified }}</div>
+    <div class="gm-sub"><a href="/admin/events/venue/?verified__exact=0" style="color:#ff6b35">Review →</a></div>
+  </div>
+  {% endif %}
+  {% if suggestions_pend %}
+  <div class="gm-card warn">
+    <div class="gm-label">Edit Suggestions</div>
+    <div class="gm-val">{{ suggestions_pend }}</div>
+    <div class="gm-sub"><a href="/admin/events/editsuggestion/?status__exact=pending" style="color:#ff6b35">Review →</a></div>
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<div style="background:#0a1a0a;border:1px solid #2a4a2a;border-radius:8px;padding:14px 20px;color:#4caf50;font-size:.88em;margin-bottom:28px">
+  ✓ All clear — no pending items
+</div>
+{% endif %}
+
+<div class="gm-section">📊 Content Stats</div>
+<div class="gm-grid">
+  <div class="gm-card ok">
+    <div class="gm-label">Events Total</div>
+    <div class="gm-val">{{ events_total }}</div>
+    <div class="gm-sub">{{ events_approved }} approved · {{ events_rejected }} rejected</div>
+  </div>
+  <div class="gm-card">
+    <div class="gm-label">Upcoming Events</div>
+    <div class="gm-val">{{ events_upcoming }}</div>
+    <div class="gm-sub"><a href="/admin/events/event/?start_date__gte=today" style="color:#ff6b35">View all →</a></div>
+  </div>
+  <div class="gm-card">
+    <div class="gm-label">Venues</div>
+    <div class="gm-val">{{ venues_total }}</div>
+    <div class="gm-sub">{{ venues_verified }} verified</div>
+  </div>
+  <div class="gm-card">
+    <div class="gm-label">Users</div>
+    <div class="gm-val">{{ users_total }}</div>
+    <div class="gm-sub">+{{ new_users_7d }} this week</div>
+  </div>
+</div>
+
+<div class="gm-section">💾 Storage</div>
+<div class="gm-grid">
+  <div class="gm-card">
+    <div class="gm-label">Database (SQLite)</div>
+    <div class="gm-val">{{ db_size }}</div>
+    <div class="gm-sub">db.sqlite3</div>
+  </div>
+  <div class="gm-card">
+    <div class="gm-label">Media Files</div>
+    <div class="gm-val">{{ media_size }}</div>
+    <div class="gm-sub">{{ img_count }} images · {{ img_size }} images</div>
+  </div>
+  <div class="gm-card {% if disk_pct > 80 %}warn{% endif %}">
+    <div class="gm-label">Disk Usage</div>
+    <div class="gm-val">{{ disk_pct }}%</div>
+    <div class="gm-sub">{{ disk_used }} used · {{ disk_free }} free / {{ disk_total }}</div>
+    <div class="gm-bar-wrap"><div class="gm-bar" style="width:{{ disk_pct }}%;background:{% if disk_pct > 80 %}#f55{% elif disk_pct > 60 %}#ddaa33{% else %}#4caf50{% endif %}"></div></div>
+  </div>
+</div>
+
+<div class="gm-section">🖥 System Health</div>
+<div class="gm-grid">
+  <div class="gm-card {% if mem_pct > 85 %}warn{% endif %}">
+    <div class="gm-label">Memory</div>
+    <div class="gm-val">{{ mem_pct }}%</div>
+    <div class="gm-sub">{{ mem_used }} / {{ mem_total }}</div>
+    <div class="gm-bar-wrap"><div class="gm-bar" style="width:{{ mem_pct }}%;background:{% if mem_pct > 85 %}#f55{% elif mem_pct > 70 %}#ddaa33{% else %}#4caf50{% endif %}"></div></div>
+  </div>
+  <div class="gm-card">
+    <div class="gm-label">Load Average (1/5/15m)</div>
+    <div class="gm-val" style="font-size:1.1em;margin-top:6px">{{ load_avg }}</div>
+    <div class="gm-sub">gunicorn 3 workers</div>
+  </div>
+</div>
+
+<div class="gm-section">🗜 Image Compression</div>
+<div class="compress-form">
+  <p style="color:#888;font-size:.83em;margin-bottom:14px">
+    Compress all uploaded images with Pillow — strips EXIF, progressive JPEG, resizes oversized files.
+    <strong style="color:#eee">{{ img_count }} images · {{ img_size }} total.</strong>
+    Run anytime; safe to re-run (skips files already under 40 KB).
+  </p>
+  <form method="post" action="/admin/compress-images/" style="display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap">
+    {% csrf_token %}
+    <div>
+      <label>JPEG quality (1–95)</label>
+      <input type="number" name="quality" value="82" min="50" max="95">
+    </div>
+    <div>
+      <label>Max width (px)</label>
+      <input type="number" name="max_width" value="1920" min="800" max="4000">
+    </div>
+    <button type="submit" class="gm-btn gm-btn-orange" onclick="this.textContent='Compressing…';this.disabled=true">
+      🗜 Compress Images
+    </button>
+  </form>
+  <p style="color:#444;font-size:.75em;margin-top:10px">
+    Or from CLI: <code style="background:#111;padding:2px 6px;border-radius:3px">python manage.py compress_images --quality 82 --max-width 1920</code>
+  </p>
+</div>
+
+{% if recent_pending %}
+<div class="gm-section">🕐 Pending Events</div>
+<table class="gm-table">
+  <tr><th>Title</th><th>Submitted</th><th>Location</th><th></th></tr>
+  {% for e in recent_pending %}
+  <tr>
+    <td><a href="/admin/events/event/{{ e.pk }}/change/">{{ e.title|truncatechars:50 }}</a></td>
+    <td style="color:#555;white-space:nowrap">{{ e.created_at|date:"M j, g:i A" }}</td>
+    <td style="color:#555">{{ e.location|truncatechars:30 }}</td>
+    <td><span class="badge badge-pending">pending</span></td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+<div class="gm-section">🕐 Recent Approved Events</div>
+<table class="gm-table">
+  <tr><th>Title</th><th>Date</th><th>Venue</th></tr>
+  {% for e in recent_events %}
+  <tr>
+    <td><a href="/admin/events/event/{{ e.pk }}/change/">{{ e.title|truncatechars:50 }}</a></td>
+    <td style="color:#555;white-space:nowrap">{{ e.start_date|date:"M j, g:i A" }}</td>
+    <td style="color:#555">{{ e.location|truncatechars:28 }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<div style="margin-top:28px;display:flex;gap:10px;flex-wrap:wrap">
+  <a href="/admin/" class="gm-btn gm-btn-outline">← Admin Home</a>
+  <a href="/admin/events/event/add/" class="gm-btn gm-btn-outline">+ Add Event</a>
+  <a href="/admin/events/venue/add/" class="gm-btn gm-btn-outline">+ Add Venue</a>
+  <a href="/admin/events/venuefeed/" class="gm-btn gm-btn-outline">📡 Venue Feeds</a>
+  <a href="/admin/events/cronstatus/" class="gm-btn gm-btn-outline">⏱ Cron Status</a>
+</div>
+{% endblock %}

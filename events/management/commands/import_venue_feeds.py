@@ -12,8 +12,8 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.conf import settings
 from django.core.files.base import ContentFile
-from events.models import VenueFeed, Event
-from events.enrich import enrich_event
+from events.models import VenueFeed, Event, RecurringEvent
+from events.enrich import enrich_event, clean_text
 import requests
 from icalendar import Calendar
 from datetime import datetime, date
@@ -89,11 +89,11 @@ def import_ical(feed, now, stdout, stderr):
         if component.name != 'VEVENT':
             continue
         try:
-            summary    = str(component.get('summary', '')).strip()
+            summary    = clean_text(str(component.get('summary', '')).strip(), max_len=200)
             dtstart    = to_aware(component.get('dtstart').dt)
             dtend_raw  = component.get('dtend')
             dtend      = to_aware(dtend_raw.dt) if dtend_raw else None
-            desc       = str(component.get('description', '')).strip()
+            desc       = clean_text(str(component.get('description', '')).strip())
             location   = str(component.get('location', '')).strip()
             url_prop   = str(component.get('url', '')).strip()
             attach_raw = component.get('attach')
@@ -135,7 +135,13 @@ def import_ical(feed, now, stdout, stderr):
                 fname, content = download_image(image_url)
                 if fname and content:
                     ev.photo.save(fname, content, save=True)
-            enrich_event(ev, geocode=bool(location), save=True)
+            _, out_of_area = enrich_event(ev, geocode=bool(location), save=True)
+            if out_of_area:
+                ev.status = 'rejected'
+                ev.save(update_fields=['status'])
+                skipped += 1
+                created -= 0  # don't count as created
+                continue
             tag_feed_defaults(ev, feed)
             created += 1
         except Exception as e:
@@ -256,7 +262,12 @@ def import_musicbrainz(feed, now, stdout, stderr):
                     category=category,
                     website=mb_url,
                 )
-                enrich_event(ev, geocode=bool(location), save=True)
+                _, out_of_area = enrich_event(ev, geocode=bool(location), save=True)
+                if out_of_area:
+                    ev.status = 'rejected'
+                    ev.save(update_fields=['status'])
+                    skipped += 1
+                    continue
                 tag_feed_defaults(ev, feed)
                 created += 1
             except Exception as e:
@@ -269,6 +280,183 @@ def import_musicbrainz(feed, now, stdout, stderr):
             break
 
         time_mod.sleep(1)  # MusicBrainz rate limit: 1 req/sec
+
+    return created, skipped, ''
+
+
+def import_squarespace(feed, now, stdout, stderr):
+    """Import events from a Squarespace site's ?format=json events endpoint.
+    feed.url should be the full events page URL, e.g. https://www.livinghausbeer.com/events
+
+    Recurring-event detection: a title that appears 3+ times in the feed with
+    short per-occurrence duration (<= 1 day) is a genuine repeating night and gets
+    converted to a RecurringEvent. A single long-span entry (festival, trail, etc.)
+    is imported as a normal Event — span alone is not enough to infer recurrence.
+    """
+    import re as _re
+    from collections import Counter
+    from datetime import datetime as dt_class, timedelta
+
+    # Minimum number of times a title must appear in the feed before we treat
+    # it as a recurring series rather than a single multi-day event.
+    RECURRING_MIN_OCCURRENCES = 3
+    # Per-occurrence duration must be at most this many hours to qualify.
+    RECURRING_MAX_HOURS_PER_OCC = 24
+
+    created = skipped = 0
+    status = 'approved' if feed.auto_approve else 'pending'
+
+    base_url = feed.url.rstrip('/')
+    json_url = f"{base_url}?format=json"
+
+    # ── Pass 1: collect all raw event dicts across all pages ──────────────────
+    all_raw = []
+    next_offset = None
+    while True:
+        url = json_url if next_offset is None else f"{base_url}?format=json&offset={next_offset}"
+        try:
+            r = requests.get(url, timeout=15, headers={
+                'Accept': 'application/json',
+                'User-Agent': 'CommunityPlaylist/1.0 (communityplaylist.com)',
+            })
+            r.raise_for_status()
+            data = r.json()
+        except Exception as e:
+            return 0, 0, str(e)
+
+        page_events = data.get('upcoming', []) + data.get('past', [])
+        all_raw.extend(page_events)
+
+        pagination = data.get('pagination', {})
+        if not pagination.get('nextPage'):
+            break
+        next_page_url = pagination.get('nextPageUrl', '')
+        m = _re.search(r'offset=(\d+)', next_page_url)
+        next_offset = m.group(1) if m else None
+        if not next_offset:
+            break
+
+    if not all_raw:
+        return 0, 0, ''
+
+    # ── Identify truly recurring titles ───────────────────────────────────────
+    # A title qualifies if it appears >= RECURRING_MIN_OCCURRENCES times AND
+    # each occurrence has a short duration (i.e. it's a regular weekly night,
+    # not a single multi-week festival listed multiple times by mistake).
+    title_entries: dict = {}
+    for ev in all_raw:
+        title = (ev.get('title') or '').strip()
+        if not title:
+            continue
+        start_ms = ev.get('startDate') or 0
+        end_ms   = ev.get('endDate') or 0
+        if not start_ms:
+            continue
+        hours = (end_ms - start_ms) / 3_600_000 if end_ms else 0
+        title_entries.setdefault(title, []).append(hours)
+
+    recurring_titles = {
+        t for t, durations in title_entries.items()
+        if len(durations) >= RECURRING_MIN_OCCURRENCES
+        and all(0 < h <= RECURRING_MAX_HOURS_PER_OCC for h in durations)
+    }
+
+    recurring_created_titles: set = set()  # guard against creating the same RecurringEvent twice
+
+    # ── Pass 2: process events ─────────────────────────────────────────────────
+    for ev in all_raw:
+        try:
+            title     = (ev.get('title') or '').strip()
+            start_ms  = ev.get('startDate') or 0
+            end_ms    = ev.get('endDate') or 0
+            full_url  = ev.get('fullUrl') or ''
+            asset_url = ev.get('assetUrl') or ''
+            body      = ev.get('body') or ''
+
+            if not title or not start_ms:
+                continue
+
+            dtstart = pytz.utc.localize(dt_class.utcfromtimestamp(start_ms / 1000)).astimezone(PDX_TZ)
+            dtend   = pytz.utc.localize(dt_class.utcfromtimestamp(end_ms / 1000)).astimezone(PDX_TZ) if end_ms else None
+
+            location  = feed.notes.strip() if feed.notes.strip() else feed.name
+            event_url = f"https://{feed.url.split('/')[2]}{full_url}" if full_url.startswith('/') else full_url
+            clean_body = _re.sub(r'<[^>]+>', ' ', body).strip()[:1000]
+            description = clean_body or f'Event at {feed.name}'
+            if event_url:
+                description = f'{description}\n\nMore info: {event_url}'.strip()[:2000]
+
+            # ── Genuinely recurring title → RecurringEvent (one per title) ───
+            if title in recurring_titles:
+                if title in recurring_created_titles:
+                    skipped += 1
+                    continue
+                if RecurringEvent.objects.filter(title=title[:200], location=location[:300]).exists():
+                    recurring_created_titles.add(title)
+                    skipped += 1
+                    continue
+                rec = RecurringEvent.objects.create(
+                    title=title[:200],
+                    description=description[:2000],
+                    location=location[:300],
+                    category=feed.default_category or '',
+                    is_free=False,
+                    website=event_url[:200],
+                    frequency=RecurringEvent.FREQ_WEEKLY,
+                    interval=1,
+                    day_of_week=dtstart.weekday(),
+                    start_time=dtstart.time(),
+                    duration_minutes=120,
+                    submitted_by=feed.name,
+                    auto_approve=feed.auto_approve,
+                    active=True,
+                    lookahead_weeks=16,
+                )
+                if feed.default_genres.exists():
+                    rec.genres.set(feed.default_genres.all())
+                recurring_created_titles.add(title)
+                stdout.write(f'    → recurring: {title!r} (every {dtstart.strftime("%A")})')
+                created += 1
+                continue
+
+            # ── Single / multi-day event ──────────────────────────────────────
+            if dtstart < now:
+                skipped += 1
+                continue
+
+            slug_base = slugify(f"{title}-{dtstart.strftime('%Y-%m-%d')}")
+            if Event.objects.filter(slug__startswith=slug_base).exists():
+                skipped += 1
+                continue
+
+            new_ev = Event.objects.create(
+                title=title[:200],
+                description=description[:2000],
+                location=location[:300],
+                start_date=dtstart,
+                end_date=dtend,
+                submitted_by=feed.name,
+                submitted_email='',
+                status=status,
+                is_free=False,
+                category=feed.default_category,
+                website=event_url[:200],
+            )
+            if asset_url:
+                fname, content = download_image(asset_url)
+                if fname and content:
+                    new_ev.photo.save(fname, content, save=True)
+            _, out_of_area = enrich_event(new_ev, geocode=bool(location), save=True)
+            if out_of_area:
+                new_ev.status = 'rejected'
+                new_ev.save(update_fields=['status'])
+                skipped += 1
+                continue
+            tag_feed_defaults(new_ev, feed)
+            created += 1
+        except Exception as e:
+            stderr.write(f'    skipping event: {e}')
+            continue
 
     return created, skipped, ''
 
@@ -368,7 +556,12 @@ def import_eventbrite(feed, now, stdout, stderr):
                     fname, content = download_image(logo_url)
                     if fname and content:
                         ev.photo.save(fname, content, save=True)
-                enrich_event(ev, geocode=bool(location), save=True)
+                _, out_of_area = enrich_event(ev, geocode=bool(location), save=True)
+                if out_of_area:
+                    ev.status = 'rejected'
+                    ev.save(update_fields=['status'])
+                    skipped += 1
+                    continue
                 tag_feed_defaults(ev, feed)
                 created += 1
             except Exception as e:
@@ -381,6 +574,161 @@ def import_eventbrite(feed, now, stdout, stderr):
         page += 1
         if page > 10:
             break
+
+    return created, skipped, ''
+
+
+def import_19hz(feed, now, stdout, stderr):
+    """
+    Scrape the 19hz.info PNW electronic music event listing.
+
+    The page is a plain HTML table — no API key, fully open, community-run.
+    Only imports Oregon events (Portland-area). Filters out past events and
+    deduplicates by title+date slug as usual.
+
+    Attribution: source link is stored in event.website so the 19hz link
+    is always visible on the event detail page, honoring the community spirit.
+    """
+    import re as _re
+    from datetime import datetime as dt_class
+
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return 0, 0, 'beautifulsoup4 not installed — run: pip install beautifulsoup4'
+
+    URL = 'https://19hz.info/eventlisting_PNW.php'
+    try:
+        r = requests.get(URL, timeout=15, headers={'User-Agent': 'CommunityPlaylist/1.0 (communityplaylist.com)'})
+        r.raise_for_status()
+    except Exception as e:
+        return 0, 0, str(e)
+
+    soup = BeautifulSoup(r.text, 'html.parser')
+    tables = soup.find_all('table')
+    if not tables:
+        return 0, 0, 'No tables found on 19hz page'
+
+    main_table = tables[0]
+    rows = main_table.find_all('tr')
+
+    created = skipped = 0
+    status  = 'approved' if feed.auto_approve else 'pending'
+    PDX_TZ  = pytz.timezone('America/Los_Angeles')
+
+    for row in rows[1:]:  # skip header
+        try:
+            cells = row.find_all('td', recursive=False)
+            if not cells or len(cells) < 2:
+                continue
+
+            # ── Date from div.shrink (ISO format 2026/04/06) ──────────────────
+            date_div = row.find('div', class_='shrink')
+            if not date_div:
+                continue
+            date_str = date_div.get_text(strip=True)  # e.g. "2026/04/06"
+            try:
+                event_date = dt_class.strptime(date_str, '%Y/%m/%d').date()
+            except ValueError:
+                continue
+
+            # ── Time from cell[0] text ─────────────────────────────────────────
+            time_text = cells[0].get_text(' ', strip=True)
+            # e.g. "Mon: Apr 6 (6:30pm-10pm)" or "Mon: Apr 6 (8pm)"
+            time_match = _re.search(r'\((\d{1,2}(?::\d{2})?(?:am|pm))', time_text, _re.I)
+            if time_match:
+                raw_time = time_match.group(1)
+                try:
+                    if ':' in raw_time:
+                        t = dt_class.strptime(raw_time, '%I:%M%p').time()
+                    else:
+                        t = dt_class.strptime(raw_time, '%I%p').time()
+                except ValueError:
+                    t = dt_class.strptime('8:00pm', '%I:%M%p').time()
+            else:
+                t = dt_class.strptime('8:00pm', '%I:%M%p').time()
+
+            dtstart = PDX_TZ.localize(dt_class.combine(event_date, t))
+
+            # Skip past events
+            if dtstart < now:
+                skipped += 1
+                continue
+
+            # ── Title & ticket link from first <a> in cell[1] ────────────────
+            title_cell = cells[1]
+            first_link = title_cell.find('a')
+            if not first_link:
+                continue
+            title    = first_link.get_text(strip=True)
+            tick_url = first_link.get('href', '').strip()
+            if not title:
+                continue
+
+            # ── Venue: text after "@ " in cell[1], before nested <td> ─────────
+            # NavigableStrings in cell[1] give us the raw text nodes
+            venue = ''
+            for node in title_cell.children:
+                text = getattr(node, 'string', None) or ''
+                text = str(text).strip()
+                if '@ ' in text:
+                    venue = text.split('@ ', 1)[1].strip()
+                    break
+
+            # ── Filter: Oregon only (skip WA, ID, etc.) ───────────────────────
+            if venue and not _re.search(r',\s*OR\b', venue, _re.I):
+                skipped += 1
+                continue
+            # If no venue found, assume Portland (rare — only RA-linked events)
+            location = venue or 'Portland, OR'
+
+            # ── Price / age from nested <td> ───────────────────────────────────
+            nested_tds = title_cell.find_all('td')
+            price_text = nested_tds[1].get_text(strip=True) if len(nested_tds) > 1 else ''
+            is_free    = bool(_re.search(r'\bfree\b', price_text, _re.I))
+
+            # ── Genre tags ────────────────────────────────────────────────────
+            tags_text = nested_tds[0].get_text(strip=True) if nested_tds else ''
+
+            # ── Organiser ─────────────────────────────────────────────────────
+            organiser = nested_tds[2].get_text(strip=True) if len(nested_tds) > 2 else ''
+
+            # ── Dedup ─────────────────────────────────────────────────────────
+            slug_base = slugify(f"{title}-{event_date.strftime('%Y-%m-%d')}")
+            if Event.objects.filter(slug__startswith=slug_base).exists():
+                skipped += 1
+                continue
+
+            desc_parts = [f'Listed on 19hz.info — PNW electronic music community calendar.']
+            if tags_text:
+                desc_parts.append(f'Genre/tags: {tags_text}')
+            if price_text:
+                desc_parts.append(f'Price/ages: {price_text}')
+            if organiser:
+                desc_parts.append(f'Organiser: {organiser}')
+            if tick_url:
+                desc_parts.append(f'Tickets / info: {tick_url}')
+            description = '\n'.join(desc_parts)[:2000]
+
+            ev = Event.objects.create(
+                title           = title[:200],
+                description     = description,
+                location        = location[:300],
+                start_date      = dtstart,
+                submitted_by    = '19hz.info',
+                submitted_email = '',
+                status          = status,
+                is_free         = is_free,
+                category        = feed.default_category or 'music',
+                website         = tick_url[:200] if tick_url else URL,
+            )
+            enrich_event(ev, geocode=False, save=True)  # geocode_events cron handles this
+            tag_feed_defaults(ev, feed)
+            created += 1
+
+        except Exception as e:
+            stderr.write(f'    skipping 19hz row: {e}')
+            continue
 
     return created, skipped, ''
 
@@ -413,6 +761,13 @@ class Command(BaseCommand):
                 created, skipped, error = import_musicbrainz(feed, now, self.stdout, self.stderr)
             elif feed.source_type == VenueFeed.SOURCE_EVENTBRITE:
                 created, skipped, error = import_eventbrite(feed, now, self.stdout, self.stderr)
+            elif feed.source_type == VenueFeed.SOURCE_SQUARESPACE:
+                if not feed.url:
+                    self.stderr.write('  no URL — skipping')
+                    continue
+                created, skipped, error = import_squarespace(feed, now, self.stdout, self.stderr)
+            elif feed.source_type == VenueFeed.SOURCE_19HZ:
+                created, skipped, error = import_19hz(feed, now, self.stdout, self.stderr)
             else:
                 error = f'unsupported source_type: {feed.source_type}'
                 created = skipped = 0

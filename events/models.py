@@ -1,6 +1,8 @@
 from django.db import models
 from django.db.models import F
 from django.utils.text import slugify
+import re
+import secrets
 
 
 class CalendarFeed(models.Model):
@@ -20,13 +22,17 @@ class CalendarFeed(models.Model):
 
 class VenueFeed(models.Model):
     """Admin-managed event source — iCal feed or Eventbrite API query for a PDX venue/source."""
-    SOURCE_ICAL        = 'ical'
-    SOURCE_EVENTBRITE  = 'eventbrite'
-    SOURCE_MUSICBRAINZ = 'musicbrainz'
+    SOURCE_ICAL         = 'ical'
+    SOURCE_EVENTBRITE   = 'eventbrite'
+    SOURCE_MUSICBRAINZ  = 'musicbrainz'
+    SOURCE_SQUARESPACE  = 'squarespace'
+    SOURCE_19HZ         = '19hz'
     SOURCE_CHOICES = [
-        (SOURCE_ICAL,        'iCal Feed'),
-        (SOURCE_EVENTBRITE,  'Eventbrite API'),
-        (SOURCE_MUSICBRAINZ, 'MusicBrainz API'),
+        (SOURCE_ICAL,         'iCal Feed'),
+        (SOURCE_EVENTBRITE,   'Eventbrite API'),
+        (SOURCE_MUSICBRAINZ,  'MusicBrainz API'),
+        (SOURCE_SQUARESPACE,  'Squarespace Events JSON'),
+        (SOURCE_19HZ,         '19hz.info PNW Listing'),
     ]
 
     CATEGORY_CHOICES = [
@@ -256,9 +262,10 @@ class RecurringEvent(models.Model):
 
 class Event(models.Model):
     STATUS_CHOICES = [
-        ('pending', 'Pending Review'),
-        ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
+        ('pending',   'Pending Review'),
+        ('approved',  'Approved'),
+        ('rejected',  'Rejected'),
+        ('cancelled', 'Cancelled'),
     ]
 
     CATEGORY_CHOICES = [
@@ -297,6 +304,7 @@ class Event(models.Model):
                         on_delete=models.SET_NULL, related_name='instances')
     latitude = models.FloatField(blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)
+    view_count = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['start_date']
@@ -340,6 +348,295 @@ class EventPhoto(models.Model):
 
     def __str__(self):
         return f"{self.photo_type} photo for {self.event.title}"
+
+
+class Venue(models.Model):
+    """Public profile for a PDX venue space."""
+    name         = models.CharField(max_length=200)
+    slug         = models.SlugField(max_length=220, unique=True, blank=True)
+    description  = models.TextField(blank=True)
+    address      = models.CharField(max_length=300, help_text='Physical address — used to match events automatically')
+    neighborhood = models.CharField(max_length=100, blank=True)
+    latitude     = models.FloatField(null=True, blank=True)
+    longitude    = models.FloatField(null=True, blank=True)
+    website      = models.URLField(blank=True)
+    logo         = models.ImageField(upload_to='venues/', blank=True, null=True)
+    instagram    = models.CharField(max_length=100, blank=True, help_text='Handle without @')
+    bandcamp     = models.URLField(blank=True)
+    youtube      = models.URLField(blank=True)
+    twitter      = models.CharField(max_length=100, blank=True, help_text='Handle without @')
+    mastodon     = models.URLField(blank=True, help_text='Full profile URL e.g. https://pdx.social/@yourhandle')
+    discord      = models.URLField(blank=True, help_text='Invite link')
+    medium       = models.CharField(max_length=100, blank=True, help_text='Username without @')
+    bluesky      = models.CharField(max_length=100, blank=True, help_text='Handle without @ e.g. yourname.bsky.social')
+    linkedin     = models.CharField(max_length=100, blank=True, help_text='Company page slug')
+    tiktok       = models.CharField(max_length=100, blank=True, help_text='Handle without @')
+    threads      = models.CharField(max_length=100, blank=True, help_text='Handle without @')
+    soundcloud   = models.CharField(max_length=100, blank=True, help_text='Username / profile slug')
+    mixcloud     = models.CharField(max_length=100, blank=True, help_text='Username / profile slug')
+    venue_feed   = models.OneToOneField(
+        'VenueFeed', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='venue_profile',
+        help_text='Link to the iCal feed we import events from (optional)'
+    )
+    claimed_by   = models.ForeignKey(
+        'auth.User', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='claimed_venues'
+    )
+    verified     = models.BooleanField(default=False, help_text='Admin-verified venue')
+    active       = models.BooleanField(default=True, help_text='Uncheck to mark venue as permanently closed')
+    closed_date  = models.DateField(null=True, blank=True, help_text='Date venue closed (for display)')
+    view_count   = models.PositiveIntegerField(default=0)
+    created_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.name)
+            slug, n = base, 1
+            while Venue.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base}-{n}"; n += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def get_events(self):
+        """Approved events at this venue, matched by name/address substring."""
+        import unicodedata
+        from django.db.models import Q
+
+        def _ascii(s):
+            return unicodedata.normalize('NFD', s).encode('ascii', 'ignore').decode()
+
+        q = Q(location__icontains=self.name) | Q(location__icontains=_ascii(self.name))
+        if self.address and len(self.address) > 8:
+            addr40 = self.address[:40]
+            q |= Q(location__icontains=addr40) | Q(location__icontains=_ascii(addr40))
+        return Event.objects.filter(status='approved').filter(q).order_by('start_date')
+
+    @classmethod
+    def for_location(cls, location):
+        """Return the best matching active Venue for an event location string, or None."""
+        import unicodedata
+
+        def _fold(s):
+            """Lowercase + strip accents for accent-insensitive comparison."""
+            return unicodedata.normalize('NFD', s.lower()).encode('ascii', 'ignore').decode()
+
+        if not location or location.startswith(('http://', 'https://', 'www.')):
+            return None
+        loc_f = _fold(location)
+        for v in cls.objects.filter(active=True).only('id', 'name', 'address', 'slug'):
+            name_f = _fold(v.name.strip())
+            addr_f = _fold(v.address.strip())
+            if name_f and len(name_f) > 4 and name_f in loc_f:
+                return v
+            if addr_f and len(addr_f) > 8 and addr_f[:40] in loc_f:
+                return v
+        return None
+
+
+class Neighborhood(models.Model):
+    """A Portland-area neighborhood with its own page, board, and history blurb."""
+    name        = models.CharField(max_length=100, unique=True)
+    slug        = models.SlugField(max_length=120, unique=True, blank=True)
+    description = models.TextField(
+        blank=True,
+        help_text='Short history / character blurb — shown on neighborhood page. '
+                  'Sourced from Wikipedia or written by hand.',
+    )
+    wiki_url    = models.URLField(blank=True, help_text='Wikipedia article URL for attribution')
+    aliases     = models.TextField(
+        blank=True,
+        help_text='Pipe-separated list of alternative names used in event.neighborhood (e.g. "Eliot|Boise"). '
+                  'Used when the display name differs from how events are tagged.',
+    )
+    latitude    = models.FloatField(null=True, blank=True, help_text='Center-point for distance queries')
+    longitude   = models.FloatField(null=True, blank=True)
+    active      = models.BooleanField(default=True)
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.name)
+            slug, n = base, 1
+            while Neighborhood.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f'{base}-{n}'; n += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def event_q(self):
+        """Return a Q object matching any of this neighborhood's name/aliases."""
+        from django.db.models import Q
+        q = Q(neighborhood__icontains=self.name)
+        for alias in self.aliases.split('|'):
+            alias = alias.strip()
+            if alias:
+                q |= Q(neighborhood__icontains=alias)
+        return q
+
+    def upcoming_events(self):
+        from django.utils import timezone
+        return Event.objects.filter(
+            status='approved',
+            start_date__gte=timezone.now(),
+        ).filter(self.event_q()).order_by('start_date')
+
+
+class UserProfile(models.Model):
+    """One-to-one profile extending Django's built-in User."""
+    user         = models.OneToOneField('auth.User', on_delete=models.CASCADE, related_name='profile')
+    handle       = models.CharField(
+        max_length=50, unique=True,
+        help_text='Public @handle — lowercase letters, numbers, underscores only.',
+    )
+    pronouns     = models.CharField(max_length=40, blank=True)
+    bio          = models.TextField(max_length=500, blank=True)
+    links        = models.JSONField(
+        default=list, blank=True,
+        help_text='List of {"label": "...", "url": "..."} dicts.',
+    )
+    is_public    = models.BooleanField(default=True, help_text='Show public profile page')
+    avatar       = models.ImageField(upload_to='avatars/', null=True, blank=True)
+    email_verified  = models.BooleanField(default=False)
+    verify_token    = models.CharField(max_length=64, blank=True)
+    created_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'User Profile'
+
+    def __str__(self):
+        return f'@{self.handle}'
+
+    @staticmethod
+    def generate_token():
+        return secrets.token_urlsafe(32)
+
+    @staticmethod
+    def handle_from_email(email):
+        """Derive a safe default handle from an email address."""
+        base = re.sub(r'[^a-z0-9_]', '_', email.split('@')[0].lower())[:40].strip('_') or 'user'
+        handle, n = base, 1
+        while UserProfile.objects.filter(handle=handle).exists():
+            handle = f'{base}_{n}'; n += 1
+        return handle
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('public_profile', kwargs={'handle': self.handle})
+
+
+class EditSuggestion(models.Model):
+    """A logged-in user's suggested edit to an event, venue, artist, or neighborhood."""
+    TYPE_EVENT        = 'event'
+    TYPE_VENUE        = 'venue'
+    TYPE_ARTIST       = 'artist'
+    TYPE_NEIGHBORHOOD = 'neighborhood'
+    TYPE_CHOICES = [
+        (TYPE_EVENT,        'Event'),
+        (TYPE_VENUE,        'Venue'),
+        (TYPE_ARTIST,       'Artist'),
+        (TYPE_NEIGHBORHOOD, 'Neighborhood'),
+    ]
+    STATUS_PENDING  = 'pending'
+    STATUS_APPROVED = 'approved'
+    STATUS_REJECTED = 'rejected'
+    STATUS_CHOICES = [
+        (STATUS_PENDING,  'Pending'),
+        (STATUS_APPROVED, 'Approved'),
+        (STATUS_REJECTED, 'Rejected'),
+    ]
+    # Editable fields per target type
+    FIELDS = {
+        TYPE_EVENT:        [('description','Description'), ('location','Location'), ('price_info','Price info'), ('website','Website / tickets URL')],
+        TYPE_VENUE:        [('description','Description'), ('address','Address'), ('website','Website')],
+        TYPE_ARTIST:       [('bio','Bio'), ('website','Website')],
+        TYPE_NEIGHBORHOOD: [('description','Description'), ('wiki_url','Wikipedia URL')],
+    }
+
+    user            = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='edit_suggestions')
+    target_type     = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    target_id       = models.PositiveIntegerField()
+    field_name      = models.CharField(max_length=50)
+    current_value   = models.TextField(blank=True)
+    suggested_value = models.TextField()
+    note            = models.TextField(blank=True, help_text='Why this edit is needed (optional)')
+    status          = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    reviewed_by     = models.ForeignKey(
+        'auth.User', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='reviewed_suggestions',
+    )
+    created_at      = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Edit Suggestion'
+
+    def __str__(self):
+        return f'{self.target_type}:{self.target_id} · {self.field_name} ({self.status})'
+
+    def get_target(self):
+        if self.target_type == self.TYPE_EVENT:
+            return Event.objects.filter(pk=self.target_id).first()
+        if self.target_type == self.TYPE_VENUE:
+            return Venue.objects.filter(pk=self.target_id).first()
+        if self.target_type == self.TYPE_ARTIST:
+            return Artist.objects.filter(pk=self.target_id).first()
+        if self.target_type == self.TYPE_NEIGHBORHOOD:
+            return Neighborhood.objects.filter(pk=self.target_id).first()
+        return None
+
+    def apply(self):
+        """Write suggested_value to the target object's field and save."""
+        target = self.get_target()
+        if target and hasattr(target, self.field_name):
+            setattr(target, self.field_name, self.suggested_value)
+            target.save(update_fields=[self.field_name])
+            return True
+        return False
+
+
+class Follow(models.Model):
+    """A user following an artist, venue, or neighborhood."""
+    TYPE_ARTIST       = 'artist'
+    TYPE_VENUE        = 'venue'
+    TYPE_NEIGHBORHOOD = 'neighborhood'
+    TYPE_CHOICES = [
+        (TYPE_ARTIST,       'Artist'),
+        (TYPE_VENUE,        'Venue'),
+        (TYPE_NEIGHBORHOOD, 'Neighborhood'),
+    ]
+    user        = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='follows')
+    target_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    target_id   = models.PositiveIntegerField()
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('user', 'target_type', 'target_id')]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user} → {self.target_type}:{self.target_id}'
+
+    def get_target(self):
+        """Return the actual object being followed."""
+        if self.target_type == self.TYPE_ARTIST:
+            return Artist.objects.filter(pk=self.target_id).first()
+        if self.target_type == self.TYPE_VENUE:
+            return Venue.objects.filter(pk=self.target_id).first()
+        if self.target_type == self.TYPE_NEIGHBORHOOD:
+            return Neighborhood.objects.filter(pk=self.target_id).first()
+        return None
 
 
 class CronStatus(models.Model):

@@ -3,6 +3,38 @@ Event enrichment helpers — category detection and genre tagging
 based on event title, description, and venue name.
 """
 import re
+import html
+
+
+def clean_text(text, max_len=None):
+    """
+    Decode HTML entities, strip CSS/style blocks and HTML tags from imported
+    event text. Safe to run on both titles and descriptions.
+    """
+    if not text:
+        return text
+
+    # Decode HTML entities: &amp; -> &, &quot; -> ", &#39; -> ', etc.
+    text = html.unescape(text)
+
+    # Strip CSS blocks injected by page builders e.g. ".fe-block-xxx { ... }"
+    text = re.sub(r'\.[a-zA-Z0-9_-]+\s*\{[^}]*\}', '', text)
+
+    # Strip <style>...</style> blocks
+    text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL | re.I)
+
+    # Strip remaining HTML tags
+    text = re.sub(r'<[^>]+>', ' ', text)
+
+    # Collapse excessive whitespace / blank lines
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = re.sub(r'[ \t]+', ' ', text)
+    text = text.strip()
+
+    if max_len:
+        text = text[:max_len]
+
+    return text
 
 # ── Category detection ────────────────────────────────────────────────────────
 
@@ -125,11 +157,16 @@ def enrich_event(event, geocode=True, save=True):
     """
     Fill in missing category, genres, lat/lng, and neighborhood on an Event instance.
     Only overwrites fields that are blank/None.
+
+    Returns (changed: bool, out_of_area: bool).
+    out_of_area=True means the event geocoded to outside the Portland metro
+    bounding box — callers should reject/skip these events.
     """
     from events.models import Genre
-    from events.geocode import geocode_location, reverse_geocode_neighborhood
+    from events.geocode import geocode_location, reverse_geocode_neighborhood, is_in_pdx_area
 
     changed = False
+    out_of_area = False
 
     # Category
     if not event.category:
@@ -143,6 +180,9 @@ def enrich_event(event, geocode=True, save=True):
         if event.latitude is None or event.longitude is None:
             lat, lng = geocode_location(event.location)
             if lat:
+                if not is_in_pdx_area(lat, lng):
+                    out_of_area = True
+                    return changed, out_of_area  # bail early — don't save out-of-area coords
                 event.latitude = lat
                 event.longitude = lng
                 changed = True
@@ -165,4 +205,4 @@ def enrich_event(event, geocode=True, save=True):
                 genre, _ = Genre.objects.get_or_create(name=name)
                 event.genres.add(genre)
 
-    return changed
+    return changed, out_of_area

@@ -75,6 +75,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'events.context_processors.admin_pending',
             ],
         },
     },
@@ -146,3 +147,19 @@ EVENTBRITE_API_KEY = config('EVENTBRITE_API_KEY', default='')
 # MusicBrainz — no key needed, free & open. Contact email for User-Agent header.
 # https://musicbrainz.org/doc/MusicBrainz_API — 1 req/sec rate limit
 MUSICBRAINZ_CONTACT = config('MUSICBRAINZ_CONTACT', default='hello@communityplaylist.com')
+
+# Email — Plesk local SMTP with SASL auth
+# Uses communityplaylist/email_backend.py to skip self-signed cert verification
+EMAIL_BACKEND   = config('EMAIL_BACKEND', default='communityplaylist.email_backend.LocalSMTPBackend')
+EMAIL_HOST      = config('EMAIL_HOST', default='localhost')
+EMAIL_PORT      = config('EMAIL_PORT', default=25, cast=int)
+EMAIL_USE_TLS   = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL', default='Community Playlist <noreply@communityplaylist.com>')
+EMAIL_TIMEOUT = 30
+SITE_URL = config('SITE_URL', default='https://communityplaylist.com')
+
+# Admin alert emails (500 errors, etc.)
+ADMINS = [('Binsky', 'andrew.jubinsky@proton.me')]
+SERVER_EMAIL = 'noreply@communityplaylist.com'

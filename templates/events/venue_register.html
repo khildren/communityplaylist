@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% if editing %}Edit {{ venue.name }}{% else %}Register your venue{% endif %} — Community Playlist</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:680px;margin:0 auto}
+.header{text-align:center;padding:16px 0 20px}
+.header img{max-width:140px;width:100%}
+.back{color:#ff6b35;text-decoration:none;font-size:.85em;display:inline-block;margin-bottom:20px}
+.back:hover{text-decoration:underline}
+h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
+.sub{color:#666;font-size:.85em;margin-bottom:28px;line-height:1.6}
+.field{margin-bottom:18px}
+label{display:block;font-size:.82em;color:#aaa;margin-bottom:5px;font-weight:500}
+.help{font-size:.75em;color:#555;margin-top:4px;line-height:1.5}
+input[type=text],input[type=url],input[type=email],textarea,select{
+  width:100%;background:#1a1a1a;border:1px solid #333;border-radius:6px;
+  padding:9px 12px;color:#eee;font-size:.88em;font-family:inherit
+}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#ff6b35}
+textarea{resize:vertical;min-height:100px}
+.file-label{display:inline-block;background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:7px 12px;font-size:.82em;color:#aaa;cursor:pointer}
+.file-label:hover{border-color:#ff6b35;color:#eee}
+input[type=file]{display:none}
+.current-logo{margin-bottom:6px;font-size:.78em;color:#555}
+.current-logo img{width:60px;height:60px;border-radius:8px;object-fit:cover;vertical-align:middle;margin-right:6px}
+.section-label{color:#ff6b35;font-size:.72em;text-transform:uppercase;letter-spacing:.1em;margin:28px 0 14px;border-bottom:1px solid #1a1a1a;padding-bottom:6px}
+.submit-btn{background:#ff6b35;color:#fff;border:none;padding:10px 28px;border-radius:6px;cursor:pointer;font-size:.9em;font-weight:600;margin-top:8px}
+.submit-btn:hover{background:#e55a25}
+.error-list{background:#2a1010;border:1px solid #5a2020;border-radius:6px;padding:10px 14px;margin-bottom:18px;font-size:.82em;color:#ff8888}
+.error-list li{margin-left:16px;margin-top:2px}
+.note{background:#1a1a2a;border:1px solid #2a2a4a;border-radius:6px;padding:12px 14px;font-size:.8em;color:#888;margin-bottom:24px;line-height:1.6}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+@media(max-width:500px){.two-col{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
+</div>
+<a href="{% if editing %}/venues/{{ venue.slug }}/{% else %}/venues/{% endif %}" class="back">← {% if editing %}Back to {{ venue.name }}{% else %}All venues{% endif %}</a>
+
+<h1>{% if editing %}Edit {{ venue.name }}{% else %}Register your venue{% endif %}</h1>
+<p class="sub">{% if editing %}Update your venue profile.{% else %}Claim your space on the Community Playlist. We'll verify it before it goes public.{% endif %}</p>
+
+{% if not editing %}
+<div class="note">
+  🔑 <strong>How it works:</strong> Submit your venue info and we'll verify it within a day or two. Once verified, your venue page will appear in the venues directory and auto-populate with events from the site. If you already have an iCal feed, mention it in the description and we'll link it.
+</div>
+{% endif %}
+
+{% if form.errors %}
+<div class="error-list">
+  <strong>Please fix the following:</strong>
+  <ul>
+    {% for field in form %}{% for error in field.errors %}<li>{{ field.label }}: {{ error }}</li>{% endfor %}{% endfor %}
+    {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  <div class="section-label">Venue info</div>
+
+  <div class="field">
+    <label for="id_name">Venue name *</label>
+    {{ form.name }}
+  </div>
+
+  <div class="field">
+    <label for="id_address">Address *</label>
+    {{ form.address }}
+    <div class="help">The physical street address. This is used to automatically match events at your venue.</div>
+  </div>
+
+  <div class="field">
+    <label for="id_neighborhood">Neighborhood</label>
+    {{ form.neighborhood }}
+  </div>
+
+  <div class="field">
+    <label for="id_description">About the venue</label>
+    {{ form.description }}
+  </div>
+
+  <div class="section-label">Links</div>
+
+  <div class="field">
+    <label for="id_website">Website</label>
+    {{ form.website }}
+  </div>
+
+  <div class="two-col">
+    <div class="field">
+      <label for="id_instagram">Instagram</label>
+      {{ form.instagram }}
+      <div class="help">No @</div>
+    </div>
+    <div class="field">
+      <label for="id_threads">Threads</label>
+      {{ form.threads }}
+      <div class="help">No @</div>
+    </div>
+    <div class="field">
+      <label for="id_bluesky">Bluesky</label>
+      {{ form.bluesky }}
+      <div class="help">No @, e.g. name.bsky.social</div>
+    </div>
+    <div class="field">
+      <label for="id_twitter">Twitter / X</label>
+      {{ form.twitter }}
+      <div class="help">No @</div>
+    </div>
+    <div class="field">
+      <label for="id_mastodon">Mastodon</label>
+      {{ form.mastodon }}
+      <div class="help">Full URL e.g. https://pdx.social/@you</div>
+    </div>
+    <div class="field">
+      <label for="id_tiktok">TikTok</label>
+      {{ form.tiktok }}
+      <div class="help">No @</div>
+    </div>
+    <div class="field">
+      <label for="id_youtube">YouTube</label>
+      {{ form.youtube }}
+      <div class="help">Full URL</div>
+    </div>
+    <div class="field">
+      <label for="id_bandcamp">Bandcamp</label>
+      {{ form.bandcamp }}
+      <div class="help">Full URL</div>
+    </div>
+    <div class="field">
+      <label for="id_soundcloud">SoundCloud</label>
+      {{ form.soundcloud }}
+      <div class="help">Username or slug</div>
+    </div>
+    <div class="field">
+      <label for="id_mixcloud">Mixcloud</label>
+      {{ form.mixcloud }}
+      <div class="help">Username or slug</div>
+    </div>
+    <div class="field">
+      <label for="id_discord">Discord</label>
+      {{ form.discord }}
+      <div class="help">Invite link</div>
+    </div>
+    <div class="field">
+      <label for="id_medium">Medium</label>
+      {{ form.medium }}
+      <div class="help">No @</div>
+    </div>
+    <div class="field">
+      <label for="id_linkedin">LinkedIn</label>
+      {{ form.linkedin }}
+      <div class="help">Company page slug</div>
+    </div>
+  </div>
+
+  <div class="section-label">Logo / photo</div>
+
+  {% if editing and venue.logo %}
+  <div class="current-logo"><img src="{{ venue.logo.url }}" alt="Current logo"> Current logo</div>
+  {% endif %}
+
+  <div class="field">
+    <label class="file-label" for="id_logo">📷 {% if editing and venue.logo %}Replace logo{% else %}Upload logo{% endif %}</label>
+    {{ form.logo }}
+    <div class="help" style="margin-top:6px">Square image works best. PNG or JPG, max 5MB.</div>
+  </div>
+
+  <button type="submit" class="submit-btn">{% if editing %}Save changes{% else %}Submit venue{% endif %}</button>
+</form>
+</body>
+</html>

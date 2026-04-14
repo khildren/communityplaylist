@@ -10,7 +10,7 @@ Run as needed or via cron after bulk imports.
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from events.models import Event
-from events.geocode import geocode_location, reverse_geocode_neighborhood, NominatimRateLimited
+from events.geocode import geocode_location, reverse_geocode_neighborhood, NominatimRateLimited, is_in_pdx_area
 import time
 
 
@@ -43,7 +43,7 @@ class Command(BaseCommand):
             f'(covering {qs.count()} events)...'
         )
 
-        done_locs = failed = events_stamped = hoods = 0
+        done_locs = failed = events_stamped = hoods = out_of_area_rejected = 0
         rate_limited = False
 
         for i, loc in enumerate(unique_locations):
@@ -55,6 +55,15 @@ class Command(BaseCommand):
                 break
 
             if lat:
+                if not is_in_pdx_area(lat, lng):
+                    # Auto-reject all pending events at this location
+                    rejected = qs.filter(location=loc, status='pending').update(status='rejected')
+                    if rejected:
+                        self.stdout.write(f'  ✗ Out-of-area: rejected {rejected} event(s) at {loc[:60]}')
+                        out_of_area_rejected += rejected
+                    failed += 1
+                    continue
+
                 hood = reverse_geocode_neighborhood(lat, lng)
                 matching = qs.filter(location=loc)
                 update_fields = {'latitude': lat, 'longitude': lng}
@@ -75,5 +84,6 @@ class Command(BaseCommand):
         status = 'Stopped early (rate limited)' if rate_limited else 'Done'
         self.stdout.write(self.style.SUCCESS(
             f'{status}. {done_locs} locations geocoded → {events_stamped} events stamped '
-            f'({hoods} neighborhoods found), {failed} locations no result.'
+            f'({hoods} neighborhoods found), {failed} locations no result, '
+            f'{out_of_area_rejected} out-of-area events rejected.'
         ))

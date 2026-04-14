@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm
-from .models import Event, EventPhoto
+from .models import Event, EventPhoto, Venue
 
 
 class RegisterForm(forms.Form):
@@ -72,6 +72,43 @@ class EventSubmitForm(forms.ModelForm):
         self.fields['price_info'].required = False
         self.fields['photo'].required = False
         self.fields['category'].required = False
+
+
+class VenueForm(forms.ModelForm):
+    class Meta:
+        model = Venue
+        fields = ['name', 'description', 'address', 'neighborhood', 'website', 'logo',
+                  'instagram', 'threads', 'bluesky', 'twitter', 'mastodon',
+                  'youtube', 'tiktok', 'bandcamp', 'soundcloud', 'mixcloud',
+                  'discord', 'medium', 'linkedin']
+        widgets = {
+            'name':         forms.TextInput(attrs={'placeholder': 'Venue name'}),
+            'description':  forms.Textarea(attrs={'rows': 4, 'placeholder': 'About your space — what happens here, what makes it special'}),
+            'address':      forms.TextInput(attrs={'placeholder': 'e.g. 123 NW Davis St, Portland, OR 97209'}),
+            'neighborhood': forms.TextInput(attrs={'placeholder': 'e.g. Old Town, SE, NE, NW'}),
+            'website':      forms.URLInput(attrs={'placeholder': 'https://'}),
+            'instagram':    forms.TextInput(attrs={'placeholder': 'yourhandle (no @)'}),
+            'threads':      forms.TextInput(attrs={'placeholder': 'yourhandle (no @)'}),
+            'bluesky':      forms.TextInput(attrs={'placeholder': 'yourname.bsky.social (no @)'}),
+            'twitter':      forms.TextInput(attrs={'placeholder': 'yourhandle (no @)'}),
+            'mastodon':     forms.URLInput(attrs={'placeholder': 'https://pdx.social/@yourhandle'}),
+            'youtube':      forms.URLInput(attrs={'placeholder': 'https://youtube.com/@yourchannel'}),
+            'tiktok':       forms.TextInput(attrs={'placeholder': 'yourhandle (no @)'}),
+            'bandcamp':     forms.URLInput(attrs={'placeholder': 'https://yourband.bandcamp.com'}),
+            'soundcloud':   forms.TextInput(attrs={'placeholder': 'username or profile slug'}),
+            'mixcloud':     forms.TextInput(attrs={'placeholder': 'username or profile slug'}),
+            'discord':      forms.URLInput(attrs={'placeholder': 'https://discord.gg/invitecode'}),
+            'medium':       forms.TextInput(attrs={'placeholder': 'yourname (no @)'}),
+            'linkedin':     forms.TextInput(attrs={'placeholder': 'company-page-slug'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for f in ['description', 'neighborhood', 'website', 'logo',
+                  'instagram', 'threads', 'bluesky', 'twitter', 'mastodon',
+                  'youtube', 'tiktok', 'bandcamp', 'soundcloud', 'mixcloud',
+                  'discord', 'medium', 'linkedin']:
+            self.fields[f].required = False
 
 
 class EventPhotoForm(forms.ModelForm):

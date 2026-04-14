@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ venue.name }} — Community Playlist</title>
+<link rel="alternate" type="text/calendar" title="{{ venue.name }} events" href="/venues/{{ venue.slug }}/feed.ics">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:860px;margin:0 auto}
+.header{text-align:center;padding:16px 0 20px}
+.header img{max-width:140px;width:100%}
+.back{color:#ff6b35;text-decoration:none;font-size:.85em;display:inline-block;margin-bottom:20px}
+.back:hover{text-decoration:underline}
+
+/* Venue hero */
+.venue-hero{display:flex;gap:20px;align-items:flex-start;margin-bottom:28px;flex-wrap:wrap}
+.venue-logo{width:80px;height:80px;border-radius:12px;object-fit:cover;flex-shrink:0;outline:.25px solid rgba(255,255,255,.15);background:#1a1a1a}
+.venue-logo-placeholder{width:80px;height:80px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:2em;flex-shrink:0}
+.venue-info h1{color:#ff6b35;font-size:1.5em;margin-bottom:6px}
+.venue-meta{font-size:.82em;color:#666;display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.venue-meta a{color:#666;text-decoration:none}
+.venue-meta a:hover{color:#ff6b35}
+.verified-badge{display:inline-block;background:#1a2a1a;color:#4caf50;font-size:.7em;padding:2px 8px;border-radius:3px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-left:8px;vertical-align:middle}
+.pending-badge{display:inline-block;background:#2a2010;color:#ddaa33;font-size:.7em;padding:2px 8px;border-radius:3px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-left:8px;vertical-align:middle}
+.venue-desc{color:#bbb;font-size:.9em;line-height:1.7;margin-bottom:20px}
+.socials{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.social-link{display:inline-flex;align-items:center;gap:5px;color:#aaa;font-size:.75em;font-weight:500;text-decoration:none;background:#1a1a1a;border:1px solid #2a2a2a;padding:3px 9px;border-radius:20px;transition:border-color .15s,color .15s,background .15s}
+.social-link:hover{border-color:#ff6b35;color:#ff6b35;background:#1a0f0a}
+.social-link .si{font-size:.95em;line-height:1}
+.follow-btn{background:transparent;border:1px solid #333;color:#aaa;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:.8em;transition:all .15s}
+.follow-btn:hover{border-color:#ff6b35;color:#ff6b35}
+.follow-btn.active{background:#1a1a10;border-color:#ddaa33;color:#ddaa33}
+
+/* Edit button */
+.edit-btn{background:transparent;border:1px solid #444;color:#aaa;padding:5px 12px;border-radius:6px;text-decoration:none;font-size:.8em}
+.edit-btn:hover{border-color:#ff6b35;color:#ff6b35}
+
+/* Section headers */
+.section{color:#ff6b35;font-size:.75em;text-transform:uppercase;letter-spacing:.1em;margin:28px 0 12px;border-bottom:1px solid #1a1a1a;padding-bottom:6px}
+
+/* Event cards */
+.event{border:1px solid #2a2a2a;border-radius:8px;padding:12px 16px;margin-bottom:8px;text-decoration:none;display:block;transition:border-color .2s}
+.event:hover{border-color:#ff6b35}
+.event-title{color:#ff6b35;font-weight:600;font-size:.95em;margin-bottom:4px}
+.event-meta{font-size:.78em;color:#666}
+.event.past{opacity:.65}
+.event.past .event-title{color:#aaa}
+.free{background:#1a3a1a;color:#4caf50;padding:1px 6px;border-radius:3px;font-size:.75em;margin-left:6px}
+.empty{color:#555;font-size:.85em;padding:16px 0}
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
+</div>
+<a href="/venues/" class="back">← All venues</a>
+
+<div class="venue-hero">
+  {% if venue.logo %}
+    <img src="{{ venue.logo.url }}" alt="{{ venue.name }}" class="venue-logo">
+  {% else %}
+    <div class="venue-logo-placeholder">🏛</div>
+  {% endif %}
+  <div class="venue-info" style="flex:1;min-width:0">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+      <h1>{{ venue.name }}</h1>
+      {% if not venue.active %}
+        <span style="display:inline-block;background:#2a1010;color:#f55;font-size:.7em;padding:2px 8px;border-radius:3px;font-weight:600;text-transform:uppercase;letter-spacing:.04em">
+          🔒 Permanently Closed{% if venue.closed_date %} · {{ venue.closed_date|date:"N Y" }}{% endif %}
+        </span>
+      {% elif venue.verified %}
+        <span class="verified-badge">✓ Verified</span>
+      {% else %}
+        <span class="pending-badge">Pending verification</span>
+      {% endif %}
+      {% if request.user == venue.claimed_by %}
+        <a href="/venues/{{ venue.slug }}/edit/" class="edit-btn">Edit profile</a>
+      {% endif %}
+      {% if request.user.is_authenticated %}
+      <button class="follow-btn" id="follow-btn"
+        data-type="venue" data-id="{{ venue.pk }}"
+        data-following="{{ is_following|yesno:'true,false' }}">
+        {% if is_following %}★ Following{% else %}☆ Follow{% endif %}
+      </button>
+      {% endif %}
+    </div>
+    <div class="venue-meta">
+      {% if venue.neighborhood %}<span>📍 {{ venue.neighborhood }}</span>{% endif %}
+      {% if venue.address %}<span>{{ venue.address }}</span>{% endif %}
+      {% if venue.view_count %}<span style="color:#444">👁 {{ venue.view_count }}</span>{% endif %}
+      {% if venue.website %}<span><a href="{{ venue.website }}" target="_blank" rel="noopener">Website ↗</a></span>{% endif %}
+      <span><a href="/venues/{{ venue.slug }}/feed.ics" title="Subscribe in Google Calendar, Apple Calendar, etc.">📅 Subscribe</a></span>
+    </div>
+    <div class="socials">
+      {% if venue.instagram %}
+        <a href="https://instagram.com/{{ venue.instagram }}" target="_blank" rel="noopener" class="social-link"><span class="si">📷</span> Instagram</a>
+      {% endif %}
+      {% if venue.threads %}
+        <a href="https://threads.net/@{{ venue.threads }}" target="_blank" rel="noopener" class="social-link"><span class="si">🧵</span> Threads</a>
+      {% endif %}
+      {% if venue.bluesky %}
+        <a href="https://bsky.app/profile/{{ venue.bluesky }}" target="_blank" rel="noopener" class="social-link"><span class="si">🦋</span> Bluesky</a>
+      {% endif %}
+      {% if venue.twitter %}
+        <a href="https://twitter.com/{{ venue.twitter }}" target="_blank" rel="noopener" class="social-link"><span class="si">𝕏</span> Twitter</a>
+      {% endif %}
+      {% if venue.mastodon %}
+        <a href="{{ venue.mastodon }}" target="_blank" rel="noopener" class="social-link"><span class="si">🐘</span> Mastodon</a>
+      {% endif %}
+      {% if venue.tiktok %}
+        <a href="https://tiktok.com/@{{ venue.tiktok }}" target="_blank" rel="noopener" class="social-link"><span class="si">♪</span> TikTok</a>
+      {% endif %}
+      {% if venue.youtube %}
+        <a href="{{ venue.youtube }}" target="_blank" rel="noopener" class="social-link"><span class="si">▶</span> YouTube</a>
+      {% endif %}
+      {% if venue.bandcamp %}
+        <a href="{{ venue.bandcamp }}" target="_blank" rel="noopener" class="social-link"><span class="si">🎵</span> Bandcamp</a>
+      {% endif %}
+      {% if venue.soundcloud %}
+        <a href="https://soundcloud.com/{{ venue.soundcloud }}" target="_blank" rel="noopener" class="social-link"><span class="si">☁</span> SoundCloud</a>
+      {% endif %}
+      {% if venue.mixcloud %}
+        <a href="https://mixcloud.com/{{ venue.mixcloud }}" target="_blank" rel="noopener" class="social-link"><span class="si">〰</span> Mixcloud</a>
+      {% endif %}
+      {% if venue.discord %}
+        <a href="{{ venue.discord }}" target="_blank" rel="noopener" class="social-link"><span class="si">💬</span> Discord</a>
+      {% endif %}
+      {% if venue.medium %}
+        <a href="https://medium.com/@{{ venue.medium }}" target="_blank" rel="noopener" class="social-link"><span class="si">✍</span> Medium</a>
+      {% endif %}
+      {% if venue.linkedin %}
+        <a href="https://linkedin.com/company/{{ venue.linkedin }}" target="_blank" rel="noopener" class="social-link"><span class="si">💼</span> LinkedIn</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if venue.description %}
+<p class="venue-desc">{{ venue.description }}</p>
+{% endif %}
+
+{% if upcoming %}
+<div class="section">Upcoming events</div>
+{% for e in upcoming %}
+<a href="/events/{{ e.slug }}/" class="event">
+  <div class="event-title">
+    {{ e.title }}{% if e.is_free %}<span class="free">FREE</span>{% endif %}
+  </div>
+  <div class="event-meta">📅 {{ e.start_date|date:"D, N j @ g:i A" }}</div>
+</a>
+{% endfor %}
+{% else %}
+<div class="section">Upcoming events</div>
+<p class="empty">No upcoming events found at this venue.</p>
+{% endif %}
+
+{% if past %}
+<div class="section">Past events</div>
+{% for e in past %}
+<a href="/events/{{ e.slug }}/" class="event past">
+  <div class="event-title">{{ e.title }}</div>
+  <div class="event-meta">📅 {{ e.start_date|date:"D, N j Y @ g:i A" }}</div>
+</a>
+{% endfor %}
+{% endif %}
+
+{% if request.user.is_authenticated %}
+{% with target_type="venue" target_id=venue.pk fields=venue_edit_fields %}
+{% include "partials/suggest_edit.html" %}
+{% endwith %}
+{% endif %}
+<script>
+(function(){
+  var btn = document.getElementById('follow-btn');
+  if (!btn) return;
+  var following = btn.dataset.following === 'true';
+  if (following) btn.classList.add('active');
+  btn.addEventListener('click', function() {
+    fetch('/follow/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+      body: JSON.stringify({type: btn.dataset.type, id: parseInt(btn.dataset.id)})
+    }).then(function(r){return r.json()}).then(function(d){
+      following = d.following;
+      btn.textContent = following ? '★ Following' : '☆ Follow';
+      btn.classList.toggle('active', following);
+    });
+  });
+  function getCookie(n){var v=document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');return v?v[2]:null}
+})();
+</script>
+</body>
+</html>

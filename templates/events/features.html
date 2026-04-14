@@ -43,12 +43,22 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
 <a href="/" class="back">← Back to events</a>
 <h1>Features</h1>
 <p class="sub">Everything built into Community Playlist — submitted by the community, for the community.</p>
-<div class="version">v0.2 — Portland, OR</div>
+<div class="version">v0.3 — Portland, OR</div>
 
-<div class="section">Profiles <span class="badge coming">Coming soon</span></div>
-<p style="font-size:.8em;color:#555;margin-bottom:14px;line-height:1.6">Community Playlist is building a home for every part of the Portland scene. Set up a profile to claim your events, showcase your work, and connect with the community.</p>
+<div class="section">Profiles &amp; follows <span class="badge new">v0.3 New</span></div>
+<p style="font-size:.8em;color:#555;margin-bottom:14px;line-height:1.6">Community Playlist now has accounts, profiles, and a follow system — all free, no tracking, no ads.</p>
 
 <div class="profile-grid">
+  <a href="/register/" class="profile-card" style="border-color:#ff6b35">
+    <span class="picon">👤</span>
+    <span class="ptitle">Your profile <span style="font-size:.65em;background:#1a3a1a;color:#4caf50;padding:1px 5px;border-radius:3px;font-weight:600;letter-spacing:.04em;vertical-align:middle">LIVE</span></span>
+    <span class="pdesc">@handle, pronouns, bio, links. Public profile at /u/@handle/. Email-verified accounts.</span>
+  </a>
+  <a href="/venues/" class="profile-card" style="border-color:#ff6b35">
+    <span class="picon">🏛</span>
+    <span class="ptitle">Venue <span style="font-size:.65em;background:#1a3a1a;color:#4caf50;padding:1px 5px;border-radius:3px;font-weight:600;letter-spacing:.04em;vertical-align:middle">LIVE</span></span>
+    <span class="pdesc">Verify your space, manage your calendar feed, and surface every event you host — automatically.</span>
+  </a>
   <a href="/submit/" class="profile-card">
     <span class="picon">🎤</span>
     <span class="ptitle">Artist</span>
@@ -56,19 +66,17 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
   </a>
   <a href="/submit/" class="profile-card">
     <span class="picon">📣</span>
-    <span class="ptitle">Promoter</span>
-    <span class="pdesc">Showcase your events, build your audience, and get your shows in front of the people who show up.</span>
+    <span class="ptitle">Promoter / Crew</span>
+    <span class="pdesc">Collectives, sound systems, labels — showcase your events and build your audience on the playlist.</span>
   </a>
-  <a href="/submit/" class="profile-card">
-    <span class="picon">🏛</span>
-    <span class="ptitle">Venue</span>
-    <span class="pdesc">Verify your space, manage your calendar feed, and surface every event you host — automatically.</span>
-  </a>
-  <a href="/submit/" class="profile-card">
-    <span class="picon">🎛</span>
-    <span class="ptitle">Crew</span>
-    <span class="pdesc">Collectives, sound systems, labels — give your crew a home on the playlist and own your corner of PDX.</span>
-  </a>
+</div>
+
+<div class="feature">
+  <div class="icon">⭐</div>
+  <div class="feature-text">
+    <h3>Follow artists, venues &amp; neighborhoods <span class="badge new">New</span></h3>
+    <p>Follow anything on the site with one click. Your dashboard shows everything you're following. A personal RSS feed at <code style="background:#1a1a1a;padding:1px 5px;border-radius:3px;color:#aaa">/u/@handle/feed/</code> streams upcoming events from your follows — works in any feed reader.</p>
+  </div>
 </div>
 
 <div class="section">Discover events</div>
@@ -77,23 +85,55 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
   <div class="icon">≡</div>
   <div class="feature-text">
     <h3>List, Map &amp; Hybrid views</h3>
-    <p>Browse upcoming events as a calm scrollable list, explore by map for discovery, or use hybrid mode for side-by-side research.</p>
+    <p>Browse upcoming events as a calm scrollable list, explore by map for discovery, or use hybrid mode for side-by-side research. View preference is saved between sessions.</p>
   </div>
 </div>
 
 <div class="feature">
   <div class="icon">🔍</div>
   <div class="feature-text">
-    <h3>Search &amp; smart filters</h3>
-    <p>Full-text search across title, description, and location. Filter by genre, category (Music / Arts / Bike / Fundraiser / Food / Hybrid), neighborhood, date range, and free-only.</p>
+    <h3>Search &amp; smart filters <span class="badge new">Updated</span></h3>
+    <p>Full-text search across title, description, and location. Filter by genre, category, neighborhood, date range, free-only, and now — <strong>distance</strong> (within 15 / 30 / 60 miles of Portland). Fully mobile-friendly with a collapsible filter panel.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="icon">📍</div>
+  <div class="feature-text">
+    <h3>Neighborhood pages <span class="badge new">New</span></h3>
+    <p>Every major Portland neighborhood has its own page at <a href="/neighborhoods/">/neighborhoods/</a> — a wiki history blurb, upcoming events, and a community board scoped to that area. Post potholes, neighborhood watch notes, mutual aid, or just say hi. No account needed to post.</p>
   </div>
 </div>
 
 <div class="feature">
   <div class="icon">🗺</div>
   <div class="feature-text">
-    <h3>Interactive map</h3>
-    <p>Hover a list card to highlight its marker. Click a marker to scroll to that event. Flyer thumbnails in popups. All powered by OpenStreetMap — no Google, no tracking.</p>
+    <h3>Interactive map <span class="badge new">Updated</span></h3>
+    <p>Hover a list card to highlight its marker. Click a marker to scroll to that event. Category-colored dots — music purple, bike green, food gold, and more. Flyer thumbnails in popups. All powered by OpenStreetMap — no Google, no tracking.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="icon">🚗</div>
+  <div class="feature-text">
+    <h3>Idle map autopilot <span class="badge new">New</span></h3>
+    <p>Leave the page idle and the map comes alive — it cycles through events one by one, animating a real driving route between each stop along Portland streets, zooming into each venue, opening an info card, and updating the weather to that event's forecast. Touch anything to take back control; autopilot resumes after 2 minutes.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="icon">⚡</div>
+  <div class="feature-text">
+    <h3>Happening Now <span class="badge new">New</span></h3>
+    <p>Events currently in progress are pinned in a collapsible strip at the top of the list. They disappear automatically when they end — no refresh needed.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="icon">🌤</div>
+  <div class="feature-text">
+    <h3>Live weather <span class="badge new">New</span></h3>
+    <p>Current Portland weather is shown in the header — temperature, condition, wind speed, and feels-like. During autopilot, the pill updates to show the forecast for each event's location and time.</p>
   </div>
 </div>
 
@@ -173,6 +213,14 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
   </div>
 </div>
 
+<div class="feature">
+  <div class="icon">👁</div>
+  <div class="feature-text">
+    <h3>View counts <span class="badge new">New</span></h3>
+    <p>Event and venue pages quietly track how many times they've been viewed — one count per session, no cookies, no tracking. Helps surface what's resonating.</p>
+  </div>
+</div>
+
 <div class="section">The PDX event net</div>
 <p style="font-size:.78em;color:#555;margin-bottom:16px;line-height:1.7">Community Playlist automatically pulls events from across Portland so nothing slips through the cracks. All imports are geocoded, categorized, and genre-tagged automatically.</p>
 
@@ -189,6 +237,14 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
   <div class="feature-text">
     <h3>Food &amp; mutual aid events <span class="badge new">New</span></h3>
     <p>Free breakfasts, community fridges, farmers markets, and food banks are now in the feed — Blanchet House, Rosehip Medic Collective, PSU Farmers Market, and more. Filter by the Food category to find them.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="icon">🎛</div>
+  <div class="feature-text">
+    <h3>19hz.info — PNW electronic music <span class="badge new">New</span></h3>
+    <p>The OG Pacific Northwest electronic music calendar, run by the community since 1997. We pull Oregon shows automatically — raves, warehouse parties, club nights, and ambient sets that never make it to Ticketmaster. <a href="https://19hz.info" target="_blank" rel="noopener">19hz.info →</a></p>
   </div>
 </div>
 

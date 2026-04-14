@@ -110,7 +110,7 @@ class Command(BaseCommand):
                     ev.artists.set(rec.residents.all())
 
                 try:
-                    enrich_event(ev, geocode=True, save=True)
+                    enrich_event(ev, geocode=True, save=True)  # returns tuple, ignore
                 except NominatimRateLimited:
                     self.stdout.write('  ! Nominatim rate limit — skipping geocode for remaining events')
                     enrich_event(ev, geocode=False, save=True)

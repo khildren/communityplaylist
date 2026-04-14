@@ -2,10 +2,14 @@ from django.contrib import admin
 from django.utils.html import format_html, mark_safe
 from django.utils.timezone import localtime
 from django.template.response import TemplateResponse
+from django.urls import path
+from django.http import HttpResponseRedirect
+from django.contrib import messages
 from django import forms
-from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus
+from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile
 import os
 import datetime
+import subprocess
 import requests
 
 DISCORD_EVENTS = "https://discord.com/api/webhooks/1487258605102039051/aMDBINHJSRTE2DVRB7AIdEQpC-5pacJgEKwEn9_gf6nhJbCLlsXD41zADDIlP-5Md5CC"
@@ -53,6 +57,186 @@ class ArtistAdmin(admin.ModelAdmin):
     search_fields = ['name']
     ordering = ['name']
     list_display = ['name', 'mb_id', 'website']
+
+
+def _scrape_venue_site(website):
+    """
+    Fetch a venue website and extract:
+      - address: from schema.org JSON-LD or meta tags
+      - logo_url: og:image or apple-touch-icon or largest favicon
+    Returns dict with keys 'address' and 'logo_url' (either may be None).
+    """
+    import re
+    from urllib.parse import urljoin
+    _UA = {'User-Agent': 'Mozilla/5.0 (compatible; CommunityPlaylist/1.0; +https://communityplaylist.com)'}
+    result = {'address': None, 'logo_url': None}
+    try:
+        r = requests.get(website, timeout=8, headers=_UA, allow_redirects=True)
+        if r.status_code != 200:
+            return result
+        html = r.text
+        base = r.url
+
+        # ── Address: schema.org JSON-LD ──────────────────────────────────────
+        import json
+        for ld_raw in re.findall(r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, re.S | re.I):
+            try:
+                ld = json.loads(ld_raw)
+                nodes = ld if isinstance(ld, list) else [ld]
+                for node in nodes:
+                    addr = node.get('address') or {}
+                    if isinstance(addr, str) and addr.strip():
+                        result['address'] = addr.strip()[:300]
+                        break
+                    street = addr.get('streetAddress', '')
+                    city   = addr.get('addressLocality', '')
+                    state  = addr.get('addressRegion', '')
+                    zipcode= addr.get('postalCode', '')
+                    if street:
+                        parts = [p for p in [street, city, state, zipcode] if p]
+                        result['address'] = ', '.join(parts)[:300]
+                        break
+                if result['address']:
+                    break
+            except Exception:
+                pass
+
+        # ── Logo: og:image first, then apple-touch-icon ──────────────────────
+        og = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', html, re.I)
+        if not og:
+            og = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', html, re.I)
+        if og:
+            result['logo_url'] = urljoin(base, og.group(1).strip())
+        else:
+            touch = re.search(r'<link[^>]+rel=["\'][^"\']*apple-touch-icon[^"\']*["\'][^>]+href=["\']([^"\']+)["\']', html, re.I)
+            if touch:
+                result['logo_url'] = urljoin(base, touch.group(1).strip())
+
+    except Exception:
+        pass
+    return result
+
+
+@admin.register(Venue)
+class VenueAdmin(admin.ModelAdmin):
+    list_display  = ['name', 'neighborhood', 'verified', 'claimed_by', 'created_at']
+    list_filter   = ['verified', 'active']
+    search_fields = ['name', 'address', 'neighborhood']
+    ordering      = ['name']
+    readonly_fields = ['created_at']
+    actions = ['verify_venues', 'autofill_from_website', 'close_venue']
+
+    def verify_venues(self, request, queryset):
+        queryset.update(verified=True)
+        self.message_user(request, f'{queryset.count()} venue(s) verified.')
+    verify_venues.short_description = 'Mark selected venues as verified'
+
+    def close_venue(self, request, queryset):
+        import datetime
+        today = datetime.date.today()
+        cancelled_events = 0
+        disabled_feeds   = 0
+        for venue in queryset:
+            venue.active      = False
+            venue.closed_date = venue.closed_date or today
+            venue.verified    = False
+            venue.save()
+            # Disable the linked VenueFeed so no more events import
+            if venue.venue_feed_id:
+                from events.models import VenueFeed
+                VenueFeed.objects.filter(pk=venue.venue_feed_id).update(active=False)
+                disabled_feeds += 1
+            # Cancel all future approved/pending events at this address
+            if venue.address:
+                from django.utils import timezone as tz
+                n = Event.objects.filter(
+                    location__icontains=venue.address[:30],
+                    start_date__gte=tz.now(),
+                    status__in=('pending', 'approved'),
+                ).update(status='cancelled')
+                cancelled_events += n
+        msg = (
+            f'{queryset.count()} venue(s) closed · '
+            f'{cancelled_events} future event(s) cancelled · '
+            f'{disabled_feeds} feed(s) disabled.'
+        )
+        self.message_user(request, msg)
+    close_venue.short_description = '🔒 Mark venue as permanently closed (cancel future events)'
+
+    def autofill_from_website(self, request, queryset):
+        filled = 0
+        for venue in queryset:
+            if not venue.website:
+                continue
+            data = _scrape_venue_site(venue.website)
+            changed = False
+            if data['address'] and not venue.address:
+                venue.address = data['address']
+                changed = True
+            if data['logo_url'] and not venue.logo:
+                try:
+                    img_r = requests.get(data['logo_url'], timeout=8,
+                        headers={'User-Agent': 'Mozilla/5.0'})
+                    if img_r.status_code == 200:
+                        import mimetypes
+                        from django.core.files.base import ContentFile
+                        ct = img_r.headers.get('content-type', '').split(';')[0].strip()
+                        ext = mimetypes.guess_extension(ct) or '.jpg'
+                        ext = ext.replace('.jpe', '.jpg')
+                        from django.utils.text import slugify
+                        fname = f"venue_{slugify(venue.name)}{ext}"
+                        venue.logo.save(fname, ContentFile(img_r.content), save=False)
+                        changed = True
+                except Exception:
+                    pass
+            if changed:
+                # Also geocode if address was just filled
+                if data['address'] and not venue.latitude:
+                    from events.geocode import geocode_location, reverse_geocode_neighborhood
+                    lat, lng = geocode_location(venue.address)
+                    if lat:
+                        venue.latitude, venue.longitude = lat, lng
+                        hood = reverse_geocode_neighborhood(lat, lng)
+                        if hood and not venue.neighborhood:
+                            venue.neighborhood = hood
+                venue.save()
+                filled += 1
+        self.message_user(request, f'Auto-filled {filled} venue(s) from their websites.')
+    autofill_from_website.short_description = 'Auto-fill address & logo from website'
+
+    def save_model(self, request, obj, form, change):
+        # Auto-scrape website when address or logo is blank
+        if obj.website and (not obj.address or not obj.logo):
+            data = _scrape_venue_site(obj.website)
+            if data['address'] and not obj.address:
+                obj.address = data['address']
+                messages.info(request, f'Address auto-filled from website: {obj.address}')
+            if data['logo_url'] and not obj.logo:
+                try:
+                    img_r = requests.get(data['logo_url'], timeout=8,
+                        headers={'User-Agent': 'Mozilla/5.0'})
+                    if img_r.status_code == 200:
+                        import mimetypes
+                        from django.core.files.base import ContentFile
+                        ct = img_r.headers.get('content-type', '').split(';')[0].strip()
+                        ext = mimetypes.guess_extension(ct) or '.jpg'
+                        ext = ext.replace('.jpe', '.jpg')
+                        from django.utils.text import slugify
+                        fname = f"venue_{slugify(obj.name)}{ext}"
+                        obj.logo.save(fname, ContentFile(img_r.content), save=False)
+                        messages.info(request, 'Logo auto-filled from website.')
+                except Exception:
+                    pass
+        # Geocode address if coords missing
+        if obj.address and not obj.latitude:
+            from events.geocode import geocode_location, reverse_geocode_neighborhood
+            lat, lng = geocode_location(obj.address)
+            if lat:
+                obj.latitude, obj.longitude = lat, lng
+                if not obj.neighborhood:
+                    obj.neighborhood = reverse_geocode_neighborhood(lat, lng)
+                messages.info(request, f'Geocoded: {lat:.4f}, {lng:.4f}')
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(Event)
@@ -147,6 +331,60 @@ class CalendarFeedAdmin(admin.ModelAdmin):
     search_fields = ['user__email', 'label', 'url']
     readonly_fields = ['last_synced', 'created_at']
 
+    def changelist_view(self, request, extra_context=None):
+        """Prepend a published-feeds directory above the normal list."""
+        SITE = 'https://communityplaylist.com'
+
+        # ── Site-wide iCal feeds ──────────────────────────────────────────
+        published = [
+            {
+                'group': 'Site-wide',
+                'name': 'All approved events',
+                'url': f'{SITE}/feed/events.ics',
+                'desc': 'Every upcoming approved event',
+                'type': 'ical',
+            },
+            {
+                'group': 'Site-wide',
+                'name': 'All events — Music',
+                'url': f'{SITE}/feed/events.ics?category=music',
+                'desc': 'Upcoming music events only',
+                'type': 'ical',
+            },
+            {
+                'group': 'Site-wide',
+                'name': 'All events — Free only',
+                'url': f'{SITE}/feed/events.ics?free=1',
+                'desc': 'Free upcoming events only',
+                'type': 'ical',
+            },
+        ]
+
+        # ── Per-venue iCal feeds ──────────────────────────────────────────
+        for v in Venue.objects.filter(active=True).order_by('name'):
+            published.append({
+                'group': 'Venues',
+                'name': v.name,
+                'url': f'{SITE}/venues/{v.slug}/feed.ics',
+                'desc': v.neighborhood or '',
+                'type': 'ical',
+            })
+
+        # ── Per-user RSS feeds ────────────────────────────────────────────
+        for p in UserProfile.objects.filter(is_public=True).select_related('user').order_by('handle'):
+            if p.handle:
+                published.append({
+                    'group': 'User profiles',
+                    'name': f'@{p.handle}',
+                    'url': f'{SITE}/u/@{p.handle}/feed/',
+                    'desc': p.bio[:60] if p.bio else '',
+                    'type': 'rss',
+                })
+
+        extra_context = extra_context or {}
+        extra_context['published_feeds'] = published
+        return super().changelist_view(request, extra_context=extra_context)
+
 
 # ── Cron Status dashboard ─────────────────────────────────────────────────────
 
@@ -221,6 +459,137 @@ def _parse_log(path, tail_lines=25):
     return mtime, last, has_error
 
 
+@admin.register(Neighborhood)
+class NeighborhoodAdmin(admin.ModelAdmin):
+    list_display  = ['name', 'slug', 'aliases', 'active']
+    list_editable = ['active']
+    search_fields = ['name', 'aliases']
+
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display  = ['handle', 'user', 'pronouns', 'is_public', 'email_verified', 'created_at']
+    list_filter   = ['is_public', 'email_verified']
+    search_fields = ['handle', 'user__email']
+    readonly_fields = ['created_at']
+
+
+def _approve_suggestions(modeladmin, request, queryset):
+    applied, skipped = 0, 0
+    for s in queryset.filter(status=EditSuggestion.STATUS_PENDING):
+        if s.apply():
+            s.status = EditSuggestion.STATUS_APPROVED
+            s.reviewed_by = request.user
+            s.save(update_fields=['status', 'reviewed_by'])
+            applied += 1
+        else:
+            skipped += 1
+    modeladmin.message_user(request, f'{applied} applied, {skipped} skipped (target not found).')
+_approve_suggestions.short_description = 'Approve & apply selected suggestions'
+
+
+def _reject_suggestions(modeladmin, request, queryset):
+    updated = queryset.filter(status=EditSuggestion.STATUS_PENDING).update(
+        status=EditSuggestion.STATUS_REJECTED,
+        reviewed_by=request.user,
+    )
+    modeladmin.message_user(request, f'{updated} rejected.')
+_reject_suggestions.short_description = 'Reject selected suggestions'
+
+
+@admin.register(EditSuggestion)
+class EditSuggestionAdmin(admin.ModelAdmin):
+    list_display  = ['__str__', 'user', 'status', 'created_at', 'target_link']
+    list_filter   = ['status', 'target_type']
+    search_fields = ['user__email', 'suggested_value', 'note']
+    readonly_fields = ['user', 'target_type', 'target_id', 'field_name',
+                       'current_value', 'suggested_value', 'note', 'created_at', 'target_link']
+    actions = [_approve_suggestions, _reject_suggestions]
+    ordering = ['-created_at']
+
+    def target_link(self, obj):
+        target = obj.get_target()
+        if not target:
+            return '—'
+        if obj.target_type == 'event':
+            return format_html('<a href="/events/{}/" target="_blank">{}</a>', target.slug, target.title)
+        if obj.target_type == 'venue':
+            return format_html('<a href="/venues/{}/" target="_blank">{}</a>', target.slug, target.name)
+        if obj.target_type == 'artist':
+            return format_html('<a href="/artists/{}/" target="_blank">{}</a>', target.pk, target.name)
+        if obj.target_type == 'neighborhood':
+            return format_html('<a href="/neighborhoods/{}/" target="_blank">{}</a>', target.slug, target.name)
+        return '—'
+    target_link.short_description = 'Target'
+
+
+def _build_alerts():
+    """Collect actionable items needing attention."""
+    from board.models import Topic
+    alerts = []
+
+    pending_events = Event.objects.filter(status='pending').count()
+    if pending_events:
+        alerts.append({
+            'level': 'warn',
+            'icon': '📋',
+            'label': f'{pending_events} event{"s" if pending_events != 1 else ""} pending approval',
+            'url': '/admin/events/event/?status__exact=pending',
+        })
+
+    pending_edits = EditSuggestion.objects.filter(status=EditSuggestion.STATUS_PENDING).count()
+    if pending_edits:
+        alerts.append({
+            'level': 'warn',
+            'icon': '✏️',
+            'label': f'{pending_edits} edit suggestion{"s" if pending_edits != 1 else ""} to review',
+            'url': '/admin/events/editsuggestion/?status__exact=pending',
+        })
+
+    pending_photos = EventPhoto.objects.filter(approved=False).count()
+    if pending_photos:
+        alerts.append({
+            'level': 'warn',
+            'icon': '🖼',
+            'label': f'{pending_photos} event photo{"s" if pending_photos != 1 else ""} awaiting approval',
+            'url': '/admin/events/eventphoto/?approved__exact=0',
+        })
+
+    claimed_unverified = Venue.objects.filter(verified=False, claimed_by__isnull=False).count()
+    if claimed_unverified:
+        alerts.append({
+            'level': 'info',
+            'icon': '🏛',
+            'label': f'{claimed_unverified} claimed venue{"s" if claimed_unverified != 1 else ""} not yet verified',
+            'url': '/admin/events/venue/?verified__exact=0',
+        })
+
+    spam_topics = Topic.objects.filter(flagged=True).count() if hasattr(Topic, 'flagged') else 0
+    if spam_topics:
+        alerts.append({
+            'level': 'error',
+            'icon': '🚫',
+            'label': f'{spam_topics} flagged board topic{"s" if spam_topics != 1 else ""}',
+            'url': '/admin/board/topic/',
+        })
+
+    return alerts
+
+
+_COMMAND_MAP = {job['command']: job for job in CRON_JOBS}
+_COMMAND_APP = {
+    'import_feeds':              'events',
+    'import_venue_feeds':        'events',
+    'generate_recurring_events': 'events',
+    'geocode_events':            'events',
+    'fetch_event_images':        'events',
+    'daily_digest':              'events',
+    'recheck_venue_feeds':       'events',
+    'discover_pdx_feeds':        'events',
+    'sweep_spam_topics':         'board',
+}
+
+
 @admin.register(CronStatus)
 class CronStatusAdmin(admin.ModelAdmin):
     """Custom admin page — no DB table, just reads cron log files."""
@@ -233,6 +602,41 @@ class CronStatusAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, _request, _obj=None):
         return False
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path('retry/<command>/', self.admin_site.admin_view(self._retry_view), name='cron_retry'),
+        ]
+        return custom + urls
+
+    def _retry_view(self, request, command):
+        if not request.user.is_superuser:
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied
+        if command not in _COMMAND_MAP:
+            messages.error(request, f'Unknown command: {command}')
+            return HttpResponseRedirect('/admin/events/cronstatus/')
+
+        _BASE = '/var/www/vhosts/communityplaylist.com/django'
+        _PYTHON = os.path.join(_BASE, 'venv/bin/python3')
+        _MANAGE = os.path.join(_BASE, 'manage.py')
+
+        try:
+            # Fire-and-forget — do NOT wait (subprocess.run blocks gunicorn worker
+            # until the master kills it). The cron log file shows progress.
+            subprocess.Popen(
+                [_PYTHON, _MANAGE, command],
+                cwd=_BASE,
+                env={**os.environ, 'DJANGO_SETTINGS_MODULE': 'communityplaylist.settings'},
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,  # detach from gunicorn process group
+            )
+            messages.success(request, f'✓ "{command}" launched — reload this page in a moment to see updated log output.')
+        except Exception as e:
+            messages.error(request, f'Failed to launch "{command}": {e}')
+        return HttpResponseRedirect('/admin/events/cronstatus/')
 
     def changelist_view(self, request, _extra_context=None):
         if not request.user.is_staff:
@@ -250,10 +654,13 @@ class CronStatusAdmin(admin.ModelAdmin):
                 'exists':    mtime is not None,
             })
 
+        alerts = _build_alerts()
+
         context = {
             **self.admin_site.each_context(request),
             'title': 'Cron Status',
             'jobs':  jobs,
+            'alerts': alerts,
             'now':   datetime.datetime.now(),
         }
         return TemplateResponse(request, 'admin/cron_status.html', context)

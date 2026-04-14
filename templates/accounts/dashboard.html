@@ -71,6 +71,31 @@ h1{color:#ff6b35;font-size:1.4em}
 <div class="msg {% if message.tags == 'error' %}error{% else %}success{% endif %}">{{ message }}</div>
 {% endfor %}
 
+<!-- Profile strip -->
+<div style="display:flex;align-items:center;gap:12px;background:#161616;border:1px solid #2a2a2a;border-radius:8px;padding:12px 16px;margin-bottom:20px;flex-wrap:wrap">
+  {% if profile.avatar %}
+    <img src="{{ profile.avatar.url }}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0">
+  {% else %}
+    <div style="width:42px;height:42px;border-radius:50%;background:#2a2a2a;display:flex;align-items:center;justify-content:center;font-size:1.2em;flex-shrink:0">👤</div>
+  {% endif %}
+  <div style="flex:1;min-width:0">
+    <div style="color:#ccc;font-size:.9em;font-weight:600">@{{ profile.handle }}{% if profile.pronouns %} <span style="color:#555;font-weight:400;font-size:.85em">({{ profile.pronouns }})</span>{% endif %}</div>
+    <div style="font-size:.75em;color:#555;margin-top:2px">
+      {% if profile.email_verified %}
+        <span style="color:#4caf50">✓ email verified</span>
+      {% else %}
+        <span style="color:#ddaa33">⚠ email not verified —
+          <a href="/resend-verification/" style="color:#ddaa33">resend link</a>
+        </span>
+      {% endif %}
+      {% if profile.is_public %}
+        · <a href="/u/@{{ profile.handle }}/" style="color:#555;text-decoration:none">view public profile →</a>
+      {% endif %}
+    </div>
+  </div>
+  <a href="/profile/settings/" style="background:#222;border:1px solid #333;color:#aaa;padding:5px 12px;border-radius:6px;text-decoration:none;font-size:.8em;flex-shrink:0">Edit profile</a>
+</div>
+
 {% if events %}
 {% for event in events %}
 <div class="event-card">
@@ -94,6 +119,20 @@ h1{color:#ff6b35;font-size:1.4em}
 {% else %}
 <div class="empty">
   <p>No events yet. <a href="/submit/">Submit your first one!</a></p>
+</div>
+{% endif %}
+
+<!-- Following -->
+{% if follow_data %}
+<div class="section">⭐ Following</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px">
+  {% for item in follow_data %}
+  <a href="{% if item.follow.target_type == 'artist' %}/artists/{{ item.target.pk }}/{% elif item.follow.target_type == 'venue' %}/venues/{{ item.target.slug }}/{% else %}/neighborhoods/{{ item.target.slug }}/{% endif %}"
+     style="display:inline-flex;align-items:center;gap:6px;background:#1a1a1a;border:1px solid #2a2a2a;color:#aaa;font-size:.8em;padding:4px 11px;border-radius:20px;text-decoration:none;transition:border-color .15s">
+    {% if item.follow.target_type == 'artist' %}🎵{% elif item.follow.target_type == 'venue' %}🏛{% else %}📍{% endif %}
+    {{ item.target.name }}
+  </a>
+  {% endfor %}
 </div>
 {% endif %}
 

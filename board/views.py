@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.core.cache import cache
 from .models import Topic, Reply, BannerMessage
 from .forms import TopicForm, ReplyForm
+from .spam import check_post
 
 # Rate limit: max posts per IP within this window
 _RATE_LIMIT   = 5    # max submissions
@@ -48,20 +49,30 @@ def board_aid(request):
 
 def board_new(request):
     rate_err = False
+    spam_err = None
     if request.method == 'POST':
         if _rate_limited(request):
             rate_err = True
         else:
             form = TopicForm(request.POST)
             if form.is_valid():
-                topic = form.save()
-                return redirect(topic.get_absolute_url())
+                ok, err = check_post(
+                    title=form.cleaned_data.get('title', ''),
+                    body=form.cleaned_data.get('body', ''),
+                    user=request.user,
+                )
+                if not ok:
+                    spam_err = err
+                else:
+                    topic = form.save()
+                    return redirect(topic.get_absolute_url())
     else:
         form = TopicForm()
     return render(request, 'board/board_new.html', {
         'form': form if not rate_err else TopicForm(),
         'banner': _banner(),
         'rate_err': rate_err,
+        'spam_err': spam_err,
     })
 
 
@@ -69,6 +80,7 @@ def board_topic(request, pk, slug):
     topic = get_object_or_404(Topic, pk=pk)
     reply_form = ReplyForm()
     rate_err = False
+    spam_err = None
 
     if request.method == 'POST':
         if _rate_limited(request):
@@ -76,10 +88,17 @@ def board_topic(request, pk, slug):
         else:
             reply_form = ReplyForm(request.POST)
             if reply_form.is_valid():
-                reply = reply_form.save(commit=False)
-                reply.topic = topic
-                reply.save()
-                return redirect(topic.get_absolute_url())
+                ok, err = check_post(
+                    body=reply_form.cleaned_data.get('body', ''),
+                    user=request.user,
+                )
+                if not ok:
+                    spam_err = err
+                else:
+                    reply = reply_form.save(commit=False)
+                    reply.topic = topic
+                    reply.save()
+                    return redirect(topic.get_absolute_url())
 
     return render(request, 'board/board_topic.html', {
         'topic': topic,
@@ -87,4 +106,5 @@ def board_topic(request, pk, slug):
         'reply_form': reply_form,
         'banner': _banner(),
         'rate_err': rate_err,
+        'spam_err': spam_err,
     })

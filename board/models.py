@@ -33,6 +33,10 @@ class Topic(models.Model):
         'events.RecurringEvent', null=True, blank=True,
         on_delete=models.SET_NULL, related_name='board_topics',
     )
+    neighborhood = models.ForeignKey(
+        'events.Neighborhood', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='topics',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

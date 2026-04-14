@@ -3,6 +3,23 @@
 
 {% block content %}
 <style>
+/* ── Alerts panel ─────────────────────────────────────────── */
+.alerts-panel{margin-bottom:28px;max-width:900px}
+.alerts-title{font-size:.75em;text-transform:uppercase;letter-spacing:.08em;color:#666;margin-bottom:10px}
+.alert-row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-radius:7px;margin-bottom:8px;text-decoration:none}
+.alert-row.warn {background:#2a2010;border:1px solid #5a4010}
+.alert-row.info {background:#0f1a2a;border:1px solid #1a3a5a}
+.alert-row.error{background:#2a1010;border:1px solid #5a2020}
+.alert-icon{font-size:1.1em;flex-shrink:0}
+.alert-label{flex:1;color:#eee;font-size:.88em;font-weight:500}
+.alert-row.warn  .alert-label{color:#ddaa33}
+.alert-row.info  .alert-label{color:#6699cc}
+.alert-row.error .alert-label{color:#f66}
+.alert-action{font-size:.75em;color:#555;border:1px solid #333;padding:2px 10px;border-radius:4px;white-space:nowrap}
+.alert-action:hover{border-color:#ff6b35;color:#ff6b35}
+.all-clear{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:7px;background:#0f1a0f;border:1px solid #1a3a1a;color:#4caf50;font-size:.87em;font-weight:500}
+
+/* ── Cron cards ───────────────────────────────────────────── */
 .cron-grid{display:flex;flex-direction:column;gap:18px;max-width:900px}
 .cron-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden}
 .cron-card.ok    {border-left:4px solid #4caf50}
@@ -33,11 +50,33 @@
 .badge-never{background:#222;color:#666}
 .cron-schedule{color:#666;font-size:.75em;background:#222;display:inline-block;padding:1px 7px;border-radius:3px}
 .page-meta{color:#666;font-size:.82em;margin-bottom:18px}
+
+/* Retry button */
+.btn-retry{background:transparent;border:1px solid #444;color:#888;padding:3px 10px;border-radius:5px;font-size:.75em;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.btn-retry:hover{border-color:#ff6b35;color:#ff6b35}
+.btn-retry.loading{opacity:.5;pointer-events:none}
 </style>
 
 <h1>Cron Status</h1>
 <p class="page-meta">Log tails updated on page load &nbsp;·&nbsp; Generated {{ now|date:"D, M j Y @ g:i A" }}</p>
 
+<!-- ── Alerts ─────────────────────────────────────────────── -->
+<div class="alerts-panel">
+  <div class="alerts-title">⚡ Needs attention</div>
+  {% if alerts %}
+    {% for a in alerts %}
+    <a href="{{ a.url }}" class="alert-row {{ a.level }}">
+      <span class="alert-icon">{{ a.icon }}</span>
+      <span class="alert-label">{{ a.label }}</span>
+      <span class="alert-action">Review →</span>
+    </a>
+    {% endfor %}
+  {% else %}
+    <div class="all-clear">✓ Nothing pending — all clear</div>
+  {% endif %}
+</div>
+
+<!-- ── Cron jobs ───────────────────────────────────────────── -->
 <div class="cron-grid">
 {% for job in jobs %}
   {% if job.has_error %}
@@ -58,9 +97,36 @@
 
 <script>
 document.querySelectorAll('.cron-header').forEach(h => {
-  h.addEventListener('click', () => h.closest('.cron-card').classList.toggle('open'));
+  h.addEventListener('click', e => {
+    if (e.target.closest('.btn-retry')) return;
+    h.closest('.cron-card').classList.toggle('open');
+  });
 });
 // Auto-open any error cards
 document.querySelectorAll('.cron-card.error').forEach(c => c.classList.add('open'));
+
+// Retry buttons — show spinner, POST to retry URL, reload on done
+document.querySelectorAll('.btn-retry').forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (!confirm('Run "' + btn.dataset.command + '" now? This runs in-process and may take up to 2 minutes.')) return;
+    btn.classList.add('loading');
+    btn.textContent = '⏳ Running…';
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = btn.dataset.url;
+    const csrf = document.createElement('input');
+    csrf.type = 'hidden'; csrf.name = 'csrfmiddlewaretoken';
+    csrf.value = getCookie('csrftoken');
+    form.appendChild(csrf);
+    document.body.appendChild(form);
+    form.submit();
+  });
+});
+
+function getCookie(n) {
+  var v = document.cookie.match('(^|;) ?' + n + '=([^;]*)(;|$)');
+  return v ? v[2] : null;
+}
 </script>
 {% endblock %}

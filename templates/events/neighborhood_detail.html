@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ hood.name }} — Community Playlist</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:860px;margin:0 auto}
+.back{color:#ff6b35;text-decoration:none;font-size:.85em;display:inline-block;margin-bottom:20px}
+.back:hover{text-decoration:underline}
+h1{color:#ff6b35;font-size:1.6em;margin-bottom:8px}
+.section{margin-bottom:36px}
+.section-title{color:#ff6b35;font-size:1em;font-weight:600;margin-bottom:14px;border-bottom:1px solid #222;padding-bottom:8px;display:flex;align-items:center;gap:8px}
+/* Wiki blurb */
+.wiki-blurb{color:#aaa;line-height:1.7;font-size:.9em;margin-bottom:10px}
+.wiki-link{display:inline-flex;align-items:center;gap:4px;color:#555;font-size:.8em;text-decoration:none;border:1px solid #2a2a2a;padding:3px 10px;border-radius:4px}
+.wiki-link:hover{color:#aaa;border-color:#444}
+/* Events */
+.event-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #1a1a1a;text-decoration:none;color:inherit}
+.event-row:last-child{border-bottom:none}
+.event-row:hover .event-title{color:#ff6b35}
+.event-date{color:#555;font-size:.78em;white-space:nowrap;min-width:100px}
+.event-title{color:#ccc;font-size:.9em;flex:1}
+.event-venue{color:#555;font-size:.78em;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis}
+.free-tag{background:#1a3a1a;color:#4caf50;font-size:.65em;padding:1px 5px;border-radius:3px;flex-shrink:0}
+.empty-msg{color:#555;font-size:.85em;padding:8px 0}
+/* Board */
+.cat-badge{display:inline-block;padding:1px 7px;border-radius:3px;font-size:.7em;font-weight:600;text-transform:uppercase;letter-spacing:.04em;vertical-align:middle;margin-right:5px}
+.cat-general{background:#1a1a1a;color:#888}
+.cat-aid{background:#0f1f0f;color:#4caf50}
+.cat-announce{background:#1a1a10;color:#ddaa33}
+.cat-question{background:#0f0f1f;color:#8888ff}
+.topic-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;margin-bottom:12px;overflow:hidden}
+.topic-head{padding:12px 14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px}
+.topic-head:hover{background:#1e1e1e}
+.topic-info{flex:1;min-width:0}
+.topic-title{color:#ccc;font-size:.9em;font-weight:600;margin-bottom:3px}
+.topic-meta{font-size:.74em;color:#555}
+.topic-pin{color:#ff6b35;font-size:.8em;flex-shrink:0;margin-top:2px}
+.topic-body-wrap{display:none;padding:0 14px 14px;border-top:1px solid #222;margin-top:0}
+.topic-body-wrap.open{display:block}
+.topic-body{color:#aaa;font-size:.85em;line-height:1.7;white-space:pre-wrap;padding-top:12px;margin-bottom:14px}
+.reply-count{font-size:.75em;color:#555;margin-bottom:8px}
+.reply{border-left:2px solid #2a2a2a;padding:8px 0 8px 12px;margin-bottom:10px}
+.reply-meta{font-size:.74em;color:#555;margin-bottom:4px}
+.reply-meta strong{color:#888}
+.reply-body{color:#aaa;font-size:.85em;line-height:1.6;white-space:pre-wrap}
+.reply-form{margin-top:10px;padding-top:10px;border-top:1px solid #1a1a1a}
+.reply-form .frm-row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.reply-form input,.reply-form textarea{background:#222;border:1px solid #333;border-radius:5px;padding:7px 10px;color:#eee;font-size:.83em;font-family:inherit}
+.reply-form input:focus,.reply-form textarea:focus{outline:none;border-color:#2563eb}
+.reply-form input{width:140px;flex-shrink:0}
+.reply-form textarea{flex:1;min-width:180px;resize:vertical;min-height:56px}
+.btn-reply{background:#2563eb;color:#fff;border:none;padding:7px 14px;border-radius:5px;cursor:pointer;font-size:.82em;flex-shrink:0}
+.btn-reply:hover{background:#1d4ed8}
+/* New topic form */
+.new-topic-form{background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:20px}
+.new-topic-form h3{color:#ff6b35;font-size:.95em;margin-bottom:16px}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:.8em;color:#888;margin-bottom:4px}
+.form-group input,.form-group textarea,.form-group select{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.88em;font-family:inherit}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:none;border-color:#ff6b35}
+.form-group select option{background:#222}
+.form-row{display:flex;gap:12px;flex-wrap:wrap}
+.form-row .form-group{flex:1;min-width:140px}
+.btn-post{background:#ff6b35;color:#fff;border:none;padding:9px 22px;border-radius:6px;cursor:pointer;font-size:.88em}
+.btn-post:hover{background:#e55a25}
+.error-msg{background:#2a1010;border:1px solid #5a2020;border-radius:6px;padding:8px 14px;margin-bottom:14px;color:#ff6b6b;font-size:.83em}
+.follow-btn{background:transparent;border:1px solid #333;color:#aaa;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:.8em;transition:all .15s}
+.follow-btn:hover{border-color:#ff6b35;color:#ff6b35}
+.follow-btn.active{background:#1a1a10;border-color:#ddaa33;color:#ddaa33}
+@media(max-width:600px){
+  body{padding:14px}
+  h1{font-size:1.3em}
+  .event-venue{display:none}
+  .reply-form .frm-row{flex-direction:column}
+  .reply-form input{width:100%}
+}
+</style>
+</head>
+<body>
+<a href="/neighborhoods/" class="back">← Neighborhoods</a>
+
+<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px">
+  <h1 style="margin-bottom:0">{{ hood.name }}</h1>
+  {% if request.user.is_authenticated %}
+  <button class="follow-btn" id="follow-btn"
+    data-type="neighborhood" data-id="{{ hood.pk }}"
+    data-following="{{ is_following|yesno:'true,false' }}">
+    {% if is_following %}★ Following{% else %}☆ Follow{% endif %}
+  </button>
+  {% endif %}
+</div>
+
+{% if hood.description or hood.wiki_url %}
+<div class="section">
+  {% if hood.description %}
+  <div class="wiki-blurb">{{ hood.description }}</div>
+  {% endif %}
+  {% if hood.wiki_url %}
+  <a href="{{ hood.wiki_url }}" class="wiki-link" target="_blank" rel="noopener">📖 Wikipedia</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Upcoming events -->
+<div class="section">
+  <div class="section-title">📅 Upcoming Events</div>
+  {% if upcoming %}
+    {% for e in upcoming %}
+    <a href="/events/{{ e.slug }}/" class="event-row">
+      <span class="event-date">{{ e.start_date|date:"D, M j" }}</span>
+      <span class="event-title">{{ e.title }}</span>
+      {% if e.is_free %}<span class="free-tag">FREE</span>{% endif %}
+      {% if e.venue_name %}<span class="event-venue">{{ e.venue_name }}</span>{% endif %}
+    </a>
+    {% endfor %}
+  {% else %}
+    <p class="empty-msg">No upcoming events found for {{ hood.name }}.</p>
+    <p style="margin-top:6px"><a href="/?neighborhood={{ hood.name|urlencode }}" style="color:#ff6b35;font-size:.83em;text-decoration:none">Browse all events →</a></p>
+  {% endif %}
+</div>
+
+<!-- Community board -->
+<div class="section">
+  <div class="section-title">💬 Community Board
+    <span style="color:#555;font-weight:400;font-size:.85em">— {{ hood.name }} topics</span>
+  </div>
+
+  {% if topics %}
+    {% for topic in topics %}
+    <div class="topic-card" id="topic-{{ topic.pk }}">
+      <div class="topic-head" onclick="toggleTopic({{ topic.pk }})">
+        <div class="topic-info">
+          <div class="topic-title">
+            <span class="cat-badge cat-{{ topic.category }}">{{ topic.get_category_display }}</span>
+            {{ topic.title }}
+          </div>
+          <div class="topic-meta">{{ topic.author_name }} &middot; {{ topic.created_at|date:"M j, Y" }} &middot; {{ topic.replies.count }} repl{{ topic.replies.count|pluralize:"y,ies" }}</div>
+        </div>
+        {% if topic.pinned %}<span class="topic-pin">📌</span>{% endif %}
+      </div>
+      <div class="topic-body-wrap" id="tbody-{{ topic.pk }}">
+        <div class="topic-body">{{ topic.body }}</div>
+        {% if topic.replies.all %}
+        <div class="reply-count">{{ topic.replies.count }} repl{{ topic.replies.count|pluralize:"y,ies" }}</div>
+        {% for reply in topic.replies.all %}
+        <div class="reply">
+          <div class="reply-meta"><strong>{{ reply.author_name }}</strong> &middot; {{ reply.created_at|date:"M j, Y @ g:i A" }}</div>
+          <div class="reply-body">{{ reply.body }}</div>
+        </div>
+        {% endfor %}
+        {% endif %}
+        <div class="reply-form">
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="reply">
+            <input type="hidden" name="topic_pk" value="{{ topic.pk }}">
+            <div class="frm-row">
+              <input type="text" name="author_name" placeholder="Your name" maxlength="80">
+              <textarea name="body" placeholder="Your reply…" maxlength="2000"></textarea>
+              <button type="submit" class="btn-reply">Reply</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="empty-msg" style="margin-bottom:20px">No topics yet — start the conversation below.</p>
+  {% endif %}
+
+  {% if request.user.is_authenticated %}
+  {% with target_type="neighborhood" target_id=hood.pk fields=hood_edit_fields %}
+  {% include "partials/suggest_edit.html" %}
+  {% endwith %}
+{% endif %}
+
+  <!-- New topic form -->
+  <div class="new-topic-form" style="margin-top:20px">
+    <h3>+ Post to {{ hood.name }} Board</h3>
+    {% if post_error %}<div class="error-msg">{{ post_error }}</div>{% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="new_topic">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Your name</label>
+          <input type="text" name="author_name" maxlength="80" placeholder="Anonymous">
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select name="category">
+            <option value="general">General</option>
+            <option value="aid">Aid &amp; Mutual Aid</option>
+            <option value="question">Question</option>
+            <option value="announce">Announcement</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" name="title" maxlength="200" placeholder="e.g. Pothole on SE Hawthorne, Free fridge at 40th Ave…">
+      </div>
+      <div class="form-group">
+        <label>Message</label>
+        <textarea name="body" rows="4" maxlength="2000" placeholder="What's on your mind?"></textarea>
+      </div>
+      <button type="submit" class="btn-post">Post</button>
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  var btn = document.getElementById('follow-btn');
+  if (!btn) return;
+  var following = btn.dataset.following === 'true';
+  if (following) btn.classList.add('active');
+  btn.addEventListener('click', function() {
+    fetch('/follow/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+      body: JSON.stringify({type: btn.dataset.type, id: parseInt(btn.dataset.id)})
+    }).then(function(r){return r.json()}).then(function(d){
+      following = d.following;
+      btn.textContent = following ? '★ Following' : '☆ Follow';
+      btn.classList.toggle('active', following);
+    });
+  });
+  function getCookie(n){var v=document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');return v?v[2]:null}
+})();
+
+function toggleTopic(pk) {
+  var el = document.getElementById('tbody-' + pk);
+  el.classList.toggle('open');
+}
+// Auto-open topic if URL has #topic-N
+(function() {
+  var hash = window.location.hash;
+  if (hash && hash.startsWith('#topic-')) {
+    var pk = hash.replace('#topic-', '');
+    var el = document.getElementById('tbody-' + pk);
+    if (el) el.classList.add('open');
+  }
+})();
+</script>
+</body>
+</html>

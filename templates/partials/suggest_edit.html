@@ -1,0 +1,80 @@
+{% comment %}
+  Usage: {% include "partials/suggest_edit.html" with target_type="event" target_id=event.pk fields=edit_fields %}
+  fields = list of (field_name, label) tuples from EditSuggestion.FIELDS
+{% endcomment %}
+<div id="suggest-edit-wrap" style="margin-top:32px;border-top:1px solid #1a1a1a;padding-top:16px">
+  <button type="button" id="suggest-edit-toggle"
+    style="background:transparent;border:none;color:#444;font-size:.78em;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px">
+    ✏ Suggest an edit
+  </button>
+  <div id="suggest-edit-form" style="display:none;margin-top:14px;background:#161616;border:1px solid #2a2a2a;border-radius:8px;padding:18px;max-width:560px">
+    <p style="font-size:.8em;color:#555;margin-bottom:14px;line-height:1.5">See something wrong or outdated? Suggest a correction — we'll review it and apply it if it checks out.</p>
+    <div style="margin-bottom:10px">
+      <label style="display:block;font-size:.78em;color:#777;margin-bottom:4px">What to fix</label>
+      <select id="se-field" style="width:100%;background:#222;border:1px solid #333;border-radius:5px;padding:7px 9px;color:#eee;font-size:.85em">
+        {% for fname, flabel in fields %}
+        <option value="{{ fname }}">{{ flabel }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="margin-bottom:10px">
+      <label style="display:block;font-size:.78em;color:#777;margin-bottom:4px">Your suggested text</label>
+      <textarea id="se-value" rows="3" style="width:100%;background:#222;border:1px solid #333;border-radius:5px;padding:7px 9px;color:#eee;font-size:.85em;font-family:inherit;resize:vertical" placeholder="What should it say?"></textarea>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:.78em;color:#777;margin-bottom:4px">Why? <span style="color:#444">(optional)</span></label>
+      <input type="text" id="se-note" maxlength="500" style="width:100%;background:#222;border:1px solid #333;border-radius:5px;padding:7px 9px;color:#eee;font-size:.85em" placeholder="e.g. wrong date, venue moved, typo…">
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button type="button" id="se-submit" style="background:#2563eb;color:#fff;border:none;padding:7px 18px;border-radius:5px;cursor:pointer;font-size:.83em">Submit suggestion</button>
+      <button type="button" id="se-cancel" style="background:transparent;border:none;color:#555;cursor:pointer;font-size:.82em">Cancel</button>
+      <span id="se-msg" style="font-size:.8em;display:none"></span>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var wrap   = document.getElementById('suggest-edit-wrap');
+  var toggle = document.getElementById('suggest-edit-toggle');
+  var form   = document.getElementById('suggest-edit-form');
+  var submit = document.getElementById('se-submit');
+  var cancel = document.getElementById('se-cancel');
+  var msg    = document.getElementById('se-msg');
+
+  toggle.addEventListener('click', function(){ form.style.display = form.style.display === 'none' ? '' : 'none'; });
+  cancel.addEventListener('click', function(){ form.style.display = 'none'; });
+
+  submit.addEventListener('click', function(){
+    var val = document.getElementById('se-value').value.trim();
+    if (!val) { flash('Please enter your suggestion.', '#ff6b35'); return; }
+    submit.disabled = true;
+    fetch('/suggest-edit/', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+      body: JSON.stringify({
+        target_type:     '{{ target_type }}',
+        target_id:       {{ target_id }},
+        field_name:      document.getElementById('se-field').value,
+        suggested_value: val,
+        note:            document.getElementById('se-note').value.trim(),
+      })
+    }).then(function(r){return r.json()}).then(function(d){
+      if (d.ok) {
+        form.style.display = 'none';
+        toggle.textContent = '✓ Suggestion submitted — thanks!';
+        toggle.style.color = '#4caf50';
+        toggle.disabled = true;
+      } else {
+        flash(d.error || 'Something went wrong.', '#ff6b6b');
+        submit.disabled = false;
+      }
+    }).catch(function(){ flash('Network error.', '#ff6b6b'); submit.disabled = false; });
+  });
+
+  function flash(text, color){
+    msg.textContent = text; msg.style.color = color; msg.style.display = '';
+    setTimeout(function(){ msg.style.display = 'none'; }, 4000);
+  }
+  function getCookie(n){var v=document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');return v?v[2]:null}
+})();
+</script>

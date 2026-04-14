@@ -50,6 +50,8 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
 .cat-fund{background:#121228;color:#6699ff}
 .cat-food{background:#252210;color:#ddaa33}
 .cat-hybrid{background:#251810;color:#ff9944}
+.venue-pill{display:inline-flex;align-items:center;gap:5px;background:#1a1a1a;border:1px solid #2a2a2a;color:#aaa;font-size:.78em;padding:2px 10px;border-radius:20px;text-decoration:none;transition:border-color .15s,color .15s}
+.venue-pill:hover{border-color:#ff6b35;color:#ff6b35}
 /* Recurring series */
 .rec-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:8px;text-decoration:none;background:#1a1a1a;border:1px solid #2a2a2a}
 .rec-row-active{background:#1a1a10;border-color:#ff6b35}
@@ -79,7 +81,9 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
 <span>📅 <a href="{{ cal_url }}" target="_blank" rel="noopener" title="Add to Google Calendar">{{ event.start_date|date:"l, F j, Y @ g:i A" }}</a></span>
 {% if event.end_date %}<span>until {{ event.end_date|date:"g:i A" }}</span>{% endif %}
 <span>📍 <a href="{{ maps_url }}" target="_blank" rel="noopener" title="Get directions">{{ event.location }}</a></span>
+{% if venue %}<a href="/venues/{{ venue.slug }}/" class="venue-pill">🏛 {{ venue.name }}</a>{% endif %}
 {% if event.neighborhood %}<span>{{ event.neighborhood }}</span>{% endif %}
+{% if event.view_count %}<span style="color:#444;font-size:.8em">👁 {{ event.view_count }} view{{ event.view_count|pluralize }}</span>{% endif %}
 {% if event.is_free %}<span class="free">FREE</span>{% else %}{% if event.price_info %}<span>{{ event.price_info }}</span>{% endif %}{% endif %}
 </div>
 {% if event.latitude and event.longitude %}
@@ -216,5 +220,8 @@ lb.addEventListener('click', e => { if (e.target !== lbImg) closeLb(); });
 document.getElementById('lb-close').addEventListener('click', closeLb);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); });
 </script>
+{% if user.is_authenticated %}
+{% include "partials/suggest_edit.html" with target_type="event" target_id=event.pk fields=event_edit_fields %}
+{% endif %}
 </body>
 </html>

@@ -40,12 +40,18 @@ SKIP_DOMAINS = {
     'twitter.com', 'x.com',
     'musicbrainz.org',
     # Ticket platforms that 403 crawlers
-    'app.tickettailor.com', 'tickettailor.com',
+    'app.tickettailor.com', 'tickettailor.com', 'www.tickettailor.com',
     'axs.com', 'www.axs.com',
     'ticketmaster.com', 'www.ticketmaster.com',
     'etix.com', 'www.etix.com',
     'dice.fm', 'www.dice.fm',
     'seetickets.us', 'www.seetickets.us',
+    # Additional confirmed 403 blockers
+    'ra.co', 'www.ra.co',
+    'wl.eventim.us', 'eventim.us',
+    'bendticket.com', 'www.bendticket.com',
+    'tixr.com', 'www.tixr.com',
+    'eventbrite.com', 'www.eventbrite.com',
 }
 
 OG_RE = re.compile(
@@ -126,6 +132,11 @@ class Command(BaseCommand):
                     ev.website, timeout=10, headers=HEADERS,
                     allow_redirects=True,
                 )
+                if r.status_code == 403:
+                    # Site blocks crawlers — treat as skip, not error
+                    skipped += 1
+                    time.sleep(0.3)
+                    continue
                 r.raise_for_status()
                 html = r.text
             except Exception as e:

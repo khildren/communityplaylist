@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile Settings — Community Playlist</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:680px;margin:0 auto}
+.header{text-align:center;padding:16px 0 20px}
+.header img{max-width:130px;width:100%}
+.back{color:#ff6b35;text-decoration:none;font-size:.85em;display:inline-block;margin-bottom:20px}
+.back:hover{text-decoration:underline}
+h1{color:#ff6b35;font-size:1.3em;margin-bottom:24px}
+.card{background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:22px;margin-bottom:20px}
+.card-title{color:#ff6b35;font-size:.85em;text-transform:uppercase;letter-spacing:.07em;margin-bottom:16px;font-weight:600}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:.8em;color:#888;margin-bottom:5px}
+.form-group input,.form-group textarea,.form-group select{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:8px 11px;color:#eee;font-size:.88em;font-family:inherit}
+.form-group input:focus,.form-group textarea:focus{outline:none;border-color:#ff6b35}
+.form-row{display:flex;gap:12px;flex-wrap:wrap}
+.form-row .form-group{flex:1;min-width:140px}
+.handle-prefix{display:flex;align-items:center;background:#222;border:1px solid #333;border-radius:6px;overflow:hidden}
+.handle-prefix span{padding:8px 10px;color:#555;font-size:.88em;white-space:nowrap;border-right:1px solid #333}
+.handle-prefix input{border:none;border-radius:0;background:transparent;flex:1}
+.hint{font-size:.75em;color:#444;margin-top:5px;line-height:1.5}
+.link-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.link-row input{flex:1}
+.link-row .link-label{width:130px;flex-shrink:0}
+.link-row .link-remove{background:transparent;border:1px solid #333;color:#666;width:28px;height:28px;border-radius:5px;cursor:pointer;flex-shrink:0;font-size:1em;line-height:1}
+.link-row .link-remove:hover{border-color:#ff6b35;color:#ff6b35}
+.add-link-btn{background:transparent;border:1px solid #333;color:#888;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.8em;margin-top:4px}
+.add-link-btn:hover{border-color:#ff6b35;color:#ff6b35}
+.avatar-wrap{display:flex;align-items:center;gap:14px}
+.avatar-preview{width:60px;height:60px;border-radius:50%;object-fit:cover;background:#222;display:flex;align-items:center;justify-content:center;font-size:1.6em;flex-shrink:0;overflow:hidden}
+.avatar-preview img{width:100%;height:100%;object-fit:cover}
+.toggle-row{display:flex;align-items:center;gap:10px}
+.toggle-row input[type=checkbox]{width:auto;margin:0}
+.toggle-row label{font-size:.85em;color:#aaa;margin:0;display:flex;align-items:center;gap:8px;cursor:pointer}
+.btn{background:#ff6b35;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:.88em}
+.btn:hover{background:#e55a25}
+.error{background:#2a1010;border:1px solid #5a2020;border-radius:6px;padding:10px 14px;margin-bottom:16px;color:#ff6b6b;font-size:.85em}
+.success-msg{background:#1a3a1a;border:1px solid #2a5a2a;border-radius:6px;padding:10px 14px;margin-bottom:16px;color:#4caf50;font-size:.85em}
+.verify-bar{background:#1a1a10;border:1px solid #3a3010;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:.84em;color:#ddaa33;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.verify-bar a{color:#ff6b35;text-decoration:none}
+.verify-bar a:hover{text-decoration:underline}
+@media(max-width:600px){body{padding:14px}.form-row{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
+</div>
+<a href="/dashboard/" class="back">← Dashboard</a>
+<h1>Profile Settings</h1>
+
+{% for message in messages %}
+<div class="success-msg">{{ message }}</div>
+{% endfor %}
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+{% if not profile.email_verified %}
+<div class="verify-bar">
+  ⚠ Your email isn't verified yet.
+  <a href="/resend-verification/">Resend verification email →</a>
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data">
+{% csrf_token %}
+
+<div class="card">
+  <div class="card-title">Identity</div>
+
+  <div class="form-group">
+    <label>Handle (your public @username)</label>
+    <div class="handle-prefix">
+      <span>@</span>
+      <input type="text" name="handle" value="{{ profile.handle }}" maxlength="50" pattern="[a-z0-9_]+" required>
+    </div>
+    <p class="hint">2–50 characters. Lowercase letters, numbers, underscores only. Used in your public URL: communityplaylist.com/u/@{{ profile.handle }}/</p>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label>Pronouns <span style="color:#444">(optional)</span></label>
+      <input type="text" name="pronouns" value="{{ profile.pronouns }}" maxlength="40" placeholder="they/them, she/her, he/him…">
+    </div>
+    <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:2px">
+      <div class="toggle-row">
+        <label>
+          <input type="checkbox" name="is_public" {% if profile.is_public %}checked{% endif %}>
+          Public profile
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Avatar</div>
+  <div class="avatar-wrap">
+    <div class="avatar-preview" id="avatar-preview">
+      {% if profile.avatar %}
+        <img src="{{ profile.avatar.url }}" id="avatar-img">
+      {% else %}
+        <span>👤</span>
+      {% endif %}
+    </div>
+    <div>
+      <input type="file" name="avatar" accept="image/*" id="avatar-input" style="font-size:.82em;color:#888">
+      <p class="hint" style="margin-top:6px">Square image recommended. PNG, JPG, WebP — max 5 MB.</p>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Bio</div>
+  <div class="form-group">
+    <textarea name="bio" rows="3" maxlength="500" placeholder="A sentence or two about yourself, your music, your scene…">{{ profile.bio }}</textarea>
+    <p class="hint">Max 500 characters.</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Links <span style="color:#444;font-weight:400;text-transform:none;letter-spacing:0">(up to 5)</span></div>
+  <div id="link-list">
+    {% for link in profile.links %}
+    <div class="link-row">
+      <input type="text" name="link_label" value="{{ link.label }}" placeholder="Label (e.g. Bandcamp)" class="link-label" maxlength="60">
+      <input type="url"  name="link_url"   value="{{ link.url }}"   placeholder="https://…" maxlength="200">
+      <button type="button" class="link-remove" onclick="this.closest('.link-row').remove()">✕</button>
+    </div>
+    {% endfor %}
+  </div>
+  <button type="button" class="add-link-btn" id="add-link-btn">+ Add link</button>
+</div>
+
+<button type="submit" class="btn">Save profile</button>
+</form>
+
+<div style="text-align:center;margin-top:32px">
+  {% if profile.is_public %}
+  <a href="/u/@{{ profile.handle }}/" style="color:#555;font-size:.85em;text-decoration:none">View public profile →</a>
+  {% endif %}
+</div>
+
+<script>
+// Avatar preview
+document.getElementById('avatar-input').addEventListener('change', function() {
+  var file = this.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var wrap = document.getElementById('avatar-preview');
+    wrap.innerHTML = '<img src="' + e.target.result + '" id="avatar-img" style="width:100%;height:100%;object-fit:cover">';
+  };
+  reader.readAsDataURL(file);
+});
+// Add link row
+var linkList = document.getElementById('link-list');
+document.getElementById('add-link-btn').addEventListener('click', function() {
+  if (linkList.children.length >= 5) return;
+  var row = document.createElement('div');
+  row.className = 'link-row';
+  row.innerHTML = '<input type="text" name="link_label" placeholder="Label (e.g. Bandcamp)" class="link-label" maxlength="60">'
+    + '<input type="url" name="link_url" placeholder="https://…" maxlength="200">'
+    + '<button type="button" class="link-remove" onclick="this.closest(\'.link-row\').remove()">✕</button>';
+  linkList.appendChild(row);
+  row.querySelector('input').focus();
+});
+</script>
+</body>
+</html>

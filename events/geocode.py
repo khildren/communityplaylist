@@ -4,6 +4,24 @@ import time
 
 NOMINATIM_HEADERS = {'User-Agent': 'CommunityPlaylist/1.0 (andrew.jubinsky@proton.me)'}
 
+# Portland metro bounding box — generous enough to include Vancouver WA,
+# Beaverton, Gresham, Lake Oswego, Hillsboro, Canby, Scappoose.
+# Anything that geocodes OUTSIDE this box is not a Portland-area event.
+PDX_BOUNDS = {
+    'lat_min': 45.15,
+    'lat_max': 45.80,
+    'lng_min': -123.25,
+    'lng_max': -122.20,
+}
+
+
+def is_in_pdx_area(lat, lng):
+    """Return True if coordinates are within the Portland metro bounding box."""
+    if lat is None or lng is None:
+        return True  # no coords = don't auto-reject
+    b = PDX_BOUNDS
+    return b['lat_min'] <= lat <= b['lat_max'] and b['lng_min'] <= lng <= b['lng_max']
+
 # PDX-area neighborhoods returned by Nominatim reverse geocode
 # Maps Nominatim suburb/neighbourhood/city_district values to clean display names
 NEIGHBORHOOD_ALIASES = {
@@ -66,11 +84,24 @@ def _extract_address(location_string):
     Handles patterns like:
       'Venue Name, 123 SE Main St, Portland, OR 97214, USA'
       '123 SE Main St, Portland, OR'
+      'NW Broadway & NW Morrison, Portland, OR'  -> uses first street only
       'The Goodfoot'  (venue-only, no street)
     """
     s = location_string.strip()
     # Remove trailing ', USA' or ', United States'
     s = re.sub(r',?\s*(USA|United States)\s*$', '', s, flags=re.I).strip()
+
+    # Corner/intersection addresses: "Street A & Street B[, City...]"
+    # Nominatim doesn't reliably resolve these — use only the first street.
+    amp = re.search(r'\s*&\s*', s)
+    if amp:
+        # Keep everything before the '&', then any trailing ", City, ST zip"
+        before = s[:amp.start()].strip()
+        # Grab city/state/zip suffix that follows the second street name
+        after_cross = s[amp.end():]
+        suffix_match = re.search(r',.*$', after_cross)
+        suffix = suffix_match.group(0) if suffix_match else ''
+        s = before + suffix
 
     # If it already contains a street number pattern, try to start from there
     # e.g. "Venue Name, 123 SE Main St, Portland, OR 97214"
