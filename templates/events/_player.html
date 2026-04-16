@@ -1,0 +1,666 @@
+{% comment %}CP Music Player partial — styles live in base.html <head> to survive Turbo body swaps{% endcomment %}
+
+{% comment %}PDXTV Video Panel — fixed overlay above the player footer{% endcomment %}
+<div id="cp-video-panel" data-turbo-permanent>
+  <button id="cp-video-exit" aria-label="Exit video">✕ exit</button>
+  <div id="cp-video-iframe-wrap">
+    <div id="cp-yt-placeholder"></div>
+  </div>
+  <div id="cp-video-title-card" aria-hidden="true">
+    <div class="cp-video-meta-artist">
+      <span class="cp-ch-badge" id="cp-ch-badge-card">CH 4</span>
+      <span id="cp-video-artist-card"></span>
+      <span class="cp-show-soon" id="cp-show-soon" style="display:none">playing soon ↗</span>
+    </div>
+    <div class="cp-video-meta-title" id="cp-video-title-card-text"></div>
+  </div>
+</div>
+
+{% comment %}data-turbo-permanent keeps these elements alive across Turbo page swaps{% endcomment %}
+<div id="cp-player" class="cp-player" style="display:none" role="region" aria-label="Community Playlist music player" data-turbo-permanent>
+  <div class="cp-seek" id="cp-seek">
+    <div class="cp-seek-fill" id="cp-seek-fill" style="width:0%">
+      <div class="cp-seek-dot"></div>
+    </div>
+  </div>
+  <button class="cp-ch-toggle" id="cp-ch-toggle">ALL ▾</button>
+  <div class="cp-channels" id="cp-channels"></div>
+  <span class="cp-video-ch-label" id="cp-video-ch-label" style="display:none" title="Switch to PDXTV video channel">📺 VIDEO</span>
+  <span class="cp-live-badge" id="cp-live-badge" style="display:none">
+    <span class="cp-live-dot"></span>LIVE
+  </span>
+  <div class="cp-track">
+    <div class="cp-track-inner" id="cp-track-inner">
+      <a class="cp-title-link" id="cp-title" href="#" style="color:inherit;text-decoration:none">—</a>
+      <span class="cp-sep">·</span>
+      <span class="cp-artist-text" id="cp-artist"></span>
+    </div>
+  </div>
+  <div class="cp-controls">
+    <button class="cp-btn" id="cp-prev" title="Previous">◀◀</button>
+    <button class="cp-btn play" id="cp-play" title="Play / Pause">▶</button>
+    <button class="cp-btn" id="cp-next" title="Next">▶▶</button>
+  </div>
+  <div class="cp-vol-wrap">
+    <button class="cp-btn cp-mute" id="cp-mute" title="Mute">🔈</button>
+    <input type="range" class="cp-vol" id="cp-vol" min="0" max="100" value="8" title="Volume">
+  </div>
+</div>
+
+<audio id="cp-audio" preload="none" data-turbo-permanent></audio>
+
+<script>
+(function(){
+  // Only initialise once — Turbo re-runs this script on each page swap,
+  // but the player element is data-turbo-permanent so it's already live.
+  if (window.cpInitialized) return;
+  window.cpInitialized = true;
+
+  var audio    = document.getElementById('cp-audio');
+  var player   = document.getElementById('cp-player');
+  var titleEl  = document.getElementById('cp-title');
+  var artistEl = document.getElementById('cp-artist');
+  var trackInner = document.getElementById('cp-track-inner');
+  var playBtn  = document.getElementById('cp-play');
+  var prevBtn  = document.getElementById('cp-prev');
+  var nextBtn  = document.getElementById('cp-next');
+  var muteBtn  = document.getElementById('cp-mute');
+  var volSlide = document.getElementById('cp-vol');
+  var channels  = document.getElementById('cp-channels');
+  var chToggle  = document.getElementById('cp-ch-toggle');
+  var seekBar   = document.getElementById('cp-seek');
+  var seekFill = document.getElementById('cp-seek-fill');
+
+  var tracks  = [];
+  var current = 0;
+  var genre   = 'all';
+  var muted   = false;
+  var STORE   = 'cp_state';
+
+  audio.volume = 0.08;
+
+  function show() {
+    player.style.display = 'flex';
+    document.body.classList.add('has-player');
+  }
+
+  // Pre-inject has-player into the incoming body BEFORE the swap —
+  // prevents a one-frame layout jump where the new body renders without bottom padding.
+  document.addEventListener('turbo:before-render', function(e){
+    if (player.style.display !== 'none') {
+      e.detail.newBody.classList.add('has-player');
+    }
+    // Strip is-hybrid from <html> before the new page renders — Turbo never swaps
+    // <html> so this class persists across navigations and locks scroll/layout.
+    // Removing it here (before new body scripts run) lets the events page re-apply
+    // it cleanly from localStorage without fighting a stale value.
+    document.documentElement.classList.remove('is-hybrid');
+  });
+  // Belt-and-suspenders: also apply after load in case of non-Turbo navigations
+  document.addEventListener('turbo:load', function(){
+    if (player.style.display !== 'none') {
+      document.body.classList.add('has-player');
+    }
+    // Re-process HTMX attributes on every Turbo navigation.
+    if (typeof htmx !== 'undefined') htmx.process(document.body);
+  });
+
+  function saveState() {
+    if (!tracks.length) return;
+    var t = tracks[current];
+    try {
+      sessionStorage.setItem(STORE, JSON.stringify({
+        url:        t.stream_url,
+        title:      t.title,
+        artist:     t.artist || '',
+        source_url: t.source_url || '',
+        genre:      genre,
+        idx:        current,
+        time:       Math.floor(audio.currentTime)
+      }));
+    } catch(e){}
+  }
+
+  function updateProgress() {
+    var pct = (audio.duration && !isNaN(audio.duration)) ? (audio.currentTime / audio.duration * 100) : 0;
+    seekFill.style.width = pct + '%';
+    var row = document.querySelector('.track-row.playing');
+    if (row) {
+      var bg = row.querySelector('.track-bg-progress');
+      if (!bg) {
+        bg = document.createElement('div');
+        bg.className = 'track-bg-progress';
+        row.insertBefore(bg, row.firstChild);
+      }
+      bg.style.width = pct + '%';
+    }
+  }
+
+  function clearRowProgress() {
+    document.querySelectorAll('.track-bg-progress').forEach(function(el){ el.style.width = '0%'; });
+  }
+
+  function setTitleLink(url) {
+    if (url) {
+      titleEl.href = url;
+      titleEl.style.cursor = 'pointer';
+      titleEl.title = 'Go to source page';
+    } else {
+      titleEl.href = '#';
+      titleEl.style.cursor = 'default';
+      titleEl.title = '';
+    }
+  }
+
+  function applyMarquee() {
+    // Measure overflow and animate if text wider than container
+    trackInner.classList.remove('marquee');
+    trackInner.style.removeProperty('--marquee-dist');
+    requestAnimationFrame(function(){
+      var parent = trackInner.parentElement;
+      var overflow = trackInner.scrollWidth - parent.clientWidth;
+      if (overflow > 10) {
+        trackInner.style.setProperty('--marquee-dist', '-' + overflow + 'px');
+        trackInner.classList.add('marquee');
+      }
+    });
+  }
+
+  function setTrackDisplay(title, artist) {
+    titleEl.textContent  = title  || '—';
+    artistEl.textContent = artist || '';
+    applyMarquee();
+  }
+
+  function loadTrack(idx, seekTo) {
+    if (!tracks.length) return;
+    current = ((idx % tracks.length) + tracks.length) % tracks.length;
+    var t = tracks[current];
+    audio.src = t.stream_url;
+    setTrackDisplay(t.title, t.artist);
+    setTitleLink(t.source_url || '');
+    seekFill.style.width = '0%';
+    clearRowProgress();
+    if (seekTo > 0) {
+      audio.addEventListener('loadedmetadata', function seek(){
+        audio.currentTime = seekTo;
+        audio.removeEventListener('loadedmetadata', seek);
+      });
+    }
+    saveState();
+  }
+
+  function play() {
+    audio.play().then(function(){ playBtn.textContent = '⏸'; }).catch(function(){});
+  }
+  function pause() {
+    audio.pause();
+    playBtn.textContent = '▶';
+  }
+
+  // cachedGenres holds the last genre list from /api/tracks/ so we can
+  // rebuild the channel strip even when switching to the SAVED channel.
+  var cachedGenres = [];
+
+  function fetchTracks(g, restoreIdx, seekTo) {
+    var url;
+    if (g === 'saved') {
+      url = '/api/saved-tracks/';
+    } else {
+      url = '/api/tracks/' + (g && g !== 'all' ? '?genre=' + encodeURIComponent(g) : '');
+    }
+    fetch(url).then(function(r){ return r.json(); }).then(function(data){
+      tracks = data.tracks || [];
+      // Always rebuild channels — for saved channel use the cached genre list
+      if (g !== 'saved') cachedGenres = data.genres || [];
+      buildChannels(cachedGenres);
+      if (!tracks.length) {
+        show();  // show player so user can see SAVED is empty and switch channels
+        setTrackDisplay('No saved tracks', '');
+        return;
+      }
+      show();
+      loadTrack(restoreIdx || 0, seekTo || 0);
+    }).catch(function(){});
+  }
+
+  function closeChannels() {
+    channels.classList.remove('open');
+    if (chToggle) chToggle.classList.remove('open');
+  }
+
+  function buildChannels(genres) {
+    channels.innerHTML = '';
+    var activeLabel = 'ALL';
+    // ALL channel
+    var all = document.createElement('button');
+    all.className = 'cp-ch' + (genre === 'all' ? ' active' : '');
+    all.textContent = 'ALL';
+    all.onclick = function(){ setChannel('all'); closeChannels(); };
+    channels.appendChild(all);
+    // Genre channels — compare case-insensitively
+    genres.forEach(function(g){
+      var isActive = genre.toLowerCase() === g.toLowerCase();
+      var btn = document.createElement('button');
+      btn.className = 'cp-ch' + (isActive ? ' active' : '');
+      btn.textContent = g.toUpperCase();
+      btn.onclick = function(){ setChannel(g); closeChannels(); };
+      channels.appendChild(btn);
+      if (isActive) activeLabel = g.toUpperCase();
+    });
+    // SAVED channel always last
+    var saved = document.createElement('button');
+    var isSaved = genre === 'saved';
+    saved.className = 'cp-ch saved-ch' + (isSaved ? ' active' : '');
+    saved.textContent = '♥ SAVED';
+    saved.onclick = function(){ setChannel('saved'); closeChannels(); };
+    channels.appendChild(saved);
+    if (isSaved) activeLabel = '♥';
+    // Update toggle label to show active channel
+    if (chToggle) chToggle.textContent = activeLabel + ' ▾';
+  }
+
+  function setChannel(g) {
+    genre   = g;
+    current = 0;
+    // Rebuild channels immediately so active state is correct
+    buildChannels(cachedGenres);
+    fetchTracks(g);
+  }
+
+  // Toggle channel popup open/closed
+  if (chToggle) {
+    chToggle.addEventListener('click', function(e){
+      e.stopPropagation();
+      var isOpen = channels.classList.toggle('open');
+      chToggle.classList.toggle('open', isOpen);
+    });
+  }
+  // Click outside closes the popup
+  document.addEventListener('click', function(e){
+    if (!channels.contains(e.target) && e.target !== chToggle) {
+      closeChannels();
+    }
+  });
+
+  seekBar.addEventListener('click', function(e){
+    if (!audio.duration || isNaN(audio.duration)) return;
+    var rect = seekBar.getBoundingClientRect();
+    audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+    updateProgress();
+  });
+
+  playBtn.onclick = function(){ if (audio.paused) { play(); } else { pause(); } };
+  prevBtn.onclick = function(){ loadTrack(current - 1); play(); };
+  nextBtn.onclick = function(){ loadTrack(current + 1); play(); };
+  audio.addEventListener('ended', function(){ loadTrack(current + 1); play(); });
+  audio.addEventListener('timeupdate', updateProgress);
+
+  volSlide.oninput = function(){
+    audio.volume = parseInt(this.value) / 100;
+    muted = false;
+    muteBtn.classList.remove('muted');
+    muteBtn.textContent = '🔈';
+  };
+  muteBtn.onclick = function(){
+    muted = !muted;
+    audio.muted = muted;
+    muteBtn.classList.toggle('muted', muted);
+    muteBtn.textContent = muted ? '🔇' : '🔈';
+  };
+
+  setInterval(function(){ if (!audio.paused) saveState(); }, 5000);
+
+  window.cpLoad = function(url, title, artist, sourceUrl) {
+    show();
+    audio.src = url;
+    setTrackDisplay(title, artist);
+    setTitleLink(sourceUrl || '');
+    seekFill.style.width = '0%';
+    clearRowProgress();
+    audio.volume = parseFloat(volSlide.value) / 100;
+    audio.play().then(function(){ playBtn.textContent = '⏸'; }).catch(function(){});
+    // Push a single-track queue so prev/next still works via channel
+    tracks = [{stream_url: url, title: title, artist: artist, source_url: sourceUrl || ''}];
+    current = 0;
+    try {
+      sessionStorage.setItem(STORE, JSON.stringify({url: url, title: title, artist: artist, source_url: sourceUrl || '', genre: genre, idx: 0, time: 0}));
+    } catch(e){}
+  };
+
+  // Restore state on first load
+  var savedGenre = 'all', savedIdx = 0, savedTime = 0;
+  try {
+    var s = JSON.parse(sessionStorage.getItem(STORE) || 'null');
+    if (s) {
+      savedGenre = s.genre || 'all';
+      savedIdx   = s.idx   || 0;
+      savedTime  = s.time  || 0;
+      genre      = savedGenre;
+      setTrackDisplay(s.title || '—', s.artist || '');
+      setTitleLink(s.source_url || '');
+    }
+  } catch(e){}
+
+  fetchTracks(savedGenre, savedIdx, savedTime);
+
+  // ── Expose video-mode toggle for the video IIFE below ──
+  window.cpAudioShow   = show;
+  window.cpAudioPlayer = player;
+  window.cpAudio       = audio;
+  window.cpAudioPause  = pause;
+})();
+
+// ── PDXTV Video Channel ──────────────────────────────────────────────────────────
+(function(){
+  if (window.cpVideoInitialized) return;
+  window.cpVideoInitialized = true;
+
+  var panel      = document.getElementById('cp-video-panel');
+  var ytWrap     = document.getElementById('cp-yt-placeholder');
+  var titleCard  = document.getElementById('cp-video-title-card-text');
+  var artistCard = document.getElementById('cp-video-artist-card');
+  var showSoon   = document.getElementById('cp-show-soon');
+  var chLabel    = document.getElementById('cp-video-ch-label');
+  var liveBadge  = document.getElementById('cp-live-badge');
+  var footerBar  = document.getElementById('cp-player');
+
+  var videoQueue   = [];
+  var videoIdx     = 0;
+  var ytPlayer     = null;
+  var ytAPIReady   = false;
+  var ytPending    = null;   // embed_url to play once API is ready
+  var isVideoMode  = false;
+  var exitHideTimer = null;
+  var STORE_V = 'cp_video_state';
+  var exitBtn  = document.getElementById('cp-video-exit');
+
+  // ── Load YouTube IFrame API once ──
+  function loadYTAPI() {
+    if (window.YT && window.YT.Player) { ytAPIReady = true; return; }
+    if (document.getElementById('cp-yt-api-script')) return;
+    var s = document.createElement('script');
+    s.id  = 'cp-yt-api-script';
+    s.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(s);
+  }
+
+  // Chain with any existing onYouTubeIframeAPIReady (e.g. _embeds.html uploads player)
+  var _prevYtReady = window.onYouTubeIframeAPIReady;
+  window.onYouTubeIframeAPIReady = function() {
+    ytAPIReady = true;
+    if (ytPending) { createYTPlayer(ytPending); ytPending = null; }
+    if (typeof _prevYtReady === 'function') _prevYtReady();
+  };
+
+  // ── Rebuild the iframe container (shared by YouTube and Twitch) ──
+  function _resetWrap() {
+    var wrap = document.getElementById('cp-video-iframe-wrap');
+    if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
+    wrap.innerHTML = '';
+    var ph = document.createElement('div');
+    ph.id = 'cp-yt-placeholder';
+    wrap.appendChild(ph);
+    ytWrap = ph;
+  }
+
+  // ── YouTube player (YT IFrame API — needed for onEnded auto-advance) ──
+  function createYTPlayer(videoId) {
+    _resetWrap();
+    ytPlayer = new YT.Player('cp-yt-placeholder', {
+      videoId: videoId,
+      playerVars: { autoplay:1, rel:0, modestbranding:1, playsinline:1, controls:1 },
+      events: {
+        onStateChange: function(e) {
+          if (e.data === YT.PlayerState.ENDED) { nextVideo(); }
+          var playBtn = document.getElementById('cp-play');
+          if (playBtn) playBtn.textContent = (e.data === YT.PlayerState.PLAYING) ? '⏸' : '▶';
+        },
+        onError: function() { nextVideo(); },
+      },
+    });
+  }
+
+  // ── Twitch player — plain iframe (no JS API needed; live streams don't end) ──
+  function createTwitchPlayer(embedUrl) {
+    _resetWrap();
+    ytPlayer = null;  // no YT player in Twitch mode
+    var iframe = document.createElement('iframe');
+    iframe.src = embedUrl;
+    iframe.allow = 'autoplay; fullscreen';
+    iframe.allowFullscreen = true;
+    iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:none';
+    document.getElementById('cp-yt-placeholder').appendChild(iframe);
+  }
+
+  function playVideo(idx) {
+    if (!videoQueue.length) return;
+    videoIdx = ((idx % videoQueue.length) + videoQueue.length) % videoQueue.length;
+    var v = videoQueue[videoIdx];
+
+    var isLive   = v.is_live;
+    var isTwitch = v.source_type === 'twitch_live' || v.source_type === 'twitch_vod';
+
+    // ── Update title card lower-third ──
+    if (titleCard)  titleCard.textContent  = v.title  || '—';
+    if (artistCard) artistCard.textContent = v.artist || '';
+    if (showSoon)   showSoon.style.display = (!isLive && v.has_show_soon) ? 'inline-block' : 'none';
+
+    // Badge in title card
+    var badge = document.getElementById('cp-ch-badge-card');
+    if (badge) badge.textContent = isLive ? '🔴 LIVE' : 'CH 4';
+
+    // LIVE badge in footer
+    if (liveBadge) liveBadge.style.display = isLive ? 'inline-flex' : 'none';
+
+    // ── Update footer track info ──
+    var titleEl  = document.getElementById('cp-title');
+    var artistEl = document.getElementById('cp-artist');
+    if (titleEl) {
+      titleEl.textContent = v.title;
+      titleEl.href   = v.source_url || '#';
+      titleEl.target = '_blank';  // open in new tab — keep user on current page
+      titleEl.rel    = 'noopener noreferrer';
+    }
+    if (artistEl) artistEl.textContent = v.artist || '';
+
+    // ── Hide play button for live streams (no pause/seek) ──
+    var playBtn = document.getElementById('cp-play');
+    if (playBtn) playBtn.style.display = isLive ? 'none' : 'flex';
+
+    // Save state
+    try { sessionStorage.setItem(STORE_V, JSON.stringify({idx: videoIdx})); } catch(e){}
+
+    if (isTwitch) {
+      createTwitchPlayer(v.embed_url);
+      return;
+    }
+
+    // YouTube path
+    // Extract raw video ID from embed_url for YT.Player API
+    var ytMatch = v.embed_url.match(/embed\/([^?]+)/);
+    var ytId    = ytMatch ? ytMatch[1] : v.video_id;
+
+    if (!ytAPIReady) { ytPending = ytId; return; }
+    if (ytPlayer && ytPlayer.loadVideoById) {
+      ytPlayer.loadVideoById(ytId);
+    } else {
+      createYTPlayer(ytId);
+    }
+  }
+
+  function nextVideo() { playVideo(videoIdx + 1); }
+  function prevVideo() { playVideo(videoIdx - 1); }
+
+  // ── TV static flash effect ──
+  function staticFlash(cb) {
+    var el = document.createElement('div');
+    el.className = 'cp-static-flash';
+    document.body.appendChild(el);
+    setTimeout(function(){ el.remove(); if (cb) cb(); }, 380);
+  }
+
+  // ── Wiggle-to-show exit button ──
+  function showExitHint() {
+    if (!isVideoMode || !exitBtn) return;
+    exitBtn.classList.add('vis');
+    clearTimeout(exitHideTimer);
+    exitHideTimer = setTimeout(function(){ exitBtn.classList.remove('vis'); }, 2500);
+  }
+  document.addEventListener('mousemove', showExitHint);
+  document.addEventListener('touchstart', showExitHint, {passive: true});
+  if (exitBtn) {
+    exitBtn.addEventListener('click', function(){
+      staticFlash(leaveVideoMode);
+    });
+  }
+
+  // ── Enter / leave video mode ──
+  function enterVideoMode() {
+    if (isVideoMode) return;
+    isVideoMode = true;
+    try { sessionStorage.removeItem('cp_video_off'); } catch(e){}
+
+    // Pause audio
+    if (window.cpAudio) { try { window.cpAudio.pause(); } catch(e){} }
+
+    // Show panel + flip footer
+    panel.classList.add('active');
+    if (footerBar) {
+      footerBar.style.display = 'flex';
+      footerBar.classList.add('video-mode');
+      document.body.classList.add('has-player');
+    }
+    // Keep label visible — change text to signal "click to exit"
+    if (chLabel) { chLabel.textContent = '📺 ✕'; }
+
+    // Brief exit hint so user knows about the wiggle mechanic
+    setTimeout(showExitHint, 400);
+
+    // Wire footer controls to video
+    var playBtn = document.getElementById('cp-play');
+    var prevBtn = document.getElementById('cp-prev');
+    var nextBtn = document.getElementById('cp-next');
+    if (playBtn) playBtn.onclick = function(){
+      if (!ytPlayer) return;
+      var state = ytPlayer.getPlayerState ? ytPlayer.getPlayerState() : -1;
+      if (state === 1) { ytPlayer.pauseVideo(); playBtn.textContent = '▶'; }
+      else { ytPlayer.playVideo(); playBtn.textContent = '⏸'; }
+    };
+    if (prevBtn) prevBtn.onclick = prevVideo;
+    if (nextBtn) nextBtn.onclick = nextVideo;
+
+    // Fetch queue if empty, then play
+    if (!videoQueue.length) {
+      fetch('/api/videos/').then(function(r){ return r.json(); }).then(function(d){
+        videoQueue = d.videos || [];
+        if (!videoQueue.length) { leaveVideoMode(); return; }
+        // Restore position
+        try {
+          var saved = JSON.parse(sessionStorage.getItem(STORE_V) || 'null');
+          if (saved && saved.idx < videoQueue.length) videoIdx = saved.idx;
+        } catch(e){}
+        loadYTAPI();
+        playVideo(videoIdx);
+      }).catch(function(){ leaveVideoMode(); });
+    } else {
+      loadYTAPI();
+      playVideo(videoIdx);
+    }
+  }
+
+  function leaveVideoMode() {
+    if (!isVideoMode) return;
+    isVideoMode = false;
+    // Remember that the user explicitly stopped video — prevent Turbo nav from restoring it
+    try { sessionStorage.setItem('cp_video_off', '1'); } catch(e){}
+
+    panel.classList.remove('active');
+    if (footerBar) footerBar.classList.remove('video-mode');
+    // Restore label text
+    if (chLabel) { chLabel.textContent = '📺 VIDEO'; chLabel.style.display = 'inline-block'; }
+    if (exitBtn) { exitBtn.classList.remove('vis'); }
+
+    // Pause video player
+    if (ytPlayer && ytPlayer.pauseVideo) { try { ytPlayer.pauseVideo(); } catch(e){} }
+
+    // Restore audio controls
+    var playBtn = document.getElementById('cp-play');
+    var prevBtn = document.getElementById('cp-prev');
+    var nextBtn = document.getElementById('cp-next');
+    var cpAudio = window.cpAudio;
+    if (playBtn) { playBtn.style.display = 'flex'; playBtn.textContent = (cpAudio && !cpAudio.paused) ? '⏸' : '▶'; }
+    if (prevBtn) prevBtn.onclick = null;
+    if (nextBtn) nextBtn.onclick = null;
+  }
+
+  // ── Wire VIDEO label in footer ──
+  if (chLabel) {
+    chLabel.addEventListener('click', function(e) {
+      e.stopPropagation();
+      staticFlash(function(){
+        if (isVideoMode) { leaveVideoMode(); }
+        else { enterVideoMode(); }
+      });
+    });
+  }
+
+  // ── Wire VIDEO channel in the genre popup ──
+  // Called by the audio IIFE's buildChannels after it renders — we inject a VIDEO btn
+  var _origBuildChannels = null;
+  // Patch: after cpInitialized runs, decorate buildChannels
+  // We do this by checking periodically until it's available, then patching once
+  function patchChannelMenu() {
+    var channels = document.getElementById('cp-channels');
+    if (!channels) return;
+    // Add VIDEO button at the end of the channel popup
+    var existing = channels.querySelector('[data-cp-video-btn]');
+    if (existing) return;
+
+    var btn = document.createElement('button');
+    btn.className = 'cp-ch';
+    btn.dataset.cpVideoBtn = '1';
+    btn.textContent = '📺 VIDEO';
+    btn.style.cssText = 'border-color:#ff6b35;color:#ff6b35';
+    btn.onclick = function(){
+      channels.classList.remove('open');
+      var toggle = document.getElementById('cp-ch-toggle');
+      if (toggle) toggle.classList.remove('open');
+      staticFlash(enterVideoMode);
+    };
+    channels.appendChild(btn);
+  }
+
+  // Observe channel popup so we can inject VIDEO button after buildChannels runs
+  var _channelObs = new MutationObserver(function(){ patchChannelMenu(); });
+  var channelEl = document.getElementById('cp-channels');
+  if (channelEl) _channelObs.observe(channelEl, {childList: true});
+
+  // Show the VIDEO label once the player first shows, unless in video mode (already shown)
+  function _syncVideoLabel() {
+    if (!footerBar || footerBar.style.display === 'none' || !chLabel) return;
+    if (isVideoMode) {
+      // Keep the exit label visible; ensure panel state is correct
+      chLabel.textContent = '📺 ✕';
+      chLabel.style.display = 'inline-block';
+    } else {
+      // If user explicitly stopped video, make sure panel is off
+      var userStopped = false;
+      try { userStopped = sessionStorage.getItem('cp_video_off') === '1'; } catch(e){}
+      if (userStopped && panel.classList.contains('active')) {
+        panel.classList.remove('active');
+        if (footerBar) footerBar.classList.remove('video-mode');
+      }
+      chLabel.textContent = '📺 VIDEO';
+      chLabel.style.display = 'inline-block';
+    }
+  }
+  document.addEventListener('turbo:load', _syncVideoLabel);
+  _syncVideoLabel();
+  var _playerObs = new MutationObserver(_syncVideoLabel);
+  if (footerBar) _playerObs.observe(footerBar, {attributes: true, attributeFilter: ['style']});
+
+  // Expose for debugging
+  window.cpVideo = { enter: enterVideoMode, leave: leaveVideoMode, next: nextVideo, prev: prevVideo };
+})();
+</script>

@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Promoters &amp; Crews — Community Playlist{% endblock %}
+{% block styles %}
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif}
+.topbar{padding:6px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;gap:12px}
+.topbar a{color:#ff6b35;text-decoration:none;font-size:.82em}
+.topbar a:hover{text-decoration:underline}
+.logo-link img{height:34px;width:auto;display:block}
+.page{max-width:860px;margin:0 auto;padding:24px 16px}
+h1{color:#ff6b35;font-size:1.3em;margin-bottom:4px}
+.page-desc{color:#666;font-size:.85em;margin-bottom:24px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.card{background:#161616;border:1px solid #222;border-radius:10px;padding:16px;text-decoration:none;display:block;transition:border-color .15s}
+.card:hover{border-color:#ff6b35}
+.card-photo{width:52px;height:52px;border-radius:8px;object-fit:cover;background:#222;margin-bottom:10px}
+.card-placeholder{width:52px;height:52px;border-radius:8px;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:1.5em;color:#333;margin-bottom:10px}
+.card-name{color:#ddd;font-weight:600;font-size:.92em;margin-bottom:4px}
+.card-bio{color:#555;font-size:.78em;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card-genres{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.genre-tag{background:#1e1228;color:#cc88ff;font-size:.68em;padding:2px 6px;border-radius:3px;font-weight:600}
+.cta{display:inline-flex;align-items:center;background:#ff6b35;color:#fff;padding:8px 18px;border-radius:6px;text-decoration:none;font-size:.85em;margin-top:20px}
+.cta:hover{background:#e55a25}
+.empty{color:#444;font-size:.88em;padding:20px 0}
+</style>
+{% endblock %}
+{% block body %}
+
+<div class="topbar">
+  <a href="/" class="logo-link"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="CP"></a>
+  <a href="/">← Events</a>
+  <a href="/artists/">Artists</a>
+</div>
+{% include 'events/_nav_strip.html' %}
+
+<div class="page">
+  <h1>Promoters &amp; Crews</h1>
+  <p class="page-desc">Sound systems, collectives, labels, and event crews building PDX culture.</p>
+
+  {% if promoters %}
+  <div class="grid">
+    {% for p in promoters %}
+    <a href="{% url 'promoter_detail' p.slug %}" class="card">
+      {% if p.photo %}
+        <img src="{{ p.photo.url }}" alt="{{ p.name }}" class="card-photo">
+      {% else %}
+        <div class="card-placeholder">📣</div>
+      {% endif %}
+      <div class="card-name">{{ p.name }}</div>
+      {% if p.bio %}<div class="card-bio">{{ p.bio }}</div>{% endif %}
+      {% if p.genres.all %}
+      <div class="card-genres">
+        {% for g in p.genres.all|slice:":4" %}<span class="genre-tag">{{ g.name }}</span>{% endfor %}
+      </div>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">No promoter profiles yet — be the first to add yours.</p>
+  {% endif %}
+
+  {% if request.user.is_authenticated %}
+  <a href="{% url 'promoter_register' %}" class="cta">+ Add your crew</a>
+  {% else %}
+  <p style="color:#555;font-size:.82em;margin-top:20px"><a href="{% url 'login' %}" style="color:#ff6b35">Log in</a> to add your crew or collective.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

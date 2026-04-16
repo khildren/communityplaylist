@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ hood.name }} — Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}{{ hood.name }} — Community Playlist{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:860px;margin:0 auto}
@@ -78,8 +75,9 @@ h1{color:#ff6b35;font-size:1.6em;margin-bottom:8px}
   .reply-form input{width:100%}
 }
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
+{% include 'events/_nav_strip.html' %}
 <a href="/neighborhoods/" class="back">← Neighborhoods</a>
 
 <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px">
@@ -91,6 +89,7 @@ h1{color:#ff6b35;font-size:1.6em;margin-bottom:8px}
     {% if is_following %}★ Following{% else %}☆ Follow{% endif %}
   </button>
   {% endif %}
+  {% if hood.view_count %}<span style="color:#444;font-size:.78em">👁 {{ hood.view_count }}</span>{% endif %}
 </div>
 
 {% if hood.description or hood.wiki_url %}
@@ -246,5 +245,4 @@ function toggleTopic(pk) {
   }
 })();
 </script>
-</body>
-</html>
+{% endblock %}

@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Venues — Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}Venues — Community Playlist{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:860px;margin:0 auto}
@@ -27,8 +24,8 @@ h1{color:#ff6b35;font-size:1.4em}
 .empty{text-align:center;padding:60px;color:#555}
 .empty a{color:#ff6b35;text-decoration:none}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <div class="header">
   <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
 </div>
@@ -37,6 +34,7 @@ h1{color:#ff6b35;font-size:1.4em}
   <h1>🏛 PDX Venues</h1>
   <a href="/venues/register/" class="register-btn">+ Register your venue</a>
 </div>
+{% include 'events/_nav_strip.html' %}
 
 {% if venues %}
 <div class="venue-grid">
@@ -59,5 +57,4 @@ h1{color:#ff6b35;font-size:1.4em}
   <p style="margin-top:12px"><a href="/venues/register/">Register your venue →</a></p>
 </div>
 {% endif %}
-</body>
-</html>
+{% endblock %}

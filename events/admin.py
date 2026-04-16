@@ -6,7 +6,7 @@ from django.urls import path
 from django.http import HttpResponseRedirect
 from django.contrib import messages
 from django import forms
-from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile
+from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile, PromoterProfile, PlaylistTrack, RecordListing, RecordReservation, VideoTrack
 import os
 import datetime
 import subprocess
@@ -52,11 +52,223 @@ class GenreAdmin(admin.ModelAdmin):
     ordering = ['name']
 
 
+def _artist_score(a):
+    """Higher = more canonical. Used to pick the winner when merging duplicates."""
+    return (
+        bool(a.claimed_by) * 1000 +
+        a.is_verified * 500 +
+        bool(a.photo) * 50 +
+        bool(a.bio) * 30 +
+        bool(a.instagram or a.soundcloud or a.mixcloud or a.youtube or a.spotify) * 20 +
+        bool(a.drive_folder_url) * 10 +
+        bool(a.mb_id) * 5 -
+        a.pk  # tie-break: prefer older (lower pk)
+    )
+
+
+def merge_artists(modeladmin, request, queryset):
+    """Merge selected Artist records into the most canonical one."""
+    artists = list(queryset)
+    if len(artists) < 2:
+        modeladmin.message_user(request, 'Select at least 2 artists to merge.', messages.WARNING)
+        return
+
+    winner = max(artists, key=_artist_score)
+    losers = [a for a in artists if a.pk != winner.pk]
+
+    for loser in losers:
+        # Reassign all M2M relations from loser → winner
+        for event in loser.events.all():
+            event.artists.remove(loser)
+            event.artists.add(winner)
+        for promo in loser.crews.all():
+            promo.members.remove(loser)
+            promo.members.add(winner)
+        for recurring in loser.recurring_events.all():
+            recurring.residents.remove(loser)
+            recurring.residents.add(winner)
+        # Carry over profile fields winner is missing
+        for field in ('bio', 'photo', 'website', 'mb_id', 'instagram', 'soundcloud',
+                      'bandcamp', 'mixcloud', 'youtube', 'spotify', 'mastodon',
+                      'bluesky', 'tiktok', 'drive_folder_url'):
+            if not getattr(winner, field) and getattr(loser, field):
+                setattr(winner, field, getattr(loser, field))
+        if not winner.claimed_by and loser.claimed_by:
+            winner.claimed_by = loser.claimed_by
+        loser.delete()
+
+    winner.save()
+    modeladmin.message_user(
+        request,
+        f'Merged {len(losers)} duplicate(s) into "{winner.name}" (pk={winner.pk}).',
+        messages.SUCCESS,
+    )
+
+merge_artists.short_description = 'Merge selected artists into the most canonical one'
+
+
 @admin.register(Artist)
 class ArtistAdmin(admin.ModelAdmin):
-    search_fields = ['name']
+    search_fields = ['name', 'slug']
     ordering = ['name']
-    list_display = ['name', 'mb_id', 'website']
+    list_display = ['name', 'slug', 'mb_id', 'website', 'has_drive', 'is_verified', 'claimed_by']
+    list_editable = ['is_verified']
+    list_filter = ['is_verified']
+    raw_id_fields = ['claimed_by']
+    actions = [merge_artists]
+
+    def has_drive(self, obj):
+        return bool(obj.drive_folder_url)
+    has_drive.boolean = True
+    has_drive.short_description = 'Drive'
+
+
+@admin.register(PromoterProfile)
+class PromoterProfileAdmin(admin.ModelAdmin):
+    search_fields = ['name', 'slug', 'admin_email']
+    ordering = ['name']
+    list_display = ['name', 'slug', 'admin_email', 'is_verified', 'is_public', 'has_drive', 'claimed_by']
+    list_editable = ['is_verified', 'is_public']
+    list_filter = ['is_verified', 'is_public']
+    raw_id_fields = ['claimed_by']
+    filter_horizontal = ['genres']
+    actions = ['send_claim_instructions']
+
+    def has_drive(self, obj):
+        return bool(obj.drive_folder_url)
+    has_drive.boolean = True
+    has_drive.short_description = 'Drive'
+
+    def send_claim_instructions(self, request, queryset):
+        from django.core.mail import send_mail
+        sent, skipped = 0, 0
+        for promoter in queryset:
+            if not promoter.admin_email:
+                skipped += 1
+                continue
+            if promoter.claimed_by:
+                skipped += 1
+                continue
+            profile_url = f'https://communityplaylist.com/promoters/{promoter.slug}/'
+            body = (
+                'Hey!\n\n'
+                f'Your profile on Community Playlist is live:\n{profile_url}\n\n'
+                'To take ownership -- manage events, sync your record shop, and keep your info '
+                'up to date -- create a free account and then claim your profile:\n\n'
+                '1. Register (or log in): https://communityplaylist.com/register/\n'
+                f'2. Visit your profile:   {profile_url}\n'
+                '3. Click "Claim this profile" and you\'re in.\n\n'
+                'Any questions? Reply to this email.\n\n'
+                '-- Community Playlist\n'
+                'https://communityplaylist.com'
+            )
+            try:
+                send_mail(
+                    subject=f'Claim your Community Playlist profile — {promoter.name}',
+                    message=body,
+                    from_email='Community Playlist <noreply@communityplaylist.com>',
+                    recipient_list=[promoter.admin_email],
+                    fail_silently=False,
+                )
+                sent += 1
+            except Exception as e:
+                self.message_user(request, f'Mail error for {promoter.name}: {e}', level='error')
+        if sent:
+            self.message_user(request, f'Claim instructions sent to {sent} profile(s).')
+        if skipped:
+            self.message_user(request, f'{skipped} skipped (no email or already claimed).', level='warning')
+    send_claim_instructions.short_description = 'Send claim instructions email'
+
+
+class HasPreviewFilter(admin.SimpleListFilter):
+    title = 'preview video'
+    parameter_name = 'has_preview'
+
+    def lookups(self, request, model_admin):
+        return [('yes', 'Has preview'), ('no', 'No preview')]
+
+    def queryset(self, request, queryset):
+        if self.value() == 'yes':
+            return queryset.exclude(preview_url='')
+        if self.value() == 'no':
+            return queryset.filter(preview_url='')
+
+
+@admin.register(RecordListing)
+class RecordListingAdmin(admin.ModelAdmin):
+    list_display = ['artist', 'title', 'label', 'year', 'format', 'condition',
+                    'price_sol', 'is_available', 'promoter', 'has_preview', 'preview_link']
+    list_filter = ['is_available', 'format', 'condition', HasPreviewFilter]
+    list_editable = ['is_available']
+    search_fields = ['artist', 'title', 'label', 'promoter__name']
+    raw_id_fields = ['promoter']
+    ordering = ['promoter', 'row_index']
+
+    def has_preview(self, obj):
+        return bool(obj.preview_url)
+    has_preview.boolean = True
+    has_preview.short_description = '▶'
+
+    def preview_link(self, obj):
+        if obj.preview_url:
+            return format_html('<a href="{}" target="_blank" rel="noopener">YouTube ↗</a>', obj.preview_url)
+        return '—'
+    preview_link.short_description = 'Preview URL'
+
+
+@admin.register(RecordReservation)
+class RecordReservationAdmin(admin.ModelAdmin):
+    list_display = ['listing', 'buyer_name', 'buyer_email', 'status', 'created_at']
+    list_filter = ['status']
+    list_editable = ['status']
+    search_fields = ['buyer_name', 'buyer_email', 'buyer_contact', 'listing__artist', 'listing__title']
+    raw_id_fields = ['listing']
+    readonly_fields = ['created_at']
+    ordering = ['-created_at']
+
+
+@admin.register(PlaylistTrack)
+class PlaylistTrackAdmin(admin.ModelAdmin):
+    list_display = ['title', 'artist_name', 'genre', 'source_display', 'recorded_at', 'last_synced']
+    list_filter = ['genre']
+    search_fields = ['title', 'artist_name', 'drive_file_id']
+    raw_id_fields = ['artist', 'promoter', 'venue', 'genre']
+
+    def source_display(self, obj):
+        return obj.source_label
+    source_display.short_description = 'Source'
+
+
+@admin.register(VideoTrack)
+class VideoTrackAdmin(admin.ModelAdmin):
+    list_display  = ['artist_name_display', 'title_truncated', 'channel_title',
+                     'source_type', 'published_at', 'play_count', 'is_active']
+    list_filter   = ['is_active']
+    search_fields = ['title', 'artist_name_display', 'channel_title', 'youtube_video_id']
+    raw_id_fields = ['artist', 'promoter', 'venue']
+    list_editable = ['is_active']
+    ordering      = ['-published_at']
+    readonly_fields = ['youtube_video_id', 'youtube_channel_id', 'play_count',
+                       'published_at', 'last_synced', 'video_preview']
+
+    def title_truncated(self, obj):
+        return obj.title[:60] + ('…' if len(obj.title) > 60 else '')
+    title_truncated.short_description = 'Title'
+
+    def source_type(self, obj):
+        if obj.artist_id:   return f'Artist: {obj.artist}'
+        if obj.promoter_id: return f'Promoter: {obj.promoter}'
+        if obj.venue_id:    return f'Venue: {obj.venue}'
+        return '—'
+    source_type.short_description = 'Source'
+
+    def video_preview(self, obj):
+        return format_html(
+            '<a href="https://youtube.com/watch?v={}" target="_blank">'
+            '<img src="{}" style="max-width:200px;border-radius:4px"></a>',
+            obj.youtube_video_id, obj.thumbnail_url or ''
+        )
+    video_preview.short_description = 'Preview'
 
 
 def _scrape_venue_site(website):
@@ -239,6 +451,95 @@ class VenueAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
+def _event_score(ev):
+    """Higher = more canonical. Used to pick the winner when deduplicating events."""
+    return (
+        (ev.status == 'approved') * 1000 +
+        bool(ev.photo) * 100 +
+        bool(ev.description and len(ev.description) > 50) * 50 +
+        bool(ev.website) * 20 +
+        bool(ev.neighborhood) * 10 +
+        bool(ev.artists.exists()) * 10 -
+        ev.pk  # tie-break: prefer older record
+    )
+
+
+def merge_events(modeladmin, request, queryset):
+    """Merge selected Event records into the most canonical one (most data, approved, oldest)."""
+    events = list(queryset.prefetch_related('artists', 'genres', 'photos'))
+    if len(events) < 2:
+        modeladmin.message_user(request, 'Select at least 2 events to merge.', messages.WARNING)
+        return
+
+    winner = max(events, key=_event_score)
+    losers = [e for e in events if e.pk != winner.pk]
+
+    for loser in losers:
+        # Move M2M links to winner
+        for artist in loser.artists.all():
+            winner.artists.add(artist)
+        for genre in loser.genres.all():
+            winner.genres.add(genre)
+        # Carry over fields winner is missing
+        for field in ('description', 'website', 'photo', 'neighborhood', 'end_date',
+                      'ticket_url', 'is_free', 'category'):
+            if not getattr(winner, field, None) and getattr(loser, field, None):
+                setattr(winner, field, getattr(loser, field))
+        if winner.status != 'approved' and loser.status == 'approved':
+            winner.status = 'approved'
+        loser.delete()
+
+    winner.save()
+    modeladmin.message_user(
+        request,
+        f'Merged {len(losers)} duplicate(s) into "{winner.title}" (pk={winner.pk}).',
+        messages.SUCCESS,
+    )
+
+merge_events.short_description = 'Merge selected events into the most canonical one'
+
+
+def dedup_by_title_date(modeladmin, request, queryset):
+    """Auto-delete exact duplicates (same title + same start date) in the selection, keeping the best."""
+    from itertools import groupby
+    from django.utils.text import slugify as _slugify
+
+    events = list(queryset.order_by('title', 'start_date'))
+    removed = 0
+
+    # Group by normalised title + date
+    def key(e):
+        return (_slugify(e.title), e.start_date.date() if e.start_date else None)
+
+    seen = {}
+    for ev in events:
+        k = key(ev)
+        seen.setdefault(k, []).append(ev)
+
+    for k, group in seen.items():
+        if len(group) < 2:
+            continue
+        winner = max(group, key=_event_score)
+        for loser in group:
+            if loser.pk == winner.pk:
+                continue
+            for artist in loser.artists.all():
+                winner.artists.add(artist)
+            for genre in loser.genres.all():
+                winner.genres.add(genre)
+            loser.delete()
+            removed += 1
+        winner.save()
+
+    modeladmin.message_user(
+        request,
+        f'Removed {removed} duplicate event(s). Winners kept for each title+date group.',
+        messages.SUCCESS if removed else messages.WARNING,
+    )
+
+dedup_by_title_date.short_description = 'Auto-remove duplicates (same title + date, keep best)'
+
+
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
     list_display = ['title', 'start_date', 'location', 'neighborhood', 'status', 'is_free', 'submitted_by']
@@ -249,6 +550,7 @@ class EventAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('title',)}
     autocomplete_fields = ['genres', 'artists']
     inlines = [EventPhotoInline]
+    actions = [merge_events, dedup_by_title_date]
 
     def save_model(self, request, obj, form, change):
         old_status = None
@@ -268,14 +570,14 @@ class EventPhotoAdmin(admin.ModelAdmin):
 
 @admin.register(VenueFeed)
 class VenueFeedAdmin(admin.ModelAdmin):
-    list_display = ['name', 'source_type', 'active', 'auto_approve', 'default_category', 'genre_list', 'last_synced', 'health_status']
+    list_display = ['name', 'promoter', 'source_type', 'active', 'auto_approve', 'default_category', 'genre_list', 'last_synced', 'health_status']
     list_filter = ['source_type', 'active', 'auto_approve', 'default_category']
     list_editable = ['active', 'auto_approve']
     search_fields = ['name', 'url', 'notes']
     ordering = ['name']
     readonly_fields = ['last_synced', 'last_error', 'created_at']
     fieldsets = (
-        (None, {'fields': ('name', 'website', 'source_type', 'url')}),
+        (None, {'fields': ('name', 'website', 'source_type', 'url', 'promoter')}),
         ('Import settings', {'fields': ('active', 'auto_approve', 'default_category', 'default_genres', 'residents')}),
         ('Status', {'fields': ('last_synced', 'last_error', 'created_at')}),
         ('Notes', {'fields': ('notes',)}),
@@ -516,7 +818,7 @@ class EditSuggestionAdmin(admin.ModelAdmin):
         if obj.target_type == 'venue':
             return format_html('<a href="/venues/{}/" target="_blank">{}</a>', target.slug, target.name)
         if obj.target_type == 'artist':
-            return format_html('<a href="/artists/{}/" target="_blank">{}</a>', target.pk, target.name)
+            return format_html('<a href="/artists/{}/" target="_blank">{}</a>', target.slug or target.pk, target.name)
         if obj.target_type == 'neighborhood':
             return format_html('<a href="/neighborhoods/{}/" target="_blank">{}</a>', target.slug, target.name)
         return '—'

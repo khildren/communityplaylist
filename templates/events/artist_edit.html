@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit — {{ artist.name }} — Community Playlist</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif;padding:24px 16px}
+.wrap{max-width:640px;margin:0 auto}
+.back{color:#ff6b35;text-decoration:none;font-size:.82em;display:inline-block;margin-bottom:20px}
+.back:hover{text-decoration:underline}
+h1{color:#ff6b35;font-size:1.2em;margin-bottom:22px}
+.card{background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:22px;margin-bottom:16px}
+.card-title{color:#ff6b35;font-size:.8em;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;font-weight:600}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:.8em;color:#888;margin-bottom:5px}
+.fg input,.fg textarea{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:8px 11px;color:#eee;font-size:.88em;font-family:inherit}
+.fg input:focus,.fg textarea:focus{outline:none;border-color:#ff6b35}
+.fg textarea{resize:vertical;min-height:80px}
+.social-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{font-size:.74em;color:#444;margin-top:4px}
+.btn{background:#ff6b35;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:.88em}
+.btn:hover{background:#e55a25}
+.photo-current{width:60px;height:60px;border-radius:8px;object-fit:cover;margin-bottom:8px;display:block}
+@media(max-width:500px){.social-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a href="{% url 'artist_profile' artist.slug %}" class="back">← {{ artist.name }}</a>
+<h1>Edit artist profile</h1>
+
+<form method="post" enctype="multipart/form-data" data-turbo="false">
+{% csrf_token %}
+
+<div class="card">
+  <div class="card-title">Basics</div>
+  <div class="fg">
+    <label>Bio</label>
+    <textarea name="bio">{{ artist.bio }}</textarea>
+  </div>
+  <div class="fg">
+    <label>Photo</label>
+    {% if artist.photo %}<img src="{{ artist.photo.url }}" alt="" class="photo-current">{% endif %}
+    <input type="file" name="photo" accept="image/*">
+  </div>
+  <div class="fg">
+    <label>Website</label>
+    <input type="url" name="website" value="{{ artist.website }}" placeholder="https://...">
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Social Links</div>
+  <div class="social-grid">
+    <div class="fg">
+      <label>Instagram handle</label>
+      <input type="text" name="instagram" value="{{ artist.instagram }}" placeholder="no @">
+    </div>
+    <div class="fg">
+      <label>SoundCloud username</label>
+      <input type="text" name="soundcloud" value="{{ artist.soundcloud }}">
+    </div>
+    <div class="fg">
+      <label>Bandcamp URL</label>
+      <input type="url" name="bandcamp" value="{{ artist.bandcamp }}" placeholder="https://...">
+    </div>
+    <div class="fg">
+      <label>Mixcloud username</label>
+      <input type="text" name="mixcloud" value="{{ artist.mixcloud }}">
+    </div>
+    <div class="fg">
+      <label>Spotify URL</label>
+      <input type="url" name="spotify" value="{{ artist.spotify }}" placeholder="https://...">
+    </div>
+    <div class="fg">
+      <label>Mastodon URL</label>
+      <input type="url" name="mastodon" value="{{ artist.mastodon }}" placeholder="https://pdx.social/@you">
+    </div>
+    <div class="fg">
+      <label>Bluesky handle</label>
+      <input type="text" name="bluesky" value="{{ artist.bluesky }}" placeholder="you.bsky.social">
+    </div>
+    <div class="fg">
+      <label>TikTok handle</label>
+      <input type="text" name="tiktok" value="{{ artist.tiktok }}" placeholder="no @">
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">📺 PDXTV — Video Channel</div>
+  <p style="font-size:.78em;color:#555;margin-bottom:14px;line-height:1.6">Connect a YouTube channel and/or Twitch account. Videos and VODs are harvested automatically and added to the PDXTV queue. Live Twitch streams surface at the top.</p>
+  <div class="social-grid">
+    <div class="fg">
+      <label>YouTube channel URL</label>
+      <input type="url" name="youtube" value="{{ artist.youtube }}" placeholder="https://youtube.com/@handle">
+      <div class="hint">Already set above — shared with social links.</div>
+    </div>
+    <div class="fg">
+      <label>Twitch username</label>
+      <input type="text" name="twitch" value="{{ artist.twitch }}" placeholder="username (no @)">
+      <div class="hint">Your twitch.tv/username — live streams + VODs join PDXTV.</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Music Folder</div>
+  <div class="fg">
+    <label>Google Drive Folder URL</label>
+    <input type="url" name="drive_folder_url" value="{{ artist.drive_folder_url }}" placeholder="https://drive.google.com/drive/folders/...">
+    <div class="hint">
+      Folder must be shared: <strong style="color:#aaa">Anyone with the link → Viewer</strong>.<br>
+      Use <strong style="color:#aaa">MP3 at 128–320 kbps</strong> — WAV is too large to stream.<br>
+      <strong style="color:#aaa">ID3 tags are read first</strong> (Title, Artist, Genre, Year) — set them cleanly in any tagger.<br>
+      Fallback if tags are missing: <code>Artist - Title [genre] @ Venue 2024-01-15.mp3</code>
+    </div>
+  </div>
+</div>
+
+<button type="submit" class="btn">Save changes</button>
+</form>
+</div>
+</body>
+</html>

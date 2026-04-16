@@ -114,36 +114,107 @@ def detect_category(title, description='', location=''):
 
 
 # ── Genre detection ───────────────────────────────────────────────────────────
+# Patterns are checked case-insensitively against title + first 600 chars of description.
+# Order matters for overlapping genres (more specific first).
 
 GENRE_KEYWORDS = {
+    # ── Electronic sub-genres (specific first) ───────────────────────────────
+    'Liquid Drum & Bass':     [r'\bliquid\b.{0,20}\bdrum.?(?:and|&|n).?bass\b',
+                               r'\bliquid\b.{0,20}\bdnb\b', r'\bliquid dnb\b'],
+    'Halftime Drum & Bass':   [r'\bhalftime\b.{0,20}\bdrum.?(?:and|&|n).?bass\b',
+                               r'\bhalftime\b.{0,20}\bdnb\b'],
+    'Neurofunk Drum & Bass':  [r'\bneurofunk\b'],
+    'Drum and Bass':          [r'\bdrum.?(?:and|&|n).?bass\b', r'\bD&B\b', r'\bDnB\b',
+                               r'\bdnb\b(?!.*dubstep)'],
+    'Melodic Dubstep':        [r'\bmelodic.{0,10}dubstep\b'],
+    'Liquid Dubstep':         [r'\bliquid.{0,10}dubstep\b'],
+    'Crunchy Dubstep':        [r'\bcrunchy.{0,10}dubstep\b'],
+    'Riddim':                 [r'\briddim\b'],
+    'Dubstep':                [r'\bdubstep\b'],
+    'Future Bass':            [r'\bfuture\b.{0,10}\bbass\b(?! house)'],
+    'Bass House':             [r'\bbass\b.{0,10}\bhouse\b'],
+    'Bass Music':             [r'\bbass\b.{0,10}\bmusic\b', r'\bbassline\b'],
+    'Footwork':               [r'\bfootwork\b', r'\bjuke\b'],
+    'Psytrance':              [r'\bpsytrance\b', r'\bpsy.?trance\b',
+                               r'\bpsychedelic\b.{0,10}\btrance\b'],
+    'Prog Psy':               [r'\bprog(?:ressive)?.{0,10}psy\b'],
+    'Trance':                 [r'\btrance\b(?!.*psy)'],
+    'Hard Techno':            [r'\bhard.{0,10}techno\b'],
+    'Melodic Techno':         [r'\bmelodic.{0,10}techno\b'],
+    'Big Room Techno':        [r'\bbig.?room.{0,10}techno\b'],
+    'Techno':                 [r'\btechno\b'],
+    'Progressive House':      [r'\bprog(?:ressive)?.{0,10}house\b'],
+    'Deep House':             [r'\bdeep.{0,10}house\b'],
+    'Tech House':             [r'\btech.{0,10}house\b'],
+    'Funky House':            [r'\bfunky.{0,10}house\b'],
+    'Jackin House':           [r'\bjackin.{0,10}house\b'],
+    'Hard House':             [r'\bhard.{0,10}house\b'],
+    'Dark House':             [r'\bdark.{0,10}house\b'],
+    'Tribal House':           [r'\btribal.{0,10}house\b'],
+    'Big Room House':         [r'\bbig.?room.{0,10}house\b'],
+    'House':                  [r'\bhouse\b.{0,20}\b(?:music|night|set|party|dj)\b',
+                               r'\bhouse music\b'],
+    'Electro House':          [r'\belectro.{0,10}house\b'],
+    'Indie Dance':            [r'\bindie.{0,10}dance\b'],
+    'UK Garage':              [r'\buk\b.{0,10}\bgarage\b', r'\bu\.?k\.?\s*garage\b',
+                               r'\b2.?step\b'],
+    'Jungle':                 [r'\bjungle\b.{0,20}\b(?:music|rave|night|dnb)\b'],
+    'Breaks':                 [r'\bbreaks\b', r'\bbreakbeat\b'],
+    'Ghettotech':             [r'\bghettotech\b'],
+    'Livetronica':            [r'\blivetronica\b'],
+    'Live Looping':           [r'\blive\b.{0,10}\blooping\b'],
+    'Halftime':               [r'\bhalftime\b(?!.{0,20}drum)'],
+    'Big Room':               [r'\bbig.?room\b(?!.{0,20}(?:techno|house))'],
+    'Donk':                   [r'\bdonk\b'],
+    'Folktronic':             [r'\bfolktronic\b'],
+    'Future Beats':           [r'\bfuture.{0,10}beats\b'],
+    'Future Funk':            [r'\bfuture.{0,10}funk\b'],
+    'Electronic':             [r'\belectronic\b.{0,20}\b(?:music|set|night|dance|acts?)\b',
+                               r'\bEDM\b', r'\bDJ\b.{0,20}\bset\b', r'\brave\b',
+                               r'\bclub\b.{0,20}\bnight\b'],
+    # ── Other genres ─────────────────────────────────────────────────────────
+    'Ambient':       [r'\bambient\b'],
+    'Downtempo':     [r'\bdowntempo\b'],
+    'Trip-Hop':      [r'\btrip.?hop\b'],
+    'Synthwave':     [r'\bsynthwave\b', r'\bsynth.?wave\b', r'\bretrowave\b'],
+    'Synthpop':      [r'\bsynthpop\b', r'\bsynth.?pop\b'],
+    'Electropop':    [r'\belectropop\b', r'\belectro.?pop\b'],
+    'Electrofunk':   [r'\belectrofunk\b', r'\belectro.?funk\b'],
+    'Electro':       [r'\belectro\b(?!.{0,5}(?:pop|funk|house|punk))'],
+    'Dark Wave':     [r'\bdark.?wave\b', r'\bgothic\b.{0,20}\brock\b'],
+    'Industrial':    [r'\bindustrial\b.{0,20}\b(?:music|rock|noise|band)\b'],
+    'Experimental':  [r'\bexperimental\b', r'\bavant.?garde\b'],
+    'Funk':          [r'\bfunk\b(?!.{0,5}(?:y|ier|iest))'],
+    'Disco':         [r'\bdisco\b'],
+    'Trap':          [r'\btrap\b.{0,20}\b(?:music|set|night|dj)\b',
+                      r'\btrap\b(?=\s*[,/+&]|\s+(?:and|&)\s)',  # "trap and bass" etc
+                      r'\btrap\b$'],
+    'Hip-Hop':       [r'\bhip.?hop\b', r'\brap\b.{0,20}\b(?:music|show|night|artist|battle)\b',
+                      r'\brap\b(?=\s*[,/+&]|\s+(?:and|&)\s)'],
+    'R&B':           [r'\bR&B\b', r'\brhythm.?and.?blues\b', r'\bsoul\b.{0,20}\bmusic\b'],
     'Jazz':          [r'\bjazz\b'],
     'Blues':         [r'\bblues\b'],
-    'Hip-Hop':       [r'\bhip.?hop\b', r'\brap\b', r'\brap music\b'],
-    'Drum and Bass': [r'\bdrum[ -]and[ -]bass\b', r'\bd&b\b', r'\bdnb\b'],
-    'Electronic':    [r'\belectronic music\b', r'\btechno\b', r'\bhouse music\b', r'\bEDM\b',
-                      r'\bDJ set\b', r'\bambient music\b',
-                      r'\bpsytrance\b', r'\btrance\b'],
-    'Folk':          [r'\bfolk\b', r'\bacoustic\b', r'\bbluegrass\b', r'\bcountry\b'],
+    'Folk':          [r'\bfolk\b', r'\bacoustic\b.{0,20}\b(?:music|set|show|night)\b',
+                      r'\bbluegrass\b'],
     'Classical':     [r'\bclassical\b', r'\borchestra\b', r'\bsymphony\b',
-                      r'\bopera\b', r'\bchamber\b', r'\brecital\b', r'\bchoir\b',
-                      r'\bchoral\b'],
-    'R&B':           [r'\br&b\b', r'\brhythm.?and.?blues\b', r'\bsoul\b'],
-    'Punk':          [r'\bpunk\b', r'\bpop.?punk\b', r'\bhard.?core\b', r'\bhardcore\b'],
-    'Metal':         [r'\bmetal\b', r'\bblack metal\b', r'\bdeath metal\b', r'\bdoom\b'],
-    'Indie':         [r'\bindie\b', r'\balternative\b', r'\balt.rock\b'],
-    'Pop':           [r'\bpop\b(?! up)(?! art)'],
-    'Rock':          [r'\brock\b(?! climbing)(?! wall)', r'\bgarage\b.*\bband',
-                      r'\bpsychedelic\b'],
-    'Reggae':        [r'\breggae\b', r'\bdub\b', r'\bska\b'],
-    'World Music':   [r'\bworld music\b', r'\blatino\b', r'\bafrobeat\b',
-                      r'\bflamenc[oa]\b', r'\bklezmer\b', r'\bceltic\b'],
-    'Experimental':  [r'\bexperimental\b', r'\bavant.?garde\b', r'\bnoise\b.*\bmusic'],
+                      r'\bopera\b', r'\bchamber\b.{0,20}\bmusic\b',
+                      r'\brecital\b', r'\bchoir\b', r'\bchoral\b'],
+    'Punk':          [r'\bpunk\b'],
+    'Metal':         [r'\bmetal\b(?!.{0,5}(?:work|lic|s\b))', r'\bdoom\b.{0,20}\bband\b'],
+    'Rock':          [r'\brock\b(?!.{0,10}(?:climbing|wall|garden|island|island|creek|point|springs|ford|ville|ton|burg|view|port|dale|field|lake|wood|land|side))',
+                      r'\bgarage\b.{0,10}\bband\b', r'\bpsychedelic\b.{0,20}\brock\b'],
+    'Indie':         [r'\bindie\b', r'\balternative\b.{0,20}\b(?:music|rock|band)\b'],
+    'Reggae':        [r'\breggae\b', r'\bska\b', r'\bdub\b.{0,20}\b(?:music|set|night)\b'],
+    'Pop':           [r'\bpop\b(?!.{0,5}(?:up|art|corn|ular|ulation|quiz))'],
+    'World Music':   [r'\bworld\b.{0,10}\bmusic\b', r'\bafrobeat\b', r'\blatino\b',
+                      r'\bflamenc[oa]\b', r'\bklezmer\b', r'\bceltic\b',
+                      r'\bcumbia\b', r'\bsalsa\b', r'\bbossa nova\b'],
 }
 
 
 def detect_genres(title, description=''):
-    """Return list of genre name strings that match the event text."""
-    text = f'{title} {description[:500]}'.lower()
+    """Return list of genre name strings matching the event text."""
+    text = f'{title} {description[:600]}'
     matched = []
     for genre, patterns in GENRE_KEYWORDS.items():
         for pat in patterns:
@@ -197,12 +268,11 @@ def enrich_event(event, geocode=True, save=True):
         fields = ['category', 'latitude', 'longitude', 'neighborhood']
         event.save(update_fields=fields)
 
-    # Genres (separate M2M — always attempt if category is music)
-    if event.category == 'music' and event.pk and not event.genres.exists():
+    # Genres (separate M2M — add detected genres even if event already has some)
+    if event.category == 'music' and event.pk:
         genre_names = detect_genres(event.title, event.description)
-        if genre_names:
-            for name in genre_names:
-                genre, _ = Genre.objects.get_or_create(name=name)
-                event.genres.add(genre)
+        for name in genre_names:
+            genre, _ = Genre.objects.get_or_create(name=name)
+            event.genres.add(genre)
 
     return changed, out_of_area

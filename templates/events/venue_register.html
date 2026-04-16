@@ -41,6 +41,7 @@ input[type=file]{display:none}
 <div class="header">
   <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
 </div>
+{% include 'events/_nav_strip.html' %}
 <a href="{% if editing %}/venues/{{ venue.slug }}/{% else %}/venues/{% endif %}" class="back">← {% if editing %}Back to {{ venue.name }}{% else %}All venues{% endif %}</a>
 
 <h1>{% if editing %}Edit {{ venue.name }}{% else %}Register your venue{% endif %}</h1>
@@ -62,7 +63,7 @@ input[type=file]{display:none}
 </div>
 {% endif %}
 
-<form method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data" data-turbo="false">
   {% csrf_token %}
 
   <div class="section-label">Venue info</div>

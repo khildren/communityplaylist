@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Features - Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}Features - Community Playlist{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:680px;margin:0 auto}
@@ -35,17 +32,53 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
 .footer a{color:#555;text-decoration:none}
 .footer a:hover{color:#ff6b35}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <div class="header">
   <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
 </div>
+{% include 'events/_nav_strip.html' %}
 <a href="/" class="back">← Back to events</a>
 <h1>Features</h1>
 <p class="sub">Everything built into Community Playlist — submitted by the community, for the community.</p>
-<div class="version">v0.3 — Portland, OR</div>
+<div class="version">v0.4 — Portland, OR</div>
 
-<div class="section">Profiles &amp; follows <span class="badge new">v0.3 New</span></div>
+<div class="section">Video Channel <span class="badge new">v0.4 New</span></div>
+<p style="font-size:.8em;color:#555;margin-bottom:14px;line-height:1.6">Portland artists, venues, and crews now have a live video channel — PDXTV — local-only. Past sets, VODs, and live streams all in one place.</p>
+
+<div class="feature">
+  <div class="icon">📺</div>
+  <div class="feature-text">
+    <h3>PDXTV Archive Channel <span class="badge new">New</span></h3>
+    <p>Tap <strong>📺 VIDEO</strong> in the bottom player bar to open PDXTV. YouTube videos from connected artist, venue, and promoter channels shuffle into the queue — weighted toward artists with upcoming shows.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="icon">🔴</div>
+  <div class="feature-text">
+    <h3>Live Twitch Streams <span class="badge new">New</span></h3>
+    <p>Artists, venues, and promoters can connect a Twitch channel. When they go live, their stream surfaces at the top of the video queue automatically — live badge, viewer count included.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="icon">🎬</div>
+  <div class="feature-text">
+    <h3>Twitch VODs</h3>
+    <p>Past Twitch broadcasts (VODs) join the archive channel alongside YouTube content. Everything stays local — only connected PDX artists, venues, and crews.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="icon">⚡</div>
+  <div class="feature-text">
+    <h3>Auto-advance &amp; shuffle</h3>
+    <p>The channel plays continuously — YouTube auto-advances on track end, live streams surface first, and the queue is weighted toward artists playing shows soon. Channel-change TV static effect included.</p>
+  </div>
+</div>
+
+<div class="section">Profiles &amp; follows <span class="badge new">v0.3</span></div>
 <p style="font-size:.8em;color:#555;margin-bottom:14px;line-height:1.6">Community Playlist now has accounts, profiles, and a follow system — all free, no tracking, no ads.</p>
 
 <div class="profile-grid">
@@ -59,15 +92,15 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
     <span class="ptitle">Venue <span style="font-size:.65em;background:#1a3a1a;color:#4caf50;padding:1px 5px;border-radius:3px;font-weight:600;letter-spacing:.04em;vertical-align:middle">LIVE</span></span>
     <span class="pdesc">Verify your space, manage your calendar feed, and surface every event you host — automatically.</span>
   </a>
-  <a href="/submit/" class="profile-card">
+  <a href="/artists/" class="profile-card" style="border-color:#ff6b35">
     <span class="picon">🎤</span>
-    <span class="ptitle">Artist</span>
-    <span class="pdesc">Claim your events, list your genres, link your socials. Built from your performance history automatically.</span>
+    <span class="ptitle">Artist <span style="font-size:.65em;background:#1a3a1a;color:#4caf50;padding:1px 5px;border-radius:3px;font-weight:600;letter-spacing:.04em;vertical-align:middle">LIVE</span></span>
+    <span class="pdesc">Claim your events, list your genres, link your socials. Share tracks via Google Drive. Connect YouTube or Twitch for the video channel.</span>
   </a>
-  <a href="/submit/" class="profile-card">
+  <a href="/promoters/" class="profile-card" style="border-color:#ff6b35">
     <span class="picon">📣</span>
-    <span class="ptitle">Promoter / Crew</span>
-    <span class="pdesc">Collectives, sound systems, labels — showcase your events and build your audience on the playlist.</span>
+    <span class="ptitle">Promoter / Crew <span style="font-size:.65em;background:#1a3a1a;color:#4caf50;padding:1px 5px;border-radius:3px;font-weight:600;letter-spacing:.04em;vertical-align:middle">LIVE</span></span>
+    <span class="pdesc">Collectives, sound systems, labels — showcase your events and connect YouTube or Twitch for the live video channel.</span>
   </a>
 </div>
 
@@ -312,5 +345,4 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
   <a href="https://discord.gg/WHhxRPDdFV" target="_blank" rel="noopener">Join Discord</a> &nbsp;·&nbsp;
   <a href="/subscribe/">Subscribe</a>
 </div>
-</body>
-</html>
+{% endblock %}

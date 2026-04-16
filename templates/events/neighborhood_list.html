@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Neighborhoods — Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}Neighborhoods — Community Playlist{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:860px;margin:0 auto}
@@ -25,8 +22,8 @@ h1{color:#ff6b35;font-size:1.4em}
 .wiki-link:hover{color:#aaa}
 .empty{text-align:center;padding:60px;color:#555}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <div class="header">
   <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
 </div>
@@ -34,6 +31,7 @@ h1{color:#ff6b35;font-size:1.4em}
 <div class="topbar">
   <h1>📍 PDX Neighborhoods</h1>
 </div>
+{% include 'events/_nav_strip.html' %}
 
 {% if hood_data %}
 <div class="hood-grid">
@@ -61,5 +59,4 @@ h1{color:#ff6b35;font-size:1.4em}
   <p>No neighborhoods set up yet.</p>
 </div>
 {% endif %}
-</body>
-</html>
+{% endblock %}

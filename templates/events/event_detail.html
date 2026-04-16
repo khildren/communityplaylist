@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ event.title }} - Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}{{ event.title }} - Community Playlist{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:860px;margin:0 auto}
@@ -67,8 +64,8 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
 #lb-close:hover{opacity:1}
 #lb-caption{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#ccc;font-size:.85em;text-align:center;max-width:80vw}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist" style="height:36px;width:auto;display:block;margin-bottom:14px;opacity:.85"></a>
 <a href="/" class="back">← Back to all events</a>
 {% if event.category %}<a href="/?category={{ event.category }}" class="cat-badge cat-{{ event.category }}" style="text-decoration:none">{{ event.get_category_display }}</a>{% endif %}
@@ -137,6 +134,209 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
   <a href="/events/{{ event.slug }}/edit/" style="color:#ff6b35;text-decoration:none;font-size:.9em">Edit →</a>
 </div>
 {% endif %}
+{# ── Lineup ── #}
+{% if linked_artists or linked_promoters or can_edit_lineup %}
+<div id="lineup-section" style="margin:24px 0;padding:16px;background:#161616;border:1px solid #222;border-radius:10px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <span style="color:#ff6b35;font-size:.9em;font-weight:600;text-transform:uppercase;letter-spacing:.07em">Lineup</span>
+    {% if can_edit_lineup %}
+    <button onclick="toggleLineupEdit()" style="background:transparent;border:1px solid #333;color:#666;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:.75em" id="lineup-edit-toggle">✏ Edit</button>
+    {% endif %}
+  </div>
+
+  <div id="lineup-display">
+    {% if linked_artists %}
+    <div style="margin-bottom:8px">
+      <span style="color:#555;font-size:.72em;text-transform:uppercase;letter-spacing:.06em">Artists</span>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:5px" id="linked-artists-list">
+        {% for a in linked_artists %}
+        <a href="/artists/{{ a.slug }}/" style="display:inline-flex;align-items:center;gap:5px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:20px;padding:4px 12px;text-decoration:none;color:#ccc;font-size:.82em">
+          🎵 {{ a.name }}
+          {% if can_edit_lineup %}<span class="rm-btn" onclick="removeLineup(event,'artist',{{ a.pk }},this)" style="color:#555;margin-left:4px;cursor:pointer;font-size:.9em" title="Remove">✕</span>{% endif %}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    {% if linked_promoters %}
+    <div>
+      <span style="color:#555;font-size:.72em;text-transform:uppercase;letter-spacing:.06em">Crew / Promoters</span>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:5px" id="linked-promoters-list">
+        {% for p in linked_promoters %}
+        <a href="/promoters/{{ p.slug }}/" style="display:inline-flex;align-items:center;gap:5px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:20px;padding:4px 12px;text-decoration:none;color:#ccc;font-size:.82em">
+          📣 {{ p.name }}
+          {% if can_edit_lineup %}<span class="rm-btn" onclick="removeLineup(event,'promoter',{{ p.pk }},this)" style="color:#555;margin-left:4px;cursor:pointer;font-size:.9em" title="Remove">✕</span>{% endif %}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    {% if not linked_artists and not linked_promoters %}
+    <p style="color:#444;font-size:.82em">No lineup linked yet.</p>
+    {% endif %}
+  </div>
+
+  {% if can_edit_lineup %}
+  <div id="lineup-editor" style="display:none;margin-top:14px;border-top:1px solid #222;padding-top:14px">
+    <button onclick="parseTitleLineup()" style="background:transparent;border:1px solid #2a4a1a;color:#4caf50;padding:4px 12px;border-radius:5px;cursor:pointer;font-size:.78em;margin-bottom:10px">⚡ Suggest from title</button>
+    <div id="parse-suggestions" style="margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div style="flex:1;min-width:160px">
+        <input type="text" id="artist-search-input" placeholder="Search artist name…" oninput="searchLineup('artist',this.value)"
+          style="width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:6px 10px;color:#eee;font-size:.82em">
+        <div id="artist-search-results" style="margin-top:4px"></div>
+      </div>
+      <div style="flex:1;min-width:160px">
+        <input type="text" id="crew-search-input" placeholder="Search crew / promoter…" oninput="searchLineup('promoter',this.value)"
+          style="width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:6px 10px;color:#eee;font-size:.82em">
+        <div id="crew-search-results" style="margin-top:4px"></div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<script>
+(function(){
+  var eventSlug = '{{ event.slug }}';
+  var eventTitle = '{{ event.title|escapejs }}';
+
+  function getCsrf(){var v=document.cookie.match('(^|;) ?csrftoken=([^;]*)(;|$)');return v?v[2]:null}
+
+  window.toggleLineupEdit = function(){
+    var ed = document.getElementById('lineup-editor');
+    var btn = document.getElementById('lineup-edit-toggle');
+    var open = ed.style.display === 'none';
+    ed.style.display = open ? 'block' : 'none';
+    btn.textContent = open ? '✕ Close' : '✏ Edit';
+  };
+
+  window.removeLineup = function(e, type, id, el){
+    e.preventDefault(); e.stopPropagation();
+    fetch('/events/'+eventSlug+'/lineup/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body:JSON.stringify({action:'remove', type:type, id:id})
+    }).then(function(r){return r.json();}).then(function(){
+      el.closest('a').remove();
+    });
+  };
+
+  window.addLineup = function(type, id, name, slug){
+    fetch('/events/'+eventSlug+'/lineup/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body:JSON.stringify({action:'add', type:type, id:id})
+    }).then(function(r){return r.json();}).then(function(d){
+      if(!d.ok) return;
+      var listId = type === 'artist' ? 'linked-artists-list' : 'linked-promoters-list';
+      var list = document.getElementById(listId);
+      if(!list){
+        // section didn't exist — reload to show it
+        window.location.reload(); return;
+      }
+      var icon = type === 'artist' ? '🎵' : '📣';
+      var href = type === 'artist' ? '/artists/'+(slug||id)+'/' : '/promoters/'+(slug||id)+'/';
+      // avoid duplicates
+      if(list.querySelector('[data-id="'+id+'"]')) return;
+      var a = document.createElement('a');
+      a.href = href;
+      a.dataset.id = id;
+      a.style.cssText = 'display:inline-flex;align-items:center;gap:5px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:20px;padding:4px 12px;text-decoration:none;color:#ccc;font-size:.82em';
+      a.innerHTML = icon+' '+name+' <span class="rm-btn" onclick="removeLineup(event,\''+type+'\','+id+',this)" style="color:#555;margin-left:4px;cursor:pointer;font-size:.9em" title="Remove">✕</span>';
+      list.appendChild(a);
+    });
+  };
+
+  // Debounced artist/crew search using existing autocomplete endpoints
+  var searchTimers = {};
+  window.searchLineup = function(type, query){
+    clearTimeout(searchTimers[type]);
+    var resultsId = type === 'artist' ? 'artist-search-results' : 'crew-search-results';
+    var results = document.getElementById(resultsId);
+    if(query.length < 2){ results.innerHTML = ''; return; }
+    searchTimers[type] = setTimeout(function(){
+      // artists → bare array; promoters → {promoters:[...]}
+      var url = type === 'artist'
+        ? '/artists/?q='+encodeURIComponent(query)
+        : '/promoters/?q='+encodeURIComponent(query)+'&format=json';
+      fetch(url, {headers:{'Accept':'application/json'}})
+        .then(function(r){return r.json();})
+        .then(function(data){
+          var items = Array.isArray(data) ? data : (data.promoters || data.artists || []);
+          results.innerHTML = items.slice(0,5).map(function(o){
+            var slugArg = o.slug ? '\''+o.slug+'\'' : 'null';
+            return '<div onclick="addLineup(\''+type+'\','+o.id+',\''+o.name.replace(/'/g,"\\'")+'\','+slugArg+')" '+
+              'style="cursor:pointer;padding:5px 10px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:5px;font-size:.82em;color:#ccc;margin-bottom:3px">' +
+              o.name + '</div>';
+          }).join('') || '<p style="color:#555;font-size:.8em;padding:4px 0">No matches</p>';
+        });
+    }, 250);
+  };
+
+  function createAndLink(type, name, pillEl) {
+    pillEl.textContent = '…';
+    pillEl.style.pointerEvents = 'none';
+    fetch('/events/'+eventSlug+'/lineup/create/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
+      body: JSON.stringify({type: type, name: name})
+    }).then(function(r){ return r.json(); }).then(function(d){
+      if(d.error){ pillEl.textContent = '❌ '+d.error; return; }
+      // Replace pill with linked version + edit link
+      var icon = type === 'artist' ? '🎵' : '📣';
+      pillEl.outerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;background:#1a2a3a;border:1px solid #2a4a6a;color:#88aacc;border-radius:20px;padding:3px 10px;font-size:.8em;margin:2px">'
+        + icon+' '+d.name
+        + ' <a href="'+d.profile_url+'" target="_blank" style="color:#ff6b35;font-size:.85em;text-decoration:none" title="Edit profile">✏</a>'
+        + '</span>';
+      // Also add to the linked display list
+      addLineup(type, d.id, d.name, d.slug);
+    });
+  }
+
+  window.parseTitleLineup = function(){
+    fetch('/api/parse-lineup/?title='+encodeURIComponent(eventTitle))
+      .then(function(r){return r.json();})
+      .then(function(data){
+        var el = document.getElementById('parse-suggestions');
+        if(!data.artists.length && !data.crews.length){
+          el.innerHTML='<p style="color:#555;font-size:.8em">Nothing parseable found.</p>'; return;
+        }
+        el.innerHTML = '<div style="font-size:.75em;color:#555;margin-bottom:6px">Suggestions — click to link, ➕ to create new:</div>';
+
+        function makePill(type, item) {
+          var match = item.exact || (item.suggestions && item.suggestions[0]);
+          var icon = type === 'artist' ? '🎵' : '📣';
+          var span = document.createElement('span');
+          span.style.cssText = 'display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:3px 10px;font-size:.8em;margin:2px;cursor:pointer';
+          if (match) {
+            span.style.background = type === 'artist' ? '#1a2a1a' : '#2a1a1a';
+            span.style.border     = type === 'artist' ? '1px solid #2a4a2a' : '1px solid #4a2a2a';
+            span.style.color      = type === 'artist' ? '#88cc88' : '#cc8888';
+            span.textContent = icon + ' ' + match.name;
+            span.onclick = function(){ addLineup(type, match.id, match.name); span.style.opacity='.4'; span.style.pointerEvents='none'; };
+          } else {
+            span.style.background = '#1a1a1a';
+            span.style.border     = '1px dashed #444';
+            span.style.color      = '#666';
+            span.innerHTML = icon + ' ' + item.name
+              + ' <button style="background:#1a2a3a;border:1px solid #2a4a6a;color:#88aacc;border-radius:10px;padding:1px 7px;cursor:pointer;font-size:.85em" title="Create profile and link">➕ Create</button>';
+            span.querySelector('button').onclick = function(e){
+              e.stopPropagation();
+              createAndLink(type, item.name, span);
+            };
+          }
+          el.appendChild(span);
+        }
+
+        data.artists.forEach(function(a){ makePill('artist', a); });
+        data.crews.forEach(function(c){ makePill('promoter', c); });
+      });
+  };
+})();
+</script>
+
 {% if flyer_photo %}
 <h2 class="section-title" style="margin-top:30px">📸 Event Photos</h2>
 <div class="flyer-wrap">
@@ -177,7 +377,7 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
 
 <div class="add-photo">
 <h3>📷 Add your photos</h3>
-<form method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data" data-turbo="false">
 {% csrf_token %}
 <div class="form-group">
 <label>Photo</label>
@@ -223,5 +423,4 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); }
 {% if user.is_authenticated %}
 {% include "partials/suggest_edit.html" with target_type="event" target_id=event.pk fields=event_edit_fields %}
 {% endif %}
-</body>
-</html>
+{% endblock %}

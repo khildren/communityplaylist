@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Community Playlist{% endblock %}</title>
+{% block head_extra %}{% endblock %}
+<script src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js" data-turbo-track="reload"></script>
+<style>
+/* ── Footer Player ── */
+.cp-player{
+  position:fixed;bottom:0;left:0;right:0;z-index:9000;
+  background:#0d0d0d;
+  display:flex;align-items:center;
+  height:52px;padding:0 12px;gap:10px;
+  font-family:sans-serif;font-size:.82em;
+  border-top:1px solid #1a1a1a;
+}
+
+/* Seek bar sits flush at the very top of the player */
+.cp-seek{position:absolute;top:0;left:0;right:0;height:3px;background:#1c1c1c;cursor:pointer}
+.cp-seek-fill{height:100%;background:#ff6b35;position:relative;pointer-events:none;min-width:0}
+.cp-seek-dot{position:absolute;right:-5px;top:-3px;width:9px;height:9px;background:#ff6b35;border-radius:50%;pointer-events:none;opacity:0;transition:opacity .15s}
+.cp-seek:hover .cp-seek-dot{opacity:1}
+
+/* Genre channel toggle (always visible in player bar) */
+.cp-ch-toggle{background:transparent;border:1px solid #2a2a2a;color:#555;padding:2px 8px;border-radius:2px;cursor:pointer;font-family:monospace;font-size:.72em;white-space:nowrap;flex-shrink:0;transition:all .12s;line-height:1.4}
+.cp-ch-toggle:hover,.cp-ch-toggle.open{border-color:#ff6b35;color:#ff6b35}
+
+/* Genre channel popup — floats above player, expands upward on click */
+.cp-channels{
+  position:fixed;bottom:52px;left:12px;
+  background:#0d0d0d;border:1px solid #2a2a2a;border-bottom:none;
+  border-radius:4px 4px 0 0;
+  display:flex;flex-direction:column;gap:3px;padding:5px 4px;
+  min-width:88px;
+  visibility:hidden;opacity:0;transform:translateY(6px);
+  transition:opacity .15s,transform .15s,visibility .15s;
+  z-index:8999;max-height:260px;overflow-y:auto;scrollbar-width:none;
+}
+.cp-channels::-webkit-scrollbar{display:none}
+.cp-channels.open{visibility:visible;opacity:1;transform:translateY(0)}
+.cp-ch{background:transparent;border:1px solid #2a2a2a;color:#555;padding:3px 10px;border-radius:2px;cursor:pointer;font-family:monospace;font-size:.72em;white-space:nowrap;transition:all .12s;text-align:left;width:100%}
+.cp-ch:hover{border-color:#ff6b35;color:#ff6b35}
+.cp-ch.active{background:#ff6b35;color:#111;border-color:#ff6b35}
+.cp-ch.saved-ch{border-color:#3a1a2a;color:#aa4466}
+.cp-ch.saved-ch:hover{border-color:#cc4466;color:#cc4466}
+.cp-ch.saved-ch.active{background:#cc4466;border-color:#cc4466;color:#fff}
+
+/* Track info — fills remaining space, single row with marquee */
+.cp-track{flex:1;min-width:0;overflow:hidden;display:flex;align-items:center}
+.cp-track-inner{display:flex;align-items:center;gap:0;white-space:nowrap;will-change:transform}
+.cp-track-inner.marquee{animation:cp-marquee 18s linear infinite}
+@keyframes cp-marquee{
+  0%   {transform:translateX(0)}
+  10%  {transform:translateX(0)}
+  90%  {transform:translateX(var(--marquee-dist,0px))}
+  100% {transform:translateX(var(--marquee-dist,0px))}
+}
+.cp-title-link{color:#ddd;font-size:1em;font-weight:700;text-decoration:none;flex-shrink:0}
+.cp-title-link:hover{color:#ff6b35}
+.cp-sep{color:#444;margin:0 7px;font-weight:300;flex-shrink:0}
+.cp-artist-text{color:#888;font-size:.9em;flex-shrink:0}
+
+/* Controls */
+.cp-controls{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.cp-btn{background:transparent;border:1px solid #2a2a2a;color:#888;width:28px;height:28px;border-radius:3px;cursor:pointer;font-size:.78em;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0;font-family:monospace}
+.cp-btn:hover{border-color:#ff6b35;color:#ff6b35}
+.cp-btn.play{background:#ff6b35;border-color:#ff6b35;color:#111;font-size:.85em}
+.cp-btn.play:hover{background:#e55a25}
+
+/* Volume */
+.cp-vol-wrap{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.cp-vol{-webkit-appearance:none;appearance:none;width:60px;height:3px;background:#2a2a2a;border-radius:2px;cursor:pointer;outline:none}
+.cp-vol::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:#ff6b35;cursor:pointer}
+.cp-vol::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:#ff6b35;border:none;cursor:pointer}
+.cp-mute.muted{color:#ff6b35}
+
+body.has-player{padding-bottom:56px}
+
+/* ── PDXTV Video Panel ── */
+#cp-video-panel{
+  position:fixed;top:0;left:0;right:0;bottom:52px;z-index:8500;
+  background:#000;
+  display:none;flex-direction:column;
+}
+#cp-video-panel.active{display:flex}
+#cp-video-iframe-wrap{
+  flex:1;position:relative;overflow:hidden;
+}
+#cp-video-iframe-wrap iframe{
+  position:absolute;top:0;left:0;width:100%;height:100%;border:none;
+}
+/* Title card — PDXTV-style lower-third */
+#cp-video-title-card{
+  position:absolute;bottom:0;left:0;right:0;z-index:1;
+  background:linear-gradient(transparent,rgba(0,0,0,.85) 60%);
+  padding:28px 20px 12px;
+  pointer-events:none;
+  opacity:0;transition:opacity .4s;
+}
+#cp-video-panel.active #cp-video-title-card{opacity:1}
+.cp-ch-badge{
+  display:inline-block;font-family:monospace;font-size:.68em;font-weight:700;
+  color:#ff6b35;border:1px solid #ff6b35;border-radius:3px;
+  padding:1px 6px;letter-spacing:.08em;margin-bottom:4px;
+}
+.cp-video-meta-artist{color:#aaa;font-size:.78em;margin-bottom:2px}
+.cp-video-meta-title{color:#fff;font-size:1em;font-weight:700;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cp-show-soon{display:inline-block;font-size:.7em;color:#55dd55;
+  border:1px solid #55dd55;border-radius:3px;padding:1px 6px;
+  margin-left:8px;vertical-align:middle}
+
+/* TV static channel-change flash */
+@keyframes cp-static{
+  0%{opacity:1}10%{opacity:0}30%{opacity:.6}50%{opacity:.1}70%{opacity:.8}100%{opacity:0}
+}
+.cp-static-flash{
+  position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;
+  background:repeating-linear-gradient(
+    0deg,
+    rgba(255,255,255,.04) 0px,
+    rgba(255,255,255,.04) 1px,
+    transparent 1px,
+    transparent 2px
+  ),
+  repeating-linear-gradient(
+    90deg,
+    rgba(0,0,0,.06) 0px,
+    rgba(0,0,0,.06) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events:none;animation:cp-static .35s ease-out forwards;
+}
+
+/* Video mode — override player footer for video controls */
+.cp-player.video-mode .cp-ch-toggle{display:none}
+.cp-player.video-mode .cp-vol-wrap{display:none}
+.cp-player.video-mode .cp-seek{display:none}
+.cp-player.video-mode .cp-track-inner{opacity:.75}
+.cp-video-ch-label{
+  font-family:monospace;font-size:.72em;color:#ff6b35;
+  border:1px solid #ff6b35;border-radius:3px;padding:2px 8px;
+  white-space:nowrap;flex-shrink:0;cursor:pointer;
+  transition:all .12s;
+}
+.cp-video-ch-label:hover{background:#ff6b35;color:#111}
+/* Wiggle-to-show exit button — floats top-right over the video panel */
+#cp-video-exit{
+  position:absolute;top:14px;right:14px;z-index:1;
+  background:rgba(0,0,0,.55);
+  border:1px solid rgba(255,107,53,.4);color:rgba(255,107,53,.85);
+  font-family:monospace;font-size:.72em;letter-spacing:.07em;
+  padding:5px 13px;border-radius:3px;cursor:pointer;
+  opacity:0;pointer-events:none;
+  transition:opacity .3s,border-color .15s,color .15s;
+  backdrop-filter:blur(4px);
+}
+#cp-video-exit.vis{opacity:1;pointer-events:auto}
+#cp-video-exit:hover{border-color:#ff6b35;color:#ff6b35;background:rgba(0,0,0,.75)}
+/* LIVE badge */
+.cp-live-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  font-family:monospace;font-size:.68em;font-weight:700;
+  color:#fff;background:#e53;border-radius:3px;
+  padding:2px 7px;letter-spacing:.05em;flex-shrink:0;
+}
+.cp-live-dot{width:6px;height:6px;background:#fff;border-radius:50%;
+  animation:cp-live-pulse 1.2s ease-in-out infinite}
+@keyframes cp-live-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+
+/* Track row progress fill (used on artist/promoter pages) */
+.track-row{position:relative;overflow:hidden}
+.track-bg-progress{position:absolute;left:0;top:0;bottom:0;width:0%;background:rgba(255,107,53,.09);pointer-events:none}
+
+/* Mobile */
+@media(max-width:540px){
+  .cp-ch-toggle{display:none}
+  .cp-channels{display:none}
+  .cp-vol-wrap{display:none}
+  .cp-artist-text{display:none}
+  .cp-sep{display:none}
+  .cp-title-link{font-size:.95em}
+}
+</style>
+{% block styles %}{% endblock %}
+</head>
+<body>
+{% block body %}{% endblock %}
+{% include 'events/_player.html' %}
+</body>
+</html>

@@ -1,10 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>@{{ profile.handle }} — Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}@{{ profile.handle }} — Community Playlist{% endblock %}
+{% block head_extra %}
 <meta name="description" content="{% if profile.bio %}{{ profile.bio|truncatewords:20 }}{% else %}{{ profile.handle }} on Community Playlist{% endif %}">
+{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:680px;margin:0 auto}
@@ -66,8 +65,8 @@ body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:68
   .handle{font-size:1.2em}
 }
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
 <div class="site-logo">
   <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
@@ -326,13 +325,40 @@ body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:68
   </div>
   <div class="follow-pills">
     {% for item in follow_data %}
-    <a href="{% if item.follow.target_type == 'artist' %}/artists/{{ item.target.pk }}/{% elif item.follow.target_type == 'venue' %}/venues/{{ item.target.slug }}/{% else %}/neighborhoods/{{ item.target.slug }}/{% endif %}"
+    <a href="{% if item.follow.target_type == 'artist' %}/artists/{{ item.target.slug }}/{% elif item.follow.target_type == 'venue' %}/venues/{{ item.target.slug }}/{% else %}/neighborhoods/{{ item.target.slug }}/{% endif %}"
        class="link-pill">
       {% if item.follow.target_type == 'artist' %}🎵{% elif item.follow.target_type == 'venue' %}🏛{% else %}📍{% endif %}
       {{ item.target.name }}
     </a>
     {% endfor %}
   </div>
+</div>
+{% endif %}
+
+<!-- ── Saved Tracks ────────────────────────────────────── -->
+{% if saved_tracks %}
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">♥ Saved Tracks</div>
+  </div>
+  {% for st in saved_tracks %}
+  {% with t=st.track %}
+  <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #1a1a1a">
+    <button onclick="cpLoad('{{ t.stream_url|escapejs }}','{{ t.title|escapejs }}','{{ t.artist_name|default:t.source_label|escapejs }}','{{ t.artist.get_absolute_url|default:'' }}')"
+      style="background:transparent;border:1px solid #2a2a2a;color:#888;width:26px;height:26px;border-radius:3px;cursor:pointer;font-size:.7em;flex-shrink:0;font-family:monospace">▶</button>
+    <div style="flex:1;min-width:0">
+      <div style="color:#ccc;font-size:.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.title }}</div>
+      <div style="font-size:.74em;color:#555;margin-top:2px">
+        {% if t.artist %}<a href="{{ t.artist.get_absolute_url }}" style="color:#aa6633;text-decoration:none">{{ t.artist.name }}</a>{% elif t.promoter %}<a href="/promoters/{{ t.promoter.slug }}/" style="color:#aa6633;text-decoration:none">{{ t.promoter.name }}</a>{% elif t.artist_name %}{{ t.artist_name }}{% endif %}
+        {% if t.recorded_at %} · 📍 {{ t.recorded_at }}{% endif %}
+        {% if t.recorded_date %} · {{ t.recorded_date|date:"M j, Y" }}{% endif %}
+        {% if t.genre %} · <span style="color:#ff6b3566">{{ t.genre.name }}</span>{% endif %}
+      </div>
+    </div>
+    {% if t.duration_display %}<span style="color:#444;font-size:.74em;flex-shrink:0">{{ t.duration_display }}</span>{% endif %}
+  </div>
+  {% endwith %}
+  {% endfor %}
 </div>
 {% endif %}
 
@@ -355,5 +381,4 @@ body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:68
   {% endif %}
 </div>
 
-</body>
-</html>
+{% endblock %}

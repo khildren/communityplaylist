@@ -1,0 +1,391 @@
+{% if listings or promoter.shop_sheet_url or promoter.shop_pay_in_person or promoter.shop_open_to_trade %}
+<section class="record-shop" id="record-shop">
+
+<div class="section-head">
+  <span>RECORD SHOP</span>
+  {% if can_edit and promoter.shop_sheet_url %}<a href="{% url 'promoter_sync_shop' promoter.slug %}" class="sync-link">↻ Sync sheet</a>{% endif %}
+  {% if can_edit %}<a href="{% url 'promoter_reservations' promoter.slug %}" class="sync-link" style="color:#9b9bff">📋 Reservations{% if pending_reservations %} ({{ pending_reservations }}){% endif %}</a>{% endif %}
+</div>
+
+{# ── payment option badges — always show if any option is on ── #}
+{% if promoter.shop_pay_in_person or promoter.shop_open_to_trade or promoter.sol_wallet %}
+<div class="rs-options">
+  {% if promoter.sol_wallet %}<span class="rs-opt rs-opt-sol" title="Accepts SOL crypto payment">◎ SOL</span>{% endif %}
+  {% if promoter.shop_pay_in_person %}
+  <button class="rs-opt rs-opt-person" onclick="cpContactModal('in-person')">🤝 In Person</button>
+  {% endif %}
+  {% if promoter.shop_open_to_trade %}
+  <button class="rs-opt rs-opt-trade" onclick="cpContactModal('trade')">🔄 Open to Trade</button>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if listings %}
+<div class="rs-grid">
+{% for item in listings %}
+<div class="rs-card">
+  {% if item.cover_url %}
+  <img src="{{ item.cover_url }}" alt="{{ item.artist }} – {{ item.title }}" class="rs-cover" loading="lazy">
+  {% else %}
+  <div class="rs-cover rs-cover-placeholder">♫</div>
+  {% endif %}
+  <div class="rs-info">
+    <div class="rs-title">{{ item.title }}</div>
+    <div class="rs-artist">{{ item.artist }}</div>
+    {% if item.label or item.year %}
+    <div class="rs-meta">{% if item.label %}{{ item.label }}{% endif %}{% if item.label and item.year %} · {% endif %}{% if item.year %}{{ item.year }}{% endif %}</div>
+    {% endif %}
+    <div class="rs-tags">
+      {% if item.format %}<span class="rs-tag">{{ item.format }}</span>{% endif %}
+      {% if item.condition %}<span class="rs-tag">{{ item.condition }}</span>{% endif %}
+    </div>
+    {% if item.notes %}<div class="rs-notes">{{ item.notes }}</div>{% endif %}
+  </div>
+  <div class="rs-buy">
+    <div class="rs-price">{% if item.price_display %}{{ item.price_display }}{% elif item.price_sol > 0 %}◎ {{ item.price_sol }}{% else %}<span style="color:#555;font-size:.78em">ask for price</span>{% endif %}</div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
+      {% if item.preview_url %}
+      <button class="rs-btn rs-btn-preview"
+              onclick="cpPreview('{{ item.preview_url|escapejs }}', '{{ item.artist|escapejs }} – {{ item.title|escapejs }}')">▶ Preview</button>
+      {% endif %}
+      {% if promoter.sol_wallet and item.price_sol > 0 %}
+      <a class="rs-btn"
+         href="solana:{{ promoter.sol_wallet }}?amount={{ item.price_sol }}&label={{ promoter.name|urlencode }}&message={{ item.artist|urlencode }}+%E2%80%93+{{ item.title|urlencode }}"
+         onclick="cpSolPay(event, this)"
+         data-wallet="{{ promoter.sol_wallet }}"
+         data-amount="{{ item.price_sol }}"
+         data-label="{{ item.artist }} – {{ item.title }}">◎ Pay</a>
+      {% endif %}
+      <button class="rs-btn rs-btn-reserve"
+              onclick="cpReserveOpen({{ item.pk }}, '{{ item.artist|escapejs }} – {{ item.title|escapejs }}', '{{ item.price_display|escapejs }}')">
+        {% if can_edit and item.reservation_count %}🔖 {{ item.reservation_count }}{% else %}🔖 Reserve{% endif %}
+      </button>
+      {% if promoter.shop_pay_in_person or promoter.shop_open_to_trade or promoter.discord or promoter.telegram %}
+      <button class="rs-btn rs-btn-contact" onclick="cpContactModal('{{ item.artist|escapejs }} – {{ item.title|escapejs }}')">Contact</button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endfor %}
+</div>
+{% elif can_edit and promoter.shop_sheet_url %}
+<p style="color:#555;font-size:.82em">No listings synced yet — hit <a href="{% url 'promoter_sync_shop' promoter.slug %}" style="color:#ff6b35">↻ Sync sheet</a> to import.</p>
+{% elif can_edit %}
+<p style="color:#555;font-size:.82em">Add a Google Sheets URL in <a href="{% url 'promoter_edit' promoter.slug %}" style="color:#ff6b35">profile settings</a> to list records.</p>
+{% endif %}
+
+{# ── wallet display ── #}
+{% if promoter.sol_wallet %}
+<div class="rs-wallet-line">
+  <span class="rs-wallet-label">SOL wallet:</span>
+  <code class="rs-wallet-addr" id="rs-wallet-{{ promoter.pk }}">{{ promoter.sol_wallet }}</code>
+  <button class="rs-copy-btn" onclick="cpCopyWallet('rs-wallet-{{ promoter.pk }}', this)">Copy</button>
+</div>
+{% endif %}
+
+{# ── Phantom blurb ── #}
+{% if promoter.sol_wallet %}
+<div class="rs-phantom-blurb">
+  <div class="rs-phantom-inner">
+    <span class="rs-phantom-logo">👻</span>
+    <div>
+      <div class="rs-phantom-title">New to Solana?</div>
+      <div class="rs-phantom-body">
+        Phantom is the go-to wallet for music, art, and culture on the blockchain — clean UX, mobile + browser extension, transactions cost less than a cent.
+        No bank. No middleman. Just peer-to-peer.
+      </div>
+    </div>
+    <a href="https://phantom.app" target="_blank" rel="noopener" class="rs-phantom-btn">Get Phantom ↗</a>
+  </div>
+</div>
+{% endif %}
+
+</section>
+
+{# ── Contact modal ── #}
+<div id="rs-contact-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9000;align-items:center;justify-content:center">
+  <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:24px 20px;max-width:360px;width:90%;text-align:center">
+    <div style="font-size:.7em;color:#555;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Contact seller</div>
+    <div id="rs-contact-label" style="color:#eee;font-size:.9em;margin-bottom:18px;line-height:1.4"></div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+      {% if promoter.discord %}
+      <a href="{{ promoter.discord }}" target="_blank" rel="noopener"
+         style="background:#5865f2;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-size:.85em;display:flex;align-items:center;justify-content:center;gap:8px">
+        <svg width="18" height="18" viewBox="0 0 127.14 96.36" fill="currentColor"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+        Join Discord Server
+      </a>
+      {% endif %}
+      {% if promoter.telegram %}
+      <a href="https://t.me/{{ promoter.telegram }}" target="_blank" rel="noopener"
+         style="background:#229ed9;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-size:.85em;display:flex;align-items:center;justify-content:center;gap:8px">
+        <svg width="18" height="18" viewBox="0 0 240 240" fill="currentColor"><path d="M120,0C53.7,0,0,53.7,0,120s53.7,120,120,120,120-53.7,120-120S186.3,0,120,0Zm59.9,82.2L160,166.3c-1.4,6.3-5.1,7.8-10.3,4.9l-28.5-21-13.7,13.2c-1.5,1.5-2.8,2.8-5.7,2.8l2-28.9,52.7-47.6c2.3-2-0.5-3.1-3.5-1.1L70.9,133.7l-28-8.8c-6.1-1.9-6.2-6.1,1.3-9l109.1-42.1C159,71.7,165,74.8,159.9,82.2Z"/></svg>
+        Message on Telegram
+      </a>
+      {% endif %}
+    </div>
+    <div style="font-size:.72em;color:#444;margin-bottom:14px">
+      {% if promoter.shop_pay_in_person %}🤝 In-person pickup/payment available at events.{% endif %}
+      {% if promoter.shop_pay_in_person and promoter.shop_open_to_trade %} · {% endif %}
+      {% if promoter.shop_open_to_trade %}🔄 Open to record trades or partial trades.{% endif %}
+    </div>
+    <button onclick="document.getElementById('rs-contact-modal').style.display='none'"
+            style="background:transparent;border:1px solid #2a2a2a;color:#666;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:.8em;font-family:inherit">
+      Close
+    </button>
+  </div>
+</div>
+
+{# ── SOL Pay QR modal ── #}
+<div id="rs-sol-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9000;align-items:center;justify-content:center">
+  <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:24px;max-width:320px;width:90%;text-align:center">
+    <div style="font-size:.7em;color:#555;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Pay with Solana</div>
+    <div id="rs-sol-label" style="color:#eee;font-size:.88em;margin-bottom:14px"></div>
+    <div id="rs-sol-qr" style="margin:0 auto 12px;width:200px;height:200px"></div>
+    <div style="font-size:.7em;color:#444;margin-bottom:14px">Scan with Phantom or Solflare mobile</div>
+    <div style="font-size:.65em;color:#333;word-break:break-all;margin-bottom:16px" id="rs-sol-url"></div>
+    <button onclick="document.getElementById('rs-sol-modal').style.display='none'"
+            style="background:transparent;border:1px solid #2a2a2a;color:#666;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:.8em;font-family:inherit">
+      Close
+    </button>
+  </div>
+</div>
+
+<style>
+.record-shop{margin:28px 0}
+.section-head{font-size:.72em;color:#555;text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.sync-link{color:#ff6b35;text-decoration:none;font-size:.85em}
+.sync-link:hover{text-decoration:underline}
+.rs-options{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.rs-opt{border-radius:20px;padding:4px 12px;font-size:.76em;font-family:inherit;cursor:pointer;border:none;font-weight:600;white-space:nowrap}
+.rs-opt-sol{background:#9945ff22;color:#9945ff;border:1px solid #9945ff44;cursor:default}
+.rs-opt-person{background:#ff6b3522;color:#ff6b35;border:1px solid #ff6b3544}
+.rs-opt-person:hover{background:#ff6b3533}
+.rs-opt-trade{background:#4caf5022;color:#4caf50;border:1px solid #4caf5044}
+.rs-opt-trade:hover{background:#4caf5033}
+.rs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:18px}
+.rs-card{background:#161616;border:1px solid #222;border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+.rs-cover{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#111}
+.rs-cover-placeholder{display:flex;align-items:center;justify-content:center;font-size:2.5em;color:#333;aspect-ratio:1}
+.rs-info{padding:10px 12px;flex:1}
+.rs-title{color:#eee;font-size:.88em;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs-artist{color:#888;font-size:.78em;margin-bottom:4px}
+.rs-meta{color:#555;font-size:.72em;margin-bottom:6px}
+.rs-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.rs-tag{background:#1e1e1e;border:1px solid #2a2a2a;border-radius:4px;padding:1px 6px;font-size:.68em;color:#666}
+.rs-notes{color:#555;font-size:.72em;line-height:1.4}
+.rs-buy{padding:10px 12px;border-top:1px solid #1e1e1e;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.rs-price{color:#ff6b35;font-size:.9em;font-weight:700}
+.rs-btn{background:#ff6b35;color:#fff;text-decoration:none;border:none;padding:6px 11px;border-radius:6px;cursor:pointer;font-size:.74em;font-family:inherit;white-space:nowrap}
+.rs-btn:hover{background:#e55a25}
+.rs-btn-contact{background:#1e1e1e;border:1px solid #2a2a2a;color:#888}
+.rs-btn-contact:hover{border-color:#444;color:#ccc;background:#222}
+.rs-btn-reserve{background:#1e1e1e;border:1px solid #2a2a2a;color:#aaa}
+.rs-btn-reserve:hover{border-color:#555;color:#eee;background:#222}
+.rs-btn-preview{background:#1e1e1e;border:1px solid #ff6b3544;color:#ff6b35}
+.rs-btn-preview:hover{background:#ff6b3511;border-color:#ff6b35}
+.rs-wallet-line{font-size:.72em;color:#444;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.rs-wallet-label{color:#555}
+.rs-wallet-addr{color:#555;font-family:monospace;font-size:.9em;word-break:break-all}
+.rs-copy-btn{background:transparent;border:1px solid #2a2a2a;color:#555;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:.85em;font-family:inherit}
+.rs-copy-btn:hover{border-color:#444;color:#aaa}
+.rs-phantom-blurb{border:1px solid #1e1e1e;border-radius:10px;padding:14px 16px;margin-top:6px}
+.rs-phantom-inner{display:flex;align-items:flex-start;gap:12px}
+.rs-phantom-logo{font-size:1.6em;flex-shrink:0;margin-top:2px}
+.rs-phantom-title{color:#aaa;font-size:.8em;font-weight:700;margin-bottom:4px}
+.rs-phantom-body{color:#555;font-size:.74em;line-height:1.5}
+.rs-phantom-btn{flex-shrink:0;background:#ab9ff2;color:#1a1a1a;border:none;padding:8px 14px;border-radius:8px;font-size:.76em;font-weight:700;text-decoration:none;cursor:pointer;white-space:nowrap;align-self:center;font-family:inherit}
+.rs-phantom-btn:hover{background:#c4bcf8}
+@media(max-width:500px){.rs-grid{grid-template-columns:1fr 1fr}.rs-phantom-inner{flex-direction:column;align-items:center;text-align:center}}
+</style>
+
+<script>
+function cpContactModal(label) {
+  var el = document.getElementById('rs-contact-label');
+  if (label === 'in-person') {
+    el.textContent = 'Ask about in-person payment or pickup';
+  } else if (label === 'trade') {
+    el.textContent = 'Reach out about a trade offer';
+  } else {
+    el.textContent = 'Enquire about: ' + label;
+  }
+  document.getElementById('rs-contact-modal').style.display = 'flex';
+}
+
+function cpSolPay(e, el) {
+  var isMobile = /android|iphone|ipad/i.test(navigator.userAgent);
+  if (isMobile) return;
+  if (window.solana && window.solana.isPhantom) return;
+  e.preventDefault();
+  var url = el.getAttribute('href');
+  document.getElementById('rs-sol-label').textContent = el.dataset.label;
+  document.getElementById('rs-sol-url').textContent = url;
+  var qrDiv = document.getElementById('rs-sol-qr');
+  qrDiv.innerHTML = '';
+  function makeQR() {
+    new QRCode(qrDiv, {text: url, width: 200, height: 200, colorDark:'#ffffff', colorLight:'#1a1a1a'});
+  }
+  if (!window.QRCode) {
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    s.onload = makeQR;
+    document.head.appendChild(s);
+  } else { makeQR(); }
+  document.getElementById('rs-sol-modal').style.display = 'flex';
+}
+
+function cpCopyWallet(id, btn) {
+  navigator.clipboard.writeText(document.getElementById(id).textContent).then(function() {
+    btn.textContent = 'Copied!';
+    setTimeout(function(){ btn.textContent = 'Copy'; }, 2000);
+  });
+}
+
+function cpPreview(ytUrl, label) {
+  var embedUrl = ytUrl
+    .replace('watch?v=', 'embed/')
+    .replace('youtu.be/', 'www.youtube.com/embed/')
+    .split('&')[0];
+  embedUrl += (embedUrl.indexOf('?') === -1 ? '?' : '&') + 'autoplay=1&rel=0&enablejsapi=1&origin=' + encodeURIComponent(window.location.origin);
+  document.getElementById('rs-preview-label').textContent = label;
+  document.getElementById('rs-preview-iframe').src = embedUrl;
+  document.getElementById('rs-preview-yt-link').href = ytUrl;
+  document.getElementById('rs-preview-yt-link-fallback').href = ytUrl;
+  // Reset fallback state
+  document.getElementById('rs-preview-player-wrap').style.display = 'block';
+  document.getElementById('rs-preview-fallback').style.display = 'none';
+  document.getElementById('rs-preview-modal').style.display = 'flex';
+}
+function cpPreviewClose(e) {
+  if (e && e.target !== document.getElementById('rs-preview-modal') && e.type !== 'click') return;
+  document.getElementById('rs-preview-iframe').src = '';
+  document.getElementById('rs-preview-modal').style.display = 'none';
+}
+// Listen for YouTube embed errors (150 = embedding disabled, 100/101 = not found/private)
+window.addEventListener('message', function(e) {
+  if (e.origin !== 'https://www.youtube.com') return;
+  try {
+    var data = JSON.parse(e.data);
+    if (data.event === 'onError' && [100, 101, 150].indexOf(data.info) !== -1) {
+      document.getElementById('rs-preview-player-wrap').style.display = 'none';
+      document.getElementById('rs-preview-fallback').style.display = 'flex';
+    }
+  } catch(err) {}
+});
+
+var _rsActiveListing = null;
+function cpReserveOpen(listingPk, label, price) {
+  _rsActiveListing = listingPk;
+  document.getElementById('rs-reserve-label').textContent = label;
+  document.getElementById('rs-reserve-price').textContent = price ? '(' + price + ')' : '';
+  document.getElementById('rs-reserve-form').reset();
+  document.getElementById('rs-reserve-result').textContent = '';
+  document.getElementById('rs-reserve-submit').disabled = false;
+  document.getElementById('rs-reserve-submit').textContent = 'Reserve';
+  document.getElementById('rs-reserve-modal').style.display = 'flex';
+}
+function cpReserveClose() {
+  document.getElementById('rs-reserve-modal').style.display = 'none';
+}
+function cpReserveSubmit(e) {
+  e.preventDefault();
+  if (!_rsActiveListing) return;
+  var form = document.getElementById('rs-reserve-form');
+  var btn  = document.getElementById('rs-reserve-submit');
+  var res  = document.getElementById('rs-reserve-result');
+  var data = new FormData(form);
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  fetch('/promoters/{{ promoter.slug }}/reserve/' + _rsActiveListing + '/', {
+    method: 'POST',
+    headers: {'X-CSRFToken': (document.cookie.match('(^|;) ?csrftoken=([^;]*)') || [])[2] || ''},
+    body: data,
+  }).then(function(r){ return r.json(); }).then(function(d) {
+    if (d.ok) {
+      res.style.color = '#4caf50';
+      res.textContent = d.message;
+      btn.textContent = 'Sent!';
+      setTimeout(cpReserveClose, 2200);
+    } else {
+      res.style.color = '#f87171';
+      res.textContent = d.error || 'Something went wrong.';
+      btn.disabled = false;
+      btn.textContent = 'Reserve';
+    }
+  }).catch(function() {
+    res.style.color = '#f87171';
+    res.textContent = 'Request failed — try again.';
+    btn.disabled = false;
+    btn.textContent = 'Reserve';
+  });
+}
+</script>
+
+{# ── YouTube Preview modal ── #}
+<div id="rs-preview-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9200;align-items:center;justify-content:center" onclick="cpPreviewClose(event)">
+  <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;overflow:hidden;max-width:680px;width:95%" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #1e1e1e">
+      <div id="rs-preview-label" style="color:#eee;font-size:.88em;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80%"></div>
+      <button onclick="cpPreviewClose()" style="background:transparent;border:none;color:#555;cursor:pointer;font-size:1.1em;padding:0 4px;font-family:inherit;flex-shrink:0">✕</button>
+    </div>
+    <div id="rs-preview-player-wrap" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden">
+      <iframe id="rs-preview-iframe" src="" allow="autoplay; encrypted-media" allowfullscreen
+              style="position:absolute;inset:0;width:100%;height:100%;border:none"></iframe>
+    </div>
+    <div id="rs-preview-fallback" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:14px;text-align:center">
+      <div style="font-size:2em">🎵</div>
+      <div style="color:#888;font-size:.85em">Embedding blocked by the rights holder.</div>
+      <a id="rs-preview-yt-link-fallback" href="" target="_blank" rel="noopener"
+         style="background:#ff0000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:.85em;font-weight:600;display:inline-flex;align-items:center;gap:8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.7 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
+        Watch on YouTube
+      </a>
+    </div>
+    <div style="padding:10px 16px;font-size:.72em;color:#333;display:flex;align-items:center;justify-content:space-between">
+      <span>Via Discogs / YouTube</span>
+      <a id="rs-preview-yt-link" href="" target="_blank" rel="noopener" style="color:#555;text-decoration:none">Open on YouTube ↗</a>
+    </div>
+  </div>
+</div>
+
+{# ── Reserve modal ── #}
+<div id="rs-reserve-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:9100;align-items:center;justify-content:center">
+  <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:24px 20px;max-width:380px;width:92%">
+    <div style="font-size:.7em;color:#555;text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px">Reserve this record</div>
+    <div id="rs-reserve-label" style="color:#eee;font-size:.92em;font-weight:600;margin-bottom:2px"></div>
+    <div id="rs-reserve-price" style="color:#ff6b35;font-size:.8em;margin-bottom:16px"></div>
+    <form id="rs-reserve-form" onsubmit="cpReserveSubmit(event)">
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-size:.75em;color:#666;margin-bottom:4px">Your name *</label>
+        <input name="name" required placeholder="Full name"
+               style="width:100%;background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:8px 10px;color:#eee;font-size:.85em;font-family:inherit;outline:none">
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-size:.75em;color:#666;margin-bottom:4px">Email</label>
+        <input name="email" type="email" placeholder="you@example.com"
+               style="width:100%;background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:8px 10px;color:#eee;font-size:.85em;font-family:inherit;outline:none">
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-size:.75em;color:#666;margin-bottom:4px">Discord / Telegram / other contact</label>
+        <input name="contact" placeholder="@yourhandle"
+               style="width:100%;background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:8px 10px;color:#eee;font-size:.85em;font-family:inherit;outline:none">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:.75em;color:#666;margin-bottom:4px">Message (optional)</label>
+        <textarea name="message" rows="2" placeholder="Any questions or pickup details…"
+                  style="width:100%;background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:8px 10px;color:#eee;font-size:.85em;font-family:inherit;outline:none;resize:vertical"></textarea>
+      </div>
+      <div id="rs-reserve-result" style="font-size:.8em;margin-bottom:10px;min-height:18px"></div>
+      <div style="display:flex;gap:8px">
+        <button id="rs-reserve-submit" type="submit"
+                style="flex:1;background:#ff6b35;color:#fff;border:none;padding:10px;border-radius:8px;cursor:pointer;font-size:.85em;font-family:inherit;font-weight:600">
+          Reserve
+        </button>
+        <button type="button" onclick="cpReserveClose()"
+                style="background:transparent;border:1px solid #2a2a2a;color:#666;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:.85em;font-family:inherit">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}

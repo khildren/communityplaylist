@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Subscribe to Events - Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}Subscribe to Events - Community Playlist{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:640px;margin:0 auto}
@@ -33,11 +30,12 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
 .gcal-btn{display:inline-flex;align-items:center;gap:8px;background:#4285F4;color:#fff;padding:9px 18px;border-radius:6px;text-decoration:none;font-size:.85em;margin-top:10px}
 .gcal-btn:hover{background:#3367d6}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <div class="header">
   <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
 </div>
+{% include 'events/_nav_strip.html' %}
 <a href="/" class="back">← Back to events</a>
 <h1>Subscribe to PDX Events</h1>
 <p class="sub">Add Community Playlist events to your calendar app — they update automatically as new events are approved.</p>
@@ -118,5 +116,4 @@ function buildFeed() {
   document.getElementById('custom-feed-wrap').style.display = 'flex';
 }
 </script>
-</body>
-</html>
+{% endblock %}

@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Events - Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}My Events - Community Playlist{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:760px;margin:0 auto}
@@ -52,8 +49,8 @@ h1{color:#ff6b35;font-size:1.4em}
 .existing-feed .feed-info span{color:#555;font-size:.85em}
 .hint{font-size:.75em;color:#444;margin-top:6px;line-height:1.6}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <div class="header">
   <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
 </div>
@@ -66,6 +63,7 @@ h1{color:#ff6b35;font-size:1.4em}
     <a href="/logout/">Sign out</a>
   </div>
 </div>
+{% include 'events/_nav_strip.html' %}
 
 {% for message in messages %}
 <div class="msg {% if message.tags == 'error' %}error{% else %}success{% endif %}">{{ message }}</div>
@@ -127,11 +125,70 @@ h1{color:#ff6b35;font-size:1.4em}
 <div class="section">⭐ Following</div>
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px">
   {% for item in follow_data %}
-  <a href="{% if item.follow.target_type == 'artist' %}/artists/{{ item.target.pk }}/{% elif item.follow.target_type == 'venue' %}/venues/{{ item.target.slug }}/{% else %}/neighborhoods/{{ item.target.slug }}/{% endif %}"
+  <a href="{% if item.follow.target_type == 'artist' %}/artists/{{ item.target.slug }}/{% elif item.follow.target_type == 'venue' %}/venues/{{ item.target.slug }}/{% else %}/neighborhoods/{{ item.target.slug }}/{% endif %}"
      style="display:inline-flex;align-items:center;gap:6px;background:#1a1a1a;border:1px solid #2a2a2a;color:#aaa;font-size:.8em;padding:4px 11px;border-radius:20px;text-decoration:none;transition:border-color .15s">
     {% if item.follow.target_type == 'artist' %}🎵{% elif item.follow.target_type == 'venue' %}🏛{% else %}📍{% endif %}
     {{ item.target.name }}
   </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Saved tracks -->
+{% if saved_tracks %}
+<div class="section">♥ Saved Tracks</div>
+<div style="margin-bottom:28px">
+  {% for st in saved_tracks %}
+  {% with t=st.track %}
+  <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #1a1a1a">
+    <button onclick="cpLoad('{{ t.stream_url|escapejs }}','{{ t.title|escapejs }}','{{ t.artist_name|default:t.source_label|escapejs }}','{{ t.artist.get_absolute_url|default:'' }}')"
+      style="background:transparent;border:1px solid #2a2a2a;color:#888;width:26px;height:26px;border-radius:3px;cursor:pointer;font-size:.7em;flex-shrink:0;font-family:monospace">▶</button>
+    <div style="flex:1;min-width:0">
+      <div style="color:#ccc;font-size:.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.title }}</div>
+      <div style="font-size:.74em;color:#555;margin-top:2px">
+        {% if t.artist %}<a href="{{ t.artist.get_absolute_url }}" style="color:#aa6633;text-decoration:none">{{ t.artist.name }}</a>{% elif t.promoter %}<a href="/promoters/{{ t.promoter.slug }}/" style="color:#aa6633;text-decoration:none">{{ t.promoter.name }}</a>{% elif t.artist_name %}{{ t.artist_name }}{% endif %}
+        {% if t.recorded_at %} · 📍 {{ t.recorded_at }}{% endif %}
+        {% if t.recorded_date %} · {{ t.recorded_date|date:"M j, Y" }}{% endif %}
+        {% if t.genre %} · <span style="color:#ff6b3566">{{ t.genre.name }}</span>{% endif %}
+      </div>
+    </div>
+    {% if t.duration_display %}<span style="color:#444;font-size:.74em;flex-shrink:0">{{ t.duration_display }}</span>{% endif %}
+  </div>
+  {% endwith %}
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Record reservations -->
+{% if my_reservations %}
+<div class="section">🔖 My Record Reservations</div>
+<div style="margin-bottom:28px">
+  {% for res in my_reservations %}
+  {% with item=res.listing shop=res.listing.promoter %}
+  <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #1a1a1a">
+    {% if item.cover_url %}
+    <img src="{{ item.cover_url }}" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:5px;flex-shrink:0">
+    {% else %}
+    <div style="width:44px;height:44px;background:#1a1a1a;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:1.2em;color:#333;flex-shrink:0">♫</div>
+    {% endif %}
+    <div style="flex:1;min-width:0">
+      <div style="color:#ccc;font-size:.85em;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.artist }} – {{ item.title }}</div>
+      <div style="font-size:.74em;color:#555;margin-top:2px">
+        <a href="/promoters/{{ shop.slug }}/" style="color:#aa6633;text-decoration:none">{{ shop.name }}</a>
+        {% if item.price_display %} · <span style="color:#ff6b35">{{ item.price_display }}</span>{% elif item.price_sol > 0 %} · <span style="color:#9945ff">◎ {{ item.price_sol }}</span>{% endif %}
+        {% if item.format %} · {{ item.format }}{% endif %}
+      </div>
+      <div style="font-size:.72em;margin-top:4px">
+        {% if res.status == 'pending' %}<span style="color:#ff6b35;font-weight:600">⏳ Pending</span>
+        {% elif res.status == 'confirmed' %}<span style="color:#4caf50;font-weight:600">✓ Confirmed</span>
+        {% elif res.status == 'sold' %}<span style="color:#9945ff;font-weight:600">◎ Sold</span>
+        {% elif res.status == 'cancelled' %}<span style="color:#555">✕ Cancelled</span>
+        {% endif %}
+        <span style="color:#333"> · {{ res.created_at|date:"M j" }}</span>
+      </div>
+    </div>
+  </div>
+  {% endwith %}
   {% endfor %}
 </div>
 {% endif %}
@@ -195,5 +252,4 @@ addFeedBtn.addEventListener('click', () => {
   row.querySelector('input').focus();
 });
 </script>
-</body>
-</html>
+{% endblock %}

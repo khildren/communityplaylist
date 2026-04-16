@@ -1,0 +1,146 @@
+<div class="cp-nav-strip">
+  <span class="cp-nav-tagline">Portland events · by the people, for the people</span>
+  <a href="/artists/" class="cp-nav-icon" title="Artists">🎤</a>
+  <a href="/promoters/" class="cp-nav-icon" title="Crews &amp; Promoters">📣</a>
+  <a href="/subscribe/" class="cp-nav-icon" title="Subscribe to calendar">📅</a>
+  <a href="/features/" class="cp-nav-icon" title="Features">✨</a>
+  <span class="cp-nav-rose">🌹</span>
+  <button class="cp-help-btn" id="cpHelpBtn" title="Page guide" aria-label="How to use this page">?</button>
+  {% if visit_count %}
+  <span class="cp-nav-stat">👁 {{ visit_count }} <span class="cp-nav-stat-label">Unique</span></span>
+  <span class="cp-nav-sep">·</span>
+  <span class="cp-nav-stat">{{ daily_count }} <span class="cp-nav-stat-label">Returning Daily</span></span>
+  {% endif %}
+</div>
+<style>
+.cp-nav-strip{display:flex;align-items:center;justify-content:space-evenly;padding:5px 16px;border-bottom:1px solid #1a1a1a;gap:0}
+.cp-nav-tagline{color:#444;font-size:.7em;letter-spacing:.03em;white-space:nowrap}
+.cp-nav-sep{color:#2a2a2a;font-size:.7em}
+.cp-nav-icon{color:#444;text-decoration:none;font-size:1em;transition:opacity .15s;line-height:1}
+.cp-nav-icon:hover{opacity:.65}
+.cp-nav-rose{font-size:.9em;line-height:1}
+.cp-nav-stat{font-size:.65em;color:#555;white-space:nowrap;line-height:1}
+.cp-nav-stat-label{color:#383838}
+@media(max-width:760px){.cp-nav-stat,.cp-nav-sep{display:none}}
+/* Help button */
+.cp-help-btn{background:transparent;border:1px solid #2a2a2a;color:#3a3a3a;width:16px;height:16px;border-radius:50%;font-size:.6em;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-family:sans-serif;flex-shrink:0;padding:0;line-height:1;transition:border-color .15s,color .15s;margin-left:2px}
+.cp-help-btn:hover{border-color:#ff6b35;color:#ff6b35}
+/* Tour overlay */
+#cp-tour-overlay{position:fixed;bottom:66px;left:50%;transform:translateX(-50%);z-index:9500;width:min(460px,92vw);background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:18px 18px 14px;box-shadow:0 6px 28px rgba(0,0,0,.8);display:none;font-family:sans-serif}
+#cp-tour-overlay.open{display:block}
+#cp-tour-close{position:absolute;top:10px;right:10px;background:transparent;border:none;color:#444;cursor:pointer;font-size:.85em;padding:3px 6px;transition:color .15s;line-height:1}
+#cp-tour-close:hover{color:#ff6b35}
+#cp-tour-step{font-size:.62em;color:#444;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+#cp-tour-title{font-size:.95em;color:#ff6b35;font-weight:600;margin-bottom:9px}
+#cp-tour-body{font-size:.82em;color:#777;line-height:1.7;margin-bottom:16px}
+#cp-tour-body b{color:#bbb}
+#cp-tour-nav{display:flex;align-items:center;justify-content:space-between}
+.cp-tour-navbtn{background:#1a1a1a;border:1px solid #2a2a2a;color:#555;padding:5px 14px;border-radius:4px;cursor:pointer;font-size:.78em;transition:all .12s}
+.cp-tour-navbtn:hover:not(:disabled){border-color:#ff6b35;color:#ff6b35}
+.cp-tour-navbtn:disabled{opacity:.25;cursor:default}
+#cp-tour-dots{display:flex;gap:5px;align-items:center}
+.cp-tour-dot{width:5px;height:5px;border-radius:50%;background:#2a2a2a;transition:background .15s}
+.cp-tour-dot.on{background:#ff6b35}
+/* Highlight ring for tour targets */
+.cp-tour-hi{outline:2px solid #ff6b35 !important;outline-offset:3px;border-radius:4px;animation:cpthi 1.5s ease-in-out infinite}
+@keyframes cpthi{0%,100%{outline-color:rgba(255,107,53,1)}50%{outline-color:rgba(255,107,53,.3)}}
+</style>
+<script>
+(function(){
+  var btn = document.getElementById('cpHelpBtn');
+  if (!btn) return;
+  var tours = {
+    '/': [
+      {title:'Welcome to Community Playlist',body:'Portland events — submitted by the community, for the community. No ads, no tracking, no algorithms.'},
+      {title:'List · Map · Hybrid',body:'Switch views with the toolbar. <b>List</b> for quick scanning, <b>Map</b> for neighbourhood discovery, <b>Hybrid</b> for side-by-side research. Your preference is saved.',target:'.view-btns'},
+      {title:'Search &amp; Filters',body:'Filter by genre, category, neighbourhood, date range, or distance. Search matches titles, descriptions, and genre tags — try "techno" or "free".',target:'#search'},
+      {title:'Happening Now',body:'The gold strip shows events in progress right now. It auto-hides when they end — no refresh needed.',target:'.now-strip'},
+      {title:'Map Autopilot',body:'Leave the page idle for 8 seconds and the map takes over — real driving routes between venues, per-venue weather forecast, and a zoomed-in stop at each one. Touch anything to take back control.'},
+      {title:'Music &amp; Video Player',body:'The 🎵 button in the bottom bar opens the music player. Hit <b>📺 VIDEO</b> to tune in to the local artist video channel — Portland artists, venues, and crews like PDXTV — local only.',target:'.cp-player'},
+    ],
+    '/venues': [
+      {title:'Venue Directory',body:'Every active Portland venue has a public profile — address, neighbourhood, social links, and a live event feed.'},
+      {title:'Calendar Subscribe',body:'Each venue has an iCal feed. Subscribe in Google Calendar, Apple Calendar, or any app to get their shows in your calendar automatically.'},
+      {title:'Claim Your Venue',body:'Own or manage a space? Register and claim your venue to manage your calendar feed, edit details, and surface every event you host.'},
+    ],
+    '/artists': [
+      {title:'Artist Profiles',body:'Every Portland artist has a public page — bio, genres, upcoming shows, social links, music, and video.'},
+      {title:'Music Player',body:'Artists can share tracks and mixes via Google Drive. The 🎵 player in the bottom bar queues their music automatically.'},
+      {title:'Video Channel',body:'Artists can connect a YouTube or Twitch channel. Their past sets, live streams, and VODs automatically join the <b>📺 VIDEO</b> channel.'},
+    ],
+    '/promoters': [
+      {title:'Crews &amp; Promoters',body:'Collectives, sound systems, and labels each have a public profile listing all their upcoming events.'},
+      {title:'Video Channel',body:'Connect a YouTube or Twitch channel and your streams, VODs, and past sets automatically feed into the <b>📺 MTV</b> channel.'},
+    ],
+    '/board': [
+      {title:'Community Board',body:'A lightweight message board for the PDX community. No account needed — just post a topic or reply to a thread.'},
+      {title:'Aid &amp; Mutual Aid',body:'The Aid section surfaces free breakfasts, community fridges, and mutual aid resources. The scrolling banner at the top of every page pulls from here.'},
+      {title:'Neighbourhood Boards',body:'Every major Portland neighbourhood has its own board at <b>/neighborhoods/NeighbourhoodName/</b> — for local notes, resources, and mutual aid scoped to your block.'},
+    ],
+    '/submit': [
+      {title:'Submit an Event',body:'Anyone can submit a PDX event — it goes live after a quick review. No account required.'},
+      {title:'Address &amp; Map Preview',body:'Type an address and it auto-geocodes with a live map preview. Neighbourhood is detected automatically.',target:'#id_location'},
+      {title:'Genre &amp; Artist Tags',body:'Genre tags are auto-detected from your title and description. Artist tags search our database and MusicBrainz — or type any name.'},
+      {title:'Recurring Events',body:'Check "Recurring" to set up a repeating schedule — weekly, monthly, every 3rd Thursday, annually, and more. Future dates generate automatically.'},
+    ],
+    '/subscribe': [
+      {title:'Calendar Subscribe',body:'Build a custom filtered iCal feed — by genre, category, neighbourhood, or artist — then subscribe in any calendar app.'},
+      {title:'Personal Feed',body:'If you have an account, your personal feed at <b>/u/@handle/feed/</b> streams events from everything you follow — artists, venues, and neighbourhoods.'},
+    ],
+    '/features': [
+      {title:'Features',body:'Everything built into Community Playlist — open, community-maintained, no ads or tracking.'},
+      {title:'Always growing',body:'New features ship regularly. Ideas and bug reports welcome in the <b>Discord</b> (#website-communications) or the Community Board.'},
+    ],
+    '/neighborhoods': [
+      {title:'Neighbourhood Pages',body:'Every major Portland neighbourhood has its own page — a wiki history blurb, upcoming events, and a community board scoped to that area.'},
+      {title:'Post without an account',body:'The neighbourhood board is open — just a name and a message. Great for pothole alerts, mutual aid, local notices, or just saying hi.'},
+    ],
+  };
+  function getTour(){
+    var p=(location.pathname.replace(/\/+$/,'')||'/');
+    if(tours[p])return tours[p];
+    var keys=Object.keys(tours);
+    for(var i=0;i<keys.length;i++){if(keys[i]!=='/'&&p.startsWith(keys[i]))return tours[keys[i]];}
+    return [{title:'Community Playlist',body:'Portland events by the community, for the community. No ads, no tracking, no drama. 🌹'}];
+  }
+  // Build overlay
+  var ov=document.createElement('div');
+  ov.id='cp-tour-overlay';
+  ov.innerHTML='<button id="cp-tour-close" title="Close">\u2715</button><div id="cp-tour-step"></div><h3 id="cp-tour-title"></h3><p id="cp-tour-body"></p><div id="cp-tour-nav"><button class="cp-tour-navbtn" id="cp-tour-prev">\u2190 Back</button><div id="cp-tour-dots"></div><button class="cp-tour-navbtn" id="cp-tour-next">Next \u2192</button></div>';
+  document.body.appendChild(ov);
+  var steps=[],idx=0,hiEl=null;
+  function clearHi(){if(hiEl){hiEl.classList.remove('cp-tour-hi');hiEl=null;}}
+  function buildDots(){
+    var dc=document.getElementById('cp-tour-dots');
+    dc.innerHTML='';
+    steps.forEach(function(_,i){var d=document.createElement('span');d.className='cp-tour-dot'+(i===idx?' on':'');dc.appendChild(d);});
+  }
+  function show(i){
+    steps=getTour();
+    idx=Math.max(0,Math.min(i,steps.length-1));
+    var s=steps[idx];
+    document.getElementById('cp-tour-step').textContent='Step '+(idx+1)+' of '+steps.length;
+    document.getElementById('cp-tour-title').innerHTML=s.title;
+    document.getElementById('cp-tour-body').innerHTML=s.body;
+    document.getElementById('cp-tour-prev').disabled=(idx===0);
+    var nb=document.getElementById('cp-tour-next');
+    nb.textContent=(idx===steps.length-1)?'Done \u2713':'Next \u2192';
+    nb.disabled=false;
+    buildDots();
+    clearHi();
+    if(s.target){var el=document.querySelector(s.target);if(el){el.classList.add('cp-tour-hi');hiEl=el;}}
+    ov.classList.add('open');
+  }
+  function close(){ov.classList.remove('open');clearHi();}
+  btn.addEventListener('click',function(){show(0);});
+  document.getElementById('cp-tour-close').addEventListener('click',close);
+  document.getElementById('cp-tour-prev').addEventListener('click',function(){show(idx-1);});
+  document.getElementById('cp-tour-next').addEventListener('click',function(){if(idx>=steps.length-1)close();else show(idx+1);});
+  document.addEventListener('keydown',function(e){
+    if(!ov.classList.contains('open'))return;
+    if(e.key==='Escape')close();
+    else if(e.key==='ArrowRight'&&idx<steps.length-1)show(idx+1);
+    else if(e.key==='ArrowLeft'&&idx>0)show(idx-1);
+  });
+})();
+</script>

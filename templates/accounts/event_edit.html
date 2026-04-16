@@ -46,6 +46,7 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
 <div class="header">
   <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
 </div>
+{% include 'events/_nav_strip.html' %}
 <a href="/dashboard/" class="back">← My Events</a>
 <h1>Edit Event <span class="status-badge status-{{ event.status }}">{{ event.get_status_display }}</span></h1>
 <p class="subtitle">Changes will be reviewed before going live if your event is pending.</p>

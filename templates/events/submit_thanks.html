@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Thanks! - Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}Thanks! - Community Playlist{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px}
@@ -14,8 +11,8 @@ p{color:#aaa;line-height:1.7;margin-bottom:20px}
 .back{display:inline-block;background:#ff6b35;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:.9em}
 .back:hover{background:#e55a25}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <div class="wrap">
 <img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist">
 <h1>Thanks! 🌹</h1>
@@ -23,5 +20,4 @@ p{color:#aaa;line-height:1.7;margin-bottom:20px}
 <p>Built with love for PDX.</p>
 <a href="/" class="back">← Back to events</a>
 </div>
-</body>
-</html>
+{% endblock %}

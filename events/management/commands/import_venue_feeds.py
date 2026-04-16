@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.conf import settings
 from django.core.files.base import ContentFile
-from events.models import VenueFeed, Event, RecurringEvent
+from events.models import VenueFeed, Event, RecurringEvent, Genre
 from events.enrich import enrich_event, clean_text
 import requests
 from icalendar import Calendar
@@ -53,6 +53,8 @@ def tag_feed_defaults(ev, feed):
     residents = feed.residents.all()
     if residents:
         ev.artists.add(*residents)
+    if feed.promoter_id:
+        ev.promoters.add(feed.promoter)
     # Auto-set music category when genres are present and no category assigned
     if not ev.category and ev.genres.exists():
         ev.category = 'music'
@@ -104,13 +106,36 @@ def import_ical(feed, now, stdout, stderr):
                 if attach_str.startswith('http') and ext in IMAGE_EXTS:
                     image_url = attach_str
 
+            uid = str(component.get('uid', '')).strip()
+
             if not summary or not dtstart:
                 continue
             if dtstart < now:
                 continue
 
-            slug_base = slugify(f"{summary}-{dtstart.strftime('%Y-%m-%d')}")
-            if Event.objects.filter(slug__startswith=slug_base).exists():
+            # Dedup: UID stored in website field (if set), then slug fallback.
+            existing = None
+            if uid:
+                existing = Event.objects.filter(website=uid[:200]).first()
+            if not existing:
+                slug_base = slugify(f"{summary}-{dtstart.strftime('%Y-%m-%d')}")
+                existing = Event.objects.filter(slug__startswith=slug_base).first()
+
+            if existing:
+                # Patch mutable fields if the upstream event was edited
+                changed = {}
+                if existing.title != summary[:200]:
+                    changed['title'] = summary[:200]
+                if existing.start_date != dtstart:
+                    changed['start_date'] = dtstart
+                if dtend and existing.end_date != dtend:
+                    changed['end_date'] = dtend
+                if uid and existing.website != uid[:200]:
+                    changed['website'] = uid[:200]
+                if changed:
+                    for k, v in changed.items():
+                        setattr(existing, k, v)
+                    existing.save(update_fields=list(changed.keys()))
                 skipped += 1
                 continue
 
@@ -129,7 +154,8 @@ def import_ical(feed, now, stdout, stderr):
                 status=status,
                 is_free=False,
                 category=feed.default_category,
-                website=url_prop[:200] if url_prop else '',
+                # Store UID as stable dedup key; url_prop already in description
+                website=uid[:200] if uid else (url_prop[:200] if url_prop else ''),
             )
             if image_url:
                 fname, content = download_image(image_url)
@@ -424,8 +450,32 @@ def import_squarespace(feed, now, stdout, stderr):
                 skipped += 1
                 continue
 
-            slug_base = slugify(f"{title}-{dtstart.strftime('%Y-%m-%d')}")
-            if Event.objects.filter(slug__startswith=slug_base).exists():
+            # Dedup: match on stable website URL first, then fall back to slug.
+            # URL match also handles updates — promoter edits title → new slug
+            # but same URL, so we update the existing record instead of duping.
+            existing = None
+            if event_url:
+                existing = Event.objects.filter(website=event_url[:200]).first()
+            if not existing:
+                slug_base = slugify(f"{title}-{dtstart.strftime('%Y-%m-%d')}")
+                existing = Event.objects.filter(slug__startswith=slug_base).first()
+
+            if existing:
+                # Update mutable fields if they changed
+                changed = {}
+                if existing.title != title[:200]:
+                    changed['title'] = title[:200]
+                if existing.start_date != dtstart:
+                    changed['start_date'] = dtstart
+                if existing.end_date != dtend:
+                    changed['end_date'] = dtend
+                if event_url and existing.website != event_url[:200]:
+                    changed['website'] = event_url[:200]
+                if changed:
+                    for k, v in changed.items():
+                        setattr(existing, k, v)
+                    existing.save(update_fields=list(changed.keys()))
+                    stdout.write(f'    → updated: {title!r} ({", ".join(changed)})')
                 skipped += 1
                 continue
 
@@ -699,9 +749,7 @@ def import_19hz(feed, now, stdout, stderr):
                 skipped += 1
                 continue
 
-            desc_parts = [f'Listed on 19hz.info — PNW electronic music community calendar.']
-            if tags_text:
-                desc_parts.append(f'Genre/tags: {tags_text}')
+            desc_parts = []
             if price_text:
                 desc_parts.append(f'Price/ages: {price_text}')
             if organiser:
@@ -724,6 +772,24 @@ def import_19hz(feed, now, stdout, stderr):
             )
             enrich_event(ev, geocode=False, save=True)  # geocode_events cron handles this
             tag_feed_defaults(ev, feed)
+
+            # Parse genre/tags from 19hz and apply as Genre objects
+            if tags_text:
+                _STOP = {'and','or','the','a','an','of','in','at','by','for','with','on'}
+                for raw in tags_text.split(','):
+                    raw = raw.strip()
+                    if not raw:
+                        continue
+                    # Smart title-case: keep hyphenated word caps, don't lowercase stopwords mid-hyphen
+                    parts = raw.split()
+                    tag = ' '.join(
+                        p if '-' in p or '&' in p else
+                        (p.lower() if i > 0 and p.lower() in _STOP else p.capitalize())
+                        for i, p in enumerate(parts)
+                    )
+                    if tag:
+                        genre_obj, _ = Genre.objects.get_or_create(name=tag)
+                        ev.genres.add(genre_obj)
             created += 1
 
         except Exception as e:

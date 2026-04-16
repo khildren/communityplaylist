@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit — {{ promoter.name }} — Community Playlist</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif;padding:24px 16px}
+.wrap{max-width:640px;margin:0 auto}
+.back{color:#ff6b35;text-decoration:none;font-size:.82em;display:inline-block;margin-bottom:20px}
+.back:hover{text-decoration:underline}
+h1{color:#ff6b35;font-size:1.2em;margin-bottom:22px}
+.card{background:#161616;border:1px solid #2a2a2a;border-radius:10px;margin-bottom:12px;overflow:hidden}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none;gap:8px}
+.card-header:hover{background:#1a1a1a}
+.card-title{color:#ff6b35;font-size:.8em;text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin:0}
+.card-arrow{color:#444;font-size:.75em;transition:transform .2s;flex-shrink:0}
+.card.open .card-arrow{transform:rotate(180deg)}
+.card-body{padding:0 18px 18px;display:none}
+.card.open .card-body{display:block}
+.fg{margin-bottom:14px}
+.fg:last-child{margin-bottom:0}
+.fg label{display:block;font-size:.8em;color:#888;margin-bottom:5px}
+.fg input,.fg textarea{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:8px 11px;color:#eee;font-size:.88em;font-family:inherit}
+.fg input:focus,.fg textarea:focus{outline:none;border-color:#ff6b35}
+.fg textarea{resize:vertical;min-height:80px}
+.social-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{font-size:.74em;color:#444;margin-top:4px;line-height:1.5}
+.btn{background:#ff6b35;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:.88em;margin-top:8px}
+.btn:hover{background:#e55a25}
+.photo-current{width:60px;height:60px;border-radius:8px;object-fit:cover;margin-bottom:8px;display:block}
+.members-note{font-size:.76em;color:#555;line-height:1.5;margin-bottom:12px;padding:10px 12px;background:#111;border:1px solid #1e1e1e;border-radius:6px}
+.members-note a{color:#ff6b35;text-decoration:none}
+.members-note a:hover{text-decoration:underline}
+@media(max-width:500px){.social-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a href="{% url 'promoter_detail' promoter.slug %}" class="back">← {{ promoter.name }}</a>
+<h1>Edit profile</h1>
+
+<form method="post" enctype="multipart/form-data" data-turbo="false">
+{% csrf_token %}
+
+<div class="card open">
+  <div class="card-header" onclick="cpToggle(this)">
+    <div class="card-title">Basics</div>
+    <span class="card-arrow">▼</span>
+  </div>
+  <div class="card-body">
+    <div class="fg">
+      <label>Name</label>
+      <input type="text" name="name" value="{{ promoter.name }}">
+    </div>
+    <div class="fg">
+      <label>Bio</label>
+      <textarea name="bio">{{ promoter.bio }}</textarea>
+    </div>
+    <div class="fg">
+      <label>Photo / Logo</label>
+      {% if promoter.photo %}<img src="{{ promoter.photo.url }}" alt="" class="photo-current">{% endif %}
+      <input type="file" name="photo" accept="image/*">
+    </div>
+    <div class="fg">
+      <label>Website</label>
+      <input type="url" name="website" value="{{ promoter.website }}" placeholder="https://...">
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header" onclick="cpToggle(this)">
+    <div class="card-title">Social Links</div>
+    <span class="card-arrow">▼</span>
+  </div>
+  <div class="card-body">
+    <div class="social-grid">
+      <div class="fg">
+        <label>Instagram handle</label>
+        <input type="text" name="instagram" value="{{ promoter.instagram }}" placeholder="no @">
+      </div>
+      <div class="fg">
+        <label>SoundCloud username</label>
+        <input type="text" name="soundcloud" value="{{ promoter.soundcloud }}">
+      </div>
+      <div class="fg">
+        <label>Bandcamp URL</label>
+        <input type="url" name="bandcamp" value="{{ promoter.bandcamp }}" placeholder="https://...">
+      </div>
+      <div class="fg">
+        <label>Mixcloud username</label>
+        <input type="text" name="mixcloud" value="{{ promoter.mixcloud }}">
+      </div>
+      <div class="fg">
+        <label>YouTube URL</label>
+        <input type="url" name="youtube" value="{{ promoter.youtube }}" placeholder="https://...">
+      </div>
+      <div class="fg">
+        <label>Spotify URL</label>
+        <input type="url" name="spotify" value="{{ promoter.spotify }}" placeholder="https://...">
+      </div>
+      <div class="fg">
+        <label>Discord invite</label>
+        <input type="url" name="discord" value="{{ promoter.discord }}" placeholder="https://discord.gg/...">
+      </div>
+      <div class="fg">
+        <label>Telegram username</label>
+        <input type="text" name="telegram" value="{{ promoter.telegram }}" placeholder="no @">
+      </div>
+      <div class="fg">
+        <label>Mastodon URL</label>
+        <input type="url" name="mastodon" value="{{ promoter.mastodon }}" placeholder="https://pdx.social/@you">
+      </div>
+      <div class="fg">
+        <label>Bluesky handle</label>
+        <input type="text" name="bluesky" value="{{ promoter.bluesky }}" placeholder="you.bsky.social">
+      </div>
+      <div class="fg">
+        <label>TikTok handle</label>
+        <input type="text" name="tiktok" value="{{ promoter.tiktok }}" placeholder="no @">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header" onclick="cpToggle(this)">
+    <div class="card-title">📺 PDXTV — Video Channel</div>
+    <span class="card-arrow">▼</span>
+  </div>
+  <div class="card-body">
+    <p style="font-size:.78em;color:#555;margin-bottom:14px;line-height:1.6">Connect a YouTube channel and/or Twitch account. Videos and VODs are harvested automatically and added to the PDXTV queue. Live streams surface at the top.</p>
+    <div class="social-grid">
+      <div class="fg">
+        <label>YouTube channel URL</label>
+        <input type="url" name="youtube" value="{{ promoter.youtube }}" placeholder="https://youtube.com/@handle">
+        <div class="hint">Already shared with social links above.</div>
+      </div>
+      <div class="fg">
+        <label>Twitch username</label>
+        <input type="text" name="twitch" value="{{ promoter.twitch }}" placeholder="username (no @)">
+        <div class="hint">Your twitch.tv/username — live streams + VODs join PDXTV.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header" onclick="cpToggle(this)">
+    <div class="card-title">Music Folder</div>
+    <span class="card-arrow">▼</span>
+  </div>
+  <div class="card-body">
+    <div class="fg">
+      <label>Google Drive Folder URL</label>
+      <input type="url" name="drive_folder_url" value="{{ promoter.drive_folder_url }}" placeholder="https://drive.google.com/drive/folders/...">
+      <div class="hint">
+        Folder must be shared: <strong style="color:#aaa">Anyone with the link → Viewer</strong>.<br>
+        Use <strong style="color:#aaa">MP3 at 128–320 kbps</strong> — WAV is too large to stream.<br>
+        <strong style="color:#aaa">ID3 tags are read first</strong> (Title, Artist, Genre, Year) — set them cleanly in any tagger.<br>
+        Fallback if tags are missing: <code>Artist - Title [genre] @ Venue 2024-01-15.mp3</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header" onclick="cpToggle(this)">
+    <div class="card-title">Record Shop</div>
+    <span class="card-arrow">▼</span>
+  </div>
+  <div class="card-body">
+    <div class="fg">
+      <label>Google Sheets URL — Inventory</label>
+      <input type="url" name="shop_sheet_url" value="{{ promoter.shop_sheet_url }}" placeholder="https://docs.google.com/spreadsheets/d/...">
+      <div class="hint">
+        Sheet must be <strong style="color:#ff6b35">published to the web</strong>: File → Share → Publish to the web → choose <strong style="color:#aaa">Comma-separated values (.csv)</strong> → Publish.<br>
+        Then paste the URL from the share dialog above (the regular spreadsheet URL is fine — we convert it).<br><br>
+        Column headers (order flexible, case-insensitive):<br>
+        <strong style="color:#aaa">Artist | Title | Label | Year | Format | Condition | Price SOL | Notes | YouTube</strong><br>
+        <span style="color:#555">YouTube column is optional — paste a YouTube URL to pin a specific video (overrides Discogs auto-lookup).</span><br><br>
+        After saving, hit <strong style="color:#aaa">↻ Sync sheet</strong> on your profile to import listings.<br><br>
+        <strong style="color:#aaa">What gets auto-filled from Discogs:</strong><br>
+        Label, Year, and cover art if left blank in your sheet.<br>
+        <strong style="color:#aaa">▶ Preview button</strong> — we find the first embeddable YouTube video linked on the Discogs release page and attach it to that listing. Not every release has one, and some videos block embedding — we check each one automatically and skip blocked ones.<br><br>
+        <strong style="color:#aaa">Sync runs up to 10 Discogs lookups per hit</strong> — if you have more listings than that, hit ↻ Sync a second (or third) time to fill in the rest. Already-enriched fields are never overwritten by a re-sync.
+      </div>
+    </div>
+    <div class="fg">
+      <label>Solana Wallet Address</label>
+      <input type="text" name="sol_wallet" value="{{ promoter.sol_wallet }}" placeholder="Your Phantom / Solflare public key">
+      <div class="hint">Payments go directly to this address. Buyers pay you peer-to-peer — no middleman.</div>
+    </div>
+    <div class="fg" style="display:flex;gap:18px;flex-wrap:wrap">
+      <label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:.84em;color:#aaa;margin-bottom:0">
+        <input type="checkbox" name="shop_pay_in_person" {% if promoter.shop_pay_in_person %}checked{% endif %}
+               style="width:auto;accent-color:#ff6b35">
+        🤝 Accept in-person payment / pickup at events
+      </label>
+      <label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:.84em;color:#aaa;margin-bottom:0">
+        <input type="checkbox" name="shop_open_to_trade" {% if promoter.shop_open_to_trade %}checked{% endif %}
+               style="width:auto;accent-color:#4caf50">
+        🔄 Open to record trades
+      </label>
+    </div>
+    <div class="hint" style="margin-top:8px">Contact via Discord or Telegram — buyers will see your links when they click In Person or Trade.</div>
+  </div>
+</div>
+
+{% if all_artists %}
+<div class="card">
+  <div class="card-header" onclick="cpToggle(this)">
+    <div class="card-title">Artists &amp; Members</div>
+    <span class="card-arrow">▼</span>
+  </div>
+  <div class="card-body">
+    <div class="members-note">
+      🎤 Artists should <strong style="color:#aaa">create and manage their own profile</strong> — it keeps their bio, links, and sets under their control.<br><br>
+      The best flow: share <a href="{% url 'register' %}">communityplaylist.com/register/</a> with them, they sign up and add themselves. Then they'll show up here to link.<br><br>
+      If an artist isn't online or hasn't joined yet, you can check them in below — just know they won't be able to manage their own info until they claim their profile.
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;max-height:260px;overflow-y:auto;background:#111;border:1px solid #1e1e1e;border-radius:6px;padding:10px">
+      {% for a in all_artists %}
+      <label style="display:inline-flex;align-items:center;gap:5px;background:#1a1a1a;border:1px solid {% if a.pk in member_pks %}#ff6b35{% else %}#2a2a2a{% endif %};border-radius:20px;padding:4px 10px;cursor:pointer;font-size:.8em;color:{% if a.pk in member_pks %}#ff6b35{% else %}#888{% endif %}">
+        <input type="checkbox" name="members" value="{{ a.pk }}" {% if a.pk in member_pks %}checked{% endif %} style="display:none" onchange="this.closest('label').style.borderColor=this.checked?'#ff6b35':'#2a2a2a';this.closest('label').style.color=this.checked?'#ff6b35':'#888'">
+        {% if a.photo %}<img src="{{ a.photo.url }}" style="width:18px;height:18px;border-radius:50%;object-fit:cover">{% else %}🎤{% endif %}
+        {{ a.name }}
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<button type="submit" class="btn">Save changes</button>
+</form>
+</div>
+
+<script>
+function cpToggle(header) {
+  var card = header.closest('.card');
+  card.classList.toggle('open');
+}
+// Persist collapse state in sessionStorage
+document.querySelectorAll('.card-header').forEach(function(h) {
+  var card = h.closest('.card');
+  var key = 'cp-card-' + h.querySelector('.card-title').textContent.trim();
+  var saved = sessionStorage.getItem(key);
+  if (saved === 'closed') card.classList.remove('open');
+  if (saved === 'open') card.classList.add('open');
+  h.addEventListener('click', function() {
+    sessionStorage.setItem(key, card.classList.contains('open') ? 'open' : 'closed');
+  });
+});
+</script>
+</body>
+</html>

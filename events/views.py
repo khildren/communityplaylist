@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import admin, messages
 from django.template.response import TemplateResponse
-from .models import Event, EventPhoto, Genre, Artist, SiteStats, CalendarFeed, Venue, Neighborhood, UserProfile, Follow, EditSuggestion
+from .models import Event, EventPhoto, Genre, Artist, SiteStats, CalendarFeed, Venue, Neighborhood, UserProfile, Follow, EditSuggestion, PromoterProfile, PlaylistTrack, SavedTrack, RecordListing, RecordReservation, VideoTrack
 from .forms import EventSubmitForm, EventPhotoForm, RegisterForm, StyledAuthForm, VenueForm
 from .geocode import geocode_location
 from urllib.parse import quote
@@ -17,6 +17,8 @@ from datetime import timedelta
 import requests
 import math
 import re
+
+CP_VERSION = '0.9.3'   # bump on each deploy
 
 # Portland city center
 PDX_LAT, PDX_LNG = 45.5051, -122.6750
@@ -56,17 +58,17 @@ def event_list(request):
     category = request.GET.get('category', '')
     search_query = request.GET.get('q', '').strip()
     radius = request.GET.get('radius', '')  # '15', '30', '60' or blank = all
+    date_explicitly_set = 'date' in request.GET  # user chose a date filter
 
     if search_query:
         from django.db.models import Q
         events = events.filter(
             Q(title__icontains=search_query) |
             Q(description__icontains=search_query) |
-            Q(location__icontains=search_query)
-        )
+            Q(location__icontains=search_query) |
+            Q(genres__name__icontains=search_query)
+        ).distinct()
 
-    if genre_id:
-        events = events.filter(genres__id=genre_id)
     if category:
         events = events.filter(category=category)
     if neighborhood:
@@ -91,15 +93,24 @@ def event_list(request):
         events = events.filter(start_date__gte=now, start_date__lte=now + timezone.timedelta(days=30))
     elif date_range == 'past':
         events = events.filter(start_date__lt=now).order_by('-start_date')
+    elif search_query and not date_explicitly_set:
+        # Search with no explicit date filter → all events, newest first
+        events = events.order_by('-start_date')
     else:  # 'future' or default
         events = events.filter(start_date__gte=now)
+
+    # Snapshot before genre filter — genres shown are those available in the
+    # current context (date/search/category/neighborhood), never narrowed to zero.
+    events_for_genres = events
+    if genre_id:
+        events = events.filter(genres__id=genre_id)
 
     neighborhoods = Event.objects.filter(
         status='approved', start_date__gte=now
     ).exclude(neighborhood='').values_list('neighborhood', flat=True).distinct().order_by('neighborhood')
 
     genres = Genre.objects.filter(
-        events__status='approved', events__start_date__gte=now
+        events__in=events_for_genres
     ).distinct().order_by('name')
 
     # Force eval now so approved_photos is populated for map_events build
@@ -122,7 +133,9 @@ def event_list(request):
     ]
 
     SiteStats.record_visit(request)
-    visit_count = f"{SiteStats.get_count():,}"
+    visit_count, daily_count = SiteStats.get_counts()
+    visit_count = f"{visit_count:,}"
+    daily_count = f"{daily_count:,}"
 
     from board.models import BannerMessage
     banners = list(BannerMessage.objects.filter(active=True).order_by('created_at'))
@@ -154,12 +167,66 @@ def event_list(request):
         'selected_category': category,
         'free_only': free_only,
         'visit_count': visit_count,
+        'daily_count': daily_count,
         'search_query': search_query,
+        'search_all_time': bool(search_query and not date_explicitly_set),
+        'cp_version': CP_VERSION,
         'banners': banners,
         'happening_now': happening_now,
         'selected_radius': radius,
         'neighborhood_pages': neighborhood_pages,
     })
+
+
+def api_genre_filter(request):
+    """Return genres for events matching current filters (excluding genre), for live dropdown updates."""
+    from django.db.models import Q
+    now = timezone.now()
+    events = Event.objects.filter(status='approved')
+
+    q          = request.GET.get('q', '').strip()
+    category   = request.GET.get('category', '')
+    neighborhood = request.GET.get('neighborhood', '')
+    free_only  = request.GET.get('free', '')
+    event_type = request.GET.get('event_type', '')
+    date_range = request.GET.get('date', 'future')
+    date_explicitly_set = 'date' in request.GET
+
+    if q:
+        events = events.filter(
+            Q(title__icontains=q) |
+            Q(description__icontains=q) |
+            Q(location__icontains=q) |
+            Q(genres__name__icontains=q)
+        ).distinct()
+    if category:
+        events = events.filter(category=category)
+    if neighborhood:
+        events = events.filter(neighborhood__icontains=neighborhood)
+    if free_only:
+        events = events.filter(is_free=True)
+    if event_type == 'online':
+        events = events.filter(location__iregex=r'^(https?://|www\.)')
+    elif event_type == 'local':
+        events = events.exclude(location__iregex=r'^(https?://|www\.)')
+
+    if date_range == 'today':
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end   = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+        events = events.filter(start_date__gte=today_start, start_date__lte=today_end)
+    elif date_range == 'week':
+        events = events.filter(start_date__gte=now, start_date__lte=now + timezone.timedelta(days=7))
+    elif date_range == 'month':
+        events = events.filter(start_date__gte=now, start_date__lte=now + timezone.timedelta(days=30))
+    elif date_range == 'past':
+        events = events.filter(start_date__lt=now)
+    elif q and not date_explicitly_set:
+        pass  # all-time search
+    else:
+        events = events.filter(start_date__gte=now)
+
+    genres = Genre.objects.filter(events__in=events).distinct().order_by('name')
+    return JsonResponse({'genres': [{'id': g.id, 'name': g.name} for g in genres]})
 
 
 def event_archive(request):
@@ -169,7 +236,16 @@ def event_archive(request):
     genre_id = request.GET.get('genre')
     neighborhood = request.GET.get('neighborhood')
     free_only = request.GET.get('free')
+    search_query = request.GET.get('q', '').strip()
 
+    if search_query:
+        from django.db.models import Q
+        events = events.filter(
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(location__icontains=search_query) |
+            Q(genres__name__icontains=search_query)
+        ).distinct()
     if genre_id:
         events = events.filter(genres__id=genre_id)
     if neighborhood:
@@ -205,6 +281,7 @@ def event_archive(request):
         'selected_genre': genre_id,
         'selected_neighborhood': neighborhood,
         'free_only': free_only,
+        'search_query': search_query,
     })
 
 
@@ -283,6 +360,10 @@ def event_detail(request, slug):
 
     venue = Venue.for_location(event.location)
 
+    can_edit_lineup = request.user.is_authenticated and (
+        request.user.is_staff or event.submitted_user == request.user
+    )
+
     return render(request, 'events/event_detail.html', {
         'event': event,
         'photos': photos,
@@ -296,7 +377,166 @@ def event_detail(request, slug):
         'now': timezone.now(),
         'venue': venue,
         'event_edit_fields': EditSuggestion.FIELDS['event'],
+        'can_edit_lineup': can_edit_lineup,
+        'linked_artists': event.artists.all(),
+        'linked_promoters': event.promoters.all(),
     })
+
+
+_CREW_KEYWORDS = re.compile(
+    r'\b(crew|kru|collective|sound|system|records|productions|booking|presents|djs?|music|pdx|posse|squad)\b',
+    re.IGNORECASE,
+)
+
+def _parse_lineup_from_title(title):
+    """
+    Splits an event title like "Gnosis DNB with Binsky, The Night Mayor, and the Gnosis Crew"
+    into artist and crew name candidates.
+    Returns {'artists': [...], 'crews': [...]}
+    """
+    import re as _re
+    # Strip everything before intro keywords
+    after = _re.split(r'\bwith|feat(?:uring)?|ft\.?|presents|hosted by\b', title, maxsplit=1, flags=_re.IGNORECASE)
+    candidates_str = after[-1].strip() if len(after) > 1 else title
+
+    # Split on commas and " and " / " + "
+    parts = _re.split(r',\s*|\s+and\s+|\s*\+\s*', candidates_str)
+    # Strip leading articles/conjunctions that bleed through
+    parts = [_re.sub(r'^(and\s+the\s+|and\s+|the\s+)', '', p, flags=_re.IGNORECASE).strip().strip('.').strip() for p in parts if p.strip()]
+
+    # Remove articles "the", "a" at the start for classification only (keep full name)
+    artists, crews = [], []
+    for name in parts:
+        if not name:
+            continue
+        if _CREW_KEYWORDS.search(name):
+            crews.append(name)
+        else:
+            artists.append(name)
+    return {'artists': artists, 'crews': crews}
+
+
+def api_parse_lineup(request):
+    """
+    GET /api/parse-lineup/?title=...
+    Returns parsed artist/crew candidates with DB matches.
+    """
+    title = request.GET.get('title', '').strip()
+    if not title:
+        return JsonResponse({'artists': [], 'crews': []})
+
+    parsed = _parse_lineup_from_title(title)
+
+    def find_matches(names, model, label):
+        results = []
+        for name in names:
+            # Search DB for close matches
+            qs = model.objects.filter(name__icontains=name.split()[0])  # first word match
+            exact = model.objects.filter(name__iexact=name).first()
+            results.append({
+                'name': name,
+                'exact': {'id': exact.pk, 'name': exact.name} if exact else None,
+                'suggestions': [{'id': o.pk, 'name': o.name} for o in qs[:4]],
+            })
+        return results
+
+    return JsonResponse({
+        'artists': find_matches(parsed['artists'], Artist, 'artist'),
+        'crews':   find_matches(parsed['crews'],   PromoterProfile, 'crew'),
+    })
+
+
+@login_required
+def event_lineup_create(request, slug):
+    """
+    POST {type: 'artist'|'promoter', name: '...'} — creates a minimal profile,
+    links it to the event, and claims it for the requesting user.
+    Returns {id, name, profile_url, type}.
+    """
+    event = get_object_or_404(Event, slug=slug)
+    if not (request.user.is_staff or event.submitted_user == request.user):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+
+    import json as _json
+    body = _json.loads(request.body)
+    obj_type = body.get('type')
+    name = body.get('name', '').strip()[:200]
+    if not name:
+        return JsonResponse({'error': 'name required'}, status=400)
+
+    if obj_type == 'artist':
+        # Try exact-case first, then case-insensitive
+        obj = Artist.objects.filter(name__iexact=name).first()
+        if obj:
+            if not obj.claimed_by:
+                obj.claimed_by = request.user
+                obj.save(update_fields=['claimed_by'])
+        else:
+            obj = Artist(name=name, claimed_by=request.user)
+            obj.save()  # triggers slug auto-generation
+        event.artists.add(obj)
+        return JsonResponse({'id': obj.pk, 'name': obj.name, 'slug': obj.slug, 'type': 'artist',
+                             'profile_url': f'/artists/{obj.slug}/'})
+
+    elif obj_type == 'promoter':
+        from django.utils.text import slugify as _slugify
+        # Check for existing by name first
+        obj = PromoterProfile.objects.filter(name__iexact=name).first()
+        if obj:
+            if not obj.claimed_by:
+                obj.claimed_by = request.user
+                obj.save(update_fields=['claimed_by'])
+        else:
+            base_slug = _slugify(name)
+            slug_candidate, i = base_slug, 1
+            while PromoterProfile.objects.filter(slug=slug_candidate).exists():
+                slug_candidate = f'{base_slug}-{i}'; i += 1
+            obj = PromoterProfile.objects.create(
+                name=name, slug=slug_candidate, claimed_by=request.user, is_public=True
+            )
+        event.promoters.add(obj)
+        return JsonResponse({'id': obj.pk, 'name': obj.name, 'type': 'promoter',
+                             'profile_url': f'/promoters/{obj.slug}/'})
+
+    return JsonResponse({'error': 'bad type'}, status=400)
+
+
+@login_required
+def event_lineup_edit(request, slug):
+    """
+    POST to add/remove artist or promoter from an event.
+    Body: {action: 'add'|'remove', type: 'artist'|'promoter', id: pk}
+    """
+    if not request.user.is_staff and not request.user.is_authenticated:
+        return JsonResponse({'error': 'forbidden'}, status=403)
+    event = get_object_or_404(Event, slug=slug)
+    if not (request.user.is_staff or event.submitted_user == request.user):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+
+    import json as _json
+    body = _json.loads(request.body)
+    action = body.get('action')
+    obj_type = body.get('type')
+    obj_id = int(body.get('id', 0))
+
+    if obj_type == 'artist':
+        obj = get_object_or_404(Artist, pk=obj_id)
+        if action == 'add':
+            event.artists.add(obj)
+        else:
+            event.artists.remove(obj)
+        linked = [{'id': a.pk, 'name': a.name, 'slug': a.slug} for a in event.artists.all()]
+    elif obj_type == 'promoter':
+        obj = get_object_or_404(PromoterProfile, pk=obj_id)
+        if action == 'add':
+            event.promoters.add(obj)
+        else:
+            event.promoters.remove(obj)
+        linked = [{'id': p.pk, 'name': p.name, 'slug': p.slug} for p in event.promoters.all()]
+    else:
+        return JsonResponse({'error': 'bad type'}, status=400)
+
+    return JsonResponse({'ok': True, 'linked': linked})
 
 
 def event_submit(request):
@@ -376,42 +616,71 @@ def genre_autocomplete(request):
 
 
 def artist_autocomplete(request):
-    """Local DB search + MusicBrainz fallback. Returns found=False flag when nothing found."""
+    """Dual-purpose: ?q= returns JSON autocomplete; no query renders the artist list page."""
     q = request.GET.get('q', '')
-    if len(q) < 2:
-        return JsonResponse([], safe=False)
 
-    local = list(Artist.objects.filter(name__icontains=q)[:10])
-    if local:
-        return JsonResponse([{'id': a.id, 'name': a.name, 'mb_id': a.mb_id} for a in local], safe=False)
+    # --- JSON autocomplete mode ---
+    if q:
+        if len(q) < 2:
+            return JsonResponse([], safe=False)
 
-    # Fallback: search MusicBrainz
-    try:
-        resp = requests.get(
-            'https://musicbrainz.org/ws/2/artist',
-            params={'query': q, 'fmt': 'json', 'limit': 8},
-            headers={'User-Agent': 'CommunityPlaylist/1.0 (hello@communityplaylist.com)', 'Accept': 'application/json'},
-            timeout=5,
-        )
-        data = resp.json()
-        results = []
-        for a in data.get('artists', []):
-            name = a.get('name', '')
-            mb_id = a.get('id', '')
-            artist, _ = Artist.objects.get_or_create(name=name, defaults={'mb_id': mb_id})
-            # Auto-link local-only artists if MusicBrainz now has them
-            if _ is False and not artist.mb_id and mb_id:
-                Artist.objects.filter(pk=artist.pk).update(mb_id=mb_id)
-                artist.mb_id = mb_id
-            results.append({'id': artist.id, 'name': artist.name, 'mb_id': artist.mb_id})
-        return JsonResponse(results, safe=False)
-    except Exception:
-        return JsonResponse([], safe=False)
+        local = list(Artist.objects.filter(name__icontains=q)[:10])
+        if local:
+            return JsonResponse([{'id': a.id, 'name': a.name, 'slug': a.slug, 'mb_id': a.mb_id} for a in local], safe=False)
+
+        # Fallback: search MusicBrainz
+        try:
+            resp = requests.get(
+                'https://musicbrainz.org/ws/2/artist',
+                params={'query': q, 'fmt': 'json', 'limit': 8},
+                headers={'User-Agent': 'CommunityPlaylist/1.0 (hello@communityplaylist.com)', 'Accept': 'application/json'},
+                timeout=5,
+            )
+            data = resp.json()
+            results = []
+            for a in data.get('artists', []):
+                name = a.get('name', '')
+                mb_id = a.get('id', '')
+                artist, _ = Artist.objects.get_or_create(name=name, defaults={'mb_id': mb_id})
+                if _ is False and not artist.mb_id and mb_id:
+                    Artist.objects.filter(pk=artist.pk).update(mb_id=mb_id)
+                    artist.mb_id = mb_id
+                results.append({'id': artist.id, 'name': artist.name, 'slug': artist.slug, 'mb_id': artist.mb_id})
+            return JsonResponse(results, safe=False)
+        except Exception:
+            return JsonResponse([], safe=False)
+
+    # --- HTML list page mode ---
+    # Show any artist with profile content, a claimed account, or at least one linked event.
+    # This includes unclaimed stubs created from event imports.
+    artists = Artist.objects.filter(
+        models.Q(events__isnull=False) |
+        models.Q(claimed_by__isnull=False) |
+        models.Q(bio__gt='') | models.Q(photo__gt='') | models.Q(instagram__gt='') |
+        models.Q(soundcloud__gt='') | models.Q(drive_folder_url__gt='')
+    ).distinct().order_by('name')
+    return render(request, 'events/artist_list.html', {'artists': artists})
 
 
-def artist_profile(request, pk):
+def artist_by_pk(request, pk):
+    """Legacy redirect from /artists/<int:pk>/ → /artists/<slug>/."""
     artist = get_object_or_404(Artist, pk=pk)
+    return redirect('artist_profile', slug=artist.slug, permanent=True)
+
+
+def artist_profile(request, slug):
+    artist = get_object_or_404(Artist, slug=slug)
     now = timezone.now()
+
+    session_key = f'viewed_artist_{artist.pk}'
+    if not request.session.get(session_key):
+        try:
+            Artist.objects.filter(pk=artist.pk).update(view_count=models.F('view_count') + 1)
+            request.session[session_key] = True
+            artist.view_count += 1
+        except Exception:
+            pass  # view count is non-critical; don't 500 on DB contention
+
     upcoming  = artist.events.filter(status='approved', start_date__gte=now).order_by('start_date')
     past      = artist.events.filter(status='approved', start_date__lt=now).order_by('-start_date')[:20]
     recurring = artist.recurring_events.filter(active=True)
@@ -419,10 +688,42 @@ def artist_profile(request, pk):
         request.user.is_authenticated and
         Follow.objects.filter(user=request.user, target_type=Follow.TYPE_ARTIST, target_id=artist.pk).exists()
     )
+    # Own tracks (directly linked to this artist's Drive folder)
+    own_tracks = list(
+        artist.tracks.select_related('genre', 'artist', 'promoter', 'venue')
+        .order_by('position', 'title')
+    )
+    own_pks = {t.pk for t in own_tracks}
+
+    # Cross-posted tracks: any PlaylistTrack where ID3 artist_name matches,
+    # uploaded by a different account (crew, venue, other artist)
+    tagged_tracks = [
+        t for t in PlaylistTrack.objects.filter(
+            artist_name__iexact=artist.name
+        ).exclude(artist=artist).select_related('genre', 'artist', 'promoter', 'venue')
+        if t.pk not in own_pks
+    ]
+    cross_pks = {t.pk for t in tagged_tracks}
+
+    tracks = own_tracks + tagged_tracks
+
+    can_edit = request.user.is_authenticated and (
+        request.user.is_staff or artist.claimed_by == request.user
+    )
+    saved_ids = set(
+        SavedTrack.objects.filter(user=request.user, track_id__in={t.pk for t in tracks}).values_list('track_id', flat=True)
+    ) if request.user.is_authenticated and tracks else set()
+    yt_embed_html = _get_yt_embed_cached(artist.youtube) if _is_yt_channel(artist.youtube) else ''
     return render(request, 'events/artist_profile.html', {
         'artist': artist, 'upcoming': upcoming, 'past': past, 'recurring': recurring,
         'is_following': is_following,
         'artist_edit_fields': EditSuggestion.FIELDS['artist'],
+        'tracks': tracks,
+        'cross_pks': cross_pks,
+        'can_edit': can_edit,
+        'saved_ids': saved_ids,
+        'yt_embed_html': yt_embed_html,
+        'crews': artist.crews.filter(is_public=True).order_by('name'),
     })
 
 
@@ -537,11 +838,20 @@ def dashboard(request):
     follows = Follow.objects.filter(user=request.user).select_related()
     follow_data = [{'follow': f, 'target': f.get_target()} for f in follows]
     follow_data = [x for x in follow_data if x['target'] is not None]
+    saved_tracks = SavedTrack.objects.filter(user=request.user).select_related(
+        'track__genre', 'track__artist', 'track__promoter', 'track__venue'
+    ).order_by('-created_at')
+    my_reservations = (RecordReservation.objects
+                       .filter(buyer=request.user)
+                       .select_related('listing__promoter')
+                       .order_by('-created_at'))
     return render(request, 'accounts/dashboard.html', {
         'events': events,
         'feeds': feeds,
         'profile': profile,
         'follow_data': follow_data,
+        'saved_tracks': saved_tracks,
+        'my_reservations': my_reservations,
     })
 
 
@@ -837,6 +1147,12 @@ def neighborhood_detail(request, slug):
     hood = get_object_or_404(Neighborhood, slug=slug, active=True)
     now  = timezone.now()
 
+    session_key = f'viewed_neighborhood_{hood.pk}'
+    if not request.session.get(session_key):
+        Neighborhood.objects.filter(pk=hood.pk).update(view_count=models.F('view_count') + 1)
+        request.session[session_key] = True
+        hood.view_count += 1
+
     upcoming = Event.objects.filter(
         status='approved',
         start_date__gte=now,
@@ -980,6 +1296,74 @@ def profile_settings(request):
         'profile': profile,
         'error': error,
     })
+
+
+# ── YouTube channel embed cache (in-memory, 1-hour TTL) ──────────────────────
+import time as _time
+_yt_embed_cache: dict = {}
+_YT_EMBED_TTL = 3600  # seconds
+
+def _get_yt_embed_cached(url):
+    """Return cached YouTube channel embed HTML, fetching if stale/missing."""
+    now = _time.time()
+    entry = _yt_embed_cache.get(url)
+    if entry and now - entry[1] < _YT_EMBED_TTL:
+        return entry[0]
+    html = _fetch_embed_html(url) or ''
+    _yt_embed_cache[url] = (html, now)
+    return html
+
+def _is_yt_channel(url):
+    if not url or 'youtube.com' not in url:
+        return False
+    # Modern formats: /@handle, /channel/UCxxx, /c/name
+    if any(p in url for p in ('/@', '/channel/UC', '/c/')):
+        return True
+    # Legacy /username format — youtube.com/username with no other path segments
+    import re as _re_yt
+    return bool(_re_yt.search(r'youtube\.com/([A-Za-z0-9_]+)/?$', url))
+
+
+# ── Discogs API helper ────────────────────────────────────────────────────────
+_discogs_cache: dict = {}
+_DISCOGS_TTL = 86400  # 24h — release metadata doesn't change often
+
+def _discogs_search(artist, title):
+    """Search Discogs for a release, return {'cover_url', 'label', 'year', 'discogs_id'} or {}."""
+    key = f'{artist.lower()}|{title.lower()}'
+    now = _time.time()
+    entry = _discogs_cache.get(key)
+    if entry and now - entry[1] < _DISCOGS_TTL:
+        return entry[0]
+
+    try:
+        resp = requests.get(
+            'https://api.discogs.com/database/search',
+            params={'q': f'{artist} {title}', 'type': 'release', 'per_page': 1},
+            headers={
+                'User-Agent': 'CommunityPlaylist/1.0 +https://communityplaylist.com',
+                'Accept': 'application/json',
+            },
+            timeout=8,
+        )
+        resp.raise_for_status()
+        results = resp.json().get('results', [])
+        if not results:
+            _discogs_cache[key] = ({}, now)
+            return {}
+        r = results[0]
+        data = {
+            'cover_url':   r.get('cover_image', '') or r.get('thumb', ''),
+            'label':       (r.get('label') or [''])[0] if r.get('label') else '',
+            'year':        str(r.get('year', '')),
+            'discogs_id':  str(r.get('id', '')),
+            'preview_url': '',  # search results don't include videos; fetched by URL only
+        }
+        _discogs_cache[key] = (data, now)
+        return data
+    except Exception:
+        _discogs_cache[key] = ({}, now)
+        return {}
 
 
 def _fetch_embed_html(url, max_width=600):
@@ -1136,11 +1520,15 @@ def public_profile(request, handle):
             domain = 'bandcamp' if 'bandcamp.com' in url else 'soundcloud'
             oembed_embeds.append({'label': label, 'html': html, 'domain': domain})
 
+    saved_tracks = SavedTrack.objects.filter(user=profile.user).select_related(
+        'track__genre', 'track__artist', 'track__promoter', 'track__venue'
+    ).order_by('-created_at')
     return render(request, 'accounts/public_profile.html', {
         'profile': profile,
         'events': events,
         'follow_data': follow_data,
         'oembed_embeds': oembed_embeds,
+        'saved_tracks': saved_tracks,
     })
 
 
@@ -1157,7 +1545,7 @@ def toggle_follow(request):
         return JsonResponse({'error': 'invalid JSON'}, status=400)
     target_type = body.get('type')
     target_id   = body.get('id')
-    valid_types = {Follow.TYPE_ARTIST, Follow.TYPE_VENUE, Follow.TYPE_NEIGHBORHOOD}
+    valid_types = {Follow.TYPE_ARTIST, Follow.TYPE_VENUE, Follow.TYPE_NEIGHBORHOOD, Follow.TYPE_PROMOTER}
     if target_type not in valid_types or not target_id:
         return JsonResponse({'error': 'invalid params'}, status=400)
     try:
@@ -1458,3 +1846,1078 @@ def admin_compress_images(request):
     )
     request.session['compress_result'] = result
     return redirect('/admin/dashboard/')
+
+
+# ── Drive sync helpers ──────────────────────────────────────────────────────────
+
+@login_required
+def artist_edit(request, slug):
+    artist = get_object_or_404(Artist, slug=slug)
+    if not (request.user.is_staff or artist.claimed_by == request.user):
+        return redirect('artist_profile', slug=artist.slug)
+
+    SOCIAL_FIELDS = ['instagram', 'soundcloud', 'bandcamp', 'mixcloud', 'youtube',
+                     'spotify', 'mastodon', 'bluesky', 'tiktok', 'twitch']
+
+    if request.method == 'GET':
+        return render(request, 'events/artist_edit.html', {'artist': artist})
+
+    for field in ['bio', 'website', 'drive_folder_url'] + SOCIAL_FIELDS:
+        val = request.POST.get(field, '').strip()
+        setattr(artist, field, val)
+    if request.FILES.get('photo'):
+        artist.photo = request.FILES['photo']
+    artist.save()
+    messages.success(request, 'Profile updated.')
+    return redirect('artist_profile', slug=artist.slug)
+
+
+import re as _re
+
+_DRIVE_FOLDER_RE = _re.compile(r'/folders/([A-Za-z0-9_-]+)')
+_TRACK_NAME_RE   = _re.compile(
+    r'^(?P<artist>.+?)\s*-\s*(?P<title>.+?)'
+    r'(?:\s*\[(?P<genre>[^\]]+)\])?'
+    r'(?:\s*@\s*(?P<venue>.+?))?'
+    r'(?:\s+(?P<date>\d{4}-\d{2}-\d{2}))?'
+    r'\.\w+$'
+)
+
+
+def _extract_folder_id(url):
+    m = _DRIVE_FOLDER_RE.search(url)
+    return m.group(1) if m else None
+
+
+def _parse_track_name(filename):
+    """Parse 'Artist - Title [genre] @ Venue 2024-01-15.mp3' → dict."""
+    m = _TRACK_NAME_RE.match(filename.strip())
+    if not m:
+        # Fallback: strip extension, use as title
+        title = _re.sub(r'\.\w+$', '', filename).strip()
+        return {'title': title, 'artist_name': '', 'genre_raw': '', 'recorded_at': '', 'recorded_date': None}
+    from datetime import date
+    raw_date = m.group('date')
+    try:
+        parsed_date = date.fromisoformat(raw_date) if raw_date else None
+    except ValueError:
+        parsed_date = None
+    return {
+        'title':       m.group('title').strip(),
+        'artist_name': m.group('artist').strip(),
+        'genre_raw':   (m.group('genre') or '').strip(),
+        'recorded_at': (m.group('venue') or '').strip(),
+        'recorded_date': parsed_date,
+    }
+
+
+def _read_id3_from_stream(stream_url, api_key):
+    """
+    Fetch the first 256 KB of an MP3 stream and parse ID3 tags with mutagen.
+    Returns a dict with keys: title, artist, genre, date, duration_secs (all may be empty/None).
+    """
+    try:
+        from mutagen.id3 import ID3NoHeaderError
+        from mutagen.mp3 import MP3
+        import io
+        chunk_resp = requests.get(
+            stream_url,
+            headers={
+                'Range': 'bytes=0-131071',
+                'User-Agent': 'Mozilla/5.0 (compatible; CommunityPlaylist/1.0)',
+            },
+            timeout=6,
+        )
+        data = chunk_resp.content
+        buf = io.BytesIO(data)
+
+        # Try mutagen MP3 (reads ID3 + Xing/LAME header for duration estimate)
+        buf.seek(0)
+        try:
+            mp3 = MP3(buf)
+            tags   = mp3.tags or {}
+            def tag(key):
+                v = tags.get(key)
+                return str(v.text[0]).strip() if v and hasattr(v, 'text') and v.text else ''
+            title    = tag('TIT2')
+            artist   = tag('TPE1') or tag('TPE2')
+            genre    = tag('TCON')
+            date_raw = tag('TDRC') or tag('TYER') or tag('TDRL')
+            duration = int(mp3.info.length) if mp3.info and mp3.info.length else None
+        except Exception:
+            title = artist = genre = date_raw = ''
+            duration = None
+
+        # Parse year/date out of TDRC which can be "2024-01-15" or just "2024"
+        from datetime import date as _date
+        parsed_date = None
+        if date_raw:
+            d = str(date_raw).strip()
+            for fmt in ('%Y-%m-%d', '%Y-%m', '%Y'):
+                try:
+                    import datetime
+                    parsed_date = datetime.datetime.strptime(d[:len(fmt)], fmt).date()
+                    break
+                except ValueError:
+                    continue
+
+        # Strip brackets from TCON if present (e.g. "(31)" → "Trance")
+        if genre and genre.startswith('(') and genre.endswith(')'):
+            genre = ''  # numeric genre codes — skip, too ugly
+
+        return {
+            'title':        title,
+            'artist':       artist,
+            'genre':        genre,
+            'recorded_date': parsed_date,
+            'duration_secs': duration,
+        }
+    except Exception:
+        return {'title': '', 'artist': '', 'genre': '', 'recorded_date': None, 'duration_secs': None}
+
+
+def _list_drive_audio(folder_id, api_key, max_depth=3, _depth=0):
+    """
+    Recursively list all MP3 files in a Drive folder up to max_depth levels deep.
+    Returns a flat list of Drive file dicts (id, name, mimeType, size, createdTime).
+    """
+    _HDR = {'User-Agent': 'CommunityPlaylist/1.0'}
+    files = []
+
+    # ── audio files in this folder ────────────────────────────────────────
+    page_token = None
+    while True:
+        url = (
+            f'https://www.googleapis.com/drive/v3/files'
+            f'?q=%27{folder_id}%27+in+parents'
+            f'+and+mimeType+%3D+%27audio%2Fmpeg%27'
+            f'+and+trashed+%3D+false'
+            f'&orderBy=name'
+            f'&fields=files(id,name,mimeType,size,createdTime),nextPageToken'
+            f'&key={api_key}&pageSize=100'
+        )
+        if page_token:
+            from urllib.parse import quote as _q
+            url += f'&pageToken={_q(page_token)}'
+        resp = requests.get(url, timeout=15, headers=_HDR)
+        resp.raise_for_status()
+        data = resp.json()
+        files.extend(data.get('files', []))
+        page_token = data.get('nextPageToken')
+        if not page_token:
+            break
+
+    # ── recurse into sub-folders ──────────────────────────────────────────
+    if _depth < max_depth:
+        sub_url = (
+            f'https://www.googleapis.com/drive/v3/files'
+            f'?q=%27{folder_id}%27+in+parents'
+            f'+and+mimeType+%3D+%27application%2Fvnd.google-apps.folder%27'
+            f'+and+trashed+%3D+false'
+            f'&orderBy=name'
+            f'&fields=files(id,name)'
+            f'&key={api_key}&pageSize=100'
+        )
+        sub_resp = requests.get(sub_url, timeout=15, headers=_HDR)
+        if sub_resp.ok:
+            for sub in sub_resp.json().get('files', []):
+                files.extend(
+                    _list_drive_audio(sub['id'], api_key, max_depth, _depth + 1)
+                )
+
+    return files
+
+
+def _sync_drive_folder(source_type, source_obj):
+    """
+    Fetch files from a public Google Drive folder (recursively) and upsert
+    PlaylistTrack records.  Deletes tracks whose files were removed from Drive.
+    source_type: 'artist' | 'promoter' | 'venue'
+    Returns (added, updated, deleted, error_string).
+    """
+    from django.conf import settings as _s
+    api_key = getattr(_s, 'GOOGLE_DRIVE_API_KEY', '')
+    if not api_key:
+        return 0, 0, 0, 'GOOGLE_DRIVE_API_KEY not set in settings'
+
+    folder_url = getattr(source_obj, 'drive_folder_url', '') or ''
+    folder_id = _extract_folder_id(folder_url)
+    if not folder_id:
+        return 0, 0, 0, 'Invalid or missing Drive folder URL'
+
+    try:
+        files = _list_drive_audio(folder_id, api_key, max_depth=3)
+    except Exception as exc:
+        return 0, 0, 0, str(exc)
+    added = updated = deleted = 0
+
+    incoming_ids = [f['id'] for f in files]
+
+    # Delete tracks from this source that no longer exist in the Drive folder
+    source_filter = {source_type: source_obj}
+    removed = PlaylistTrack.objects.filter(**source_filter).exclude(
+        drive_file_id__in=incoming_ids
+    )
+    deleted, _ = removed.delete()
+
+    # Pre-fetch existing file IDs so we only read ID3 for genuinely new files
+    existing_ids = set(
+        PlaylistTrack.objects.filter(drive_file_id__in=incoming_ids)
+        .values_list('drive_file_id', flat=True)
+    )
+
+    for pos, f in enumerate(files):
+        file_id   = f['id']
+        filename  = f['name']
+        mime_type = f.get('mimeType', '')
+        # Player URL: API key format — browser can stream this (supports Range/seeking)
+        stream_url = f'https://www.googleapis.com/drive/v3/files/{file_id}?alt=media&key={api_key}'
+        # ID3 read URL: uc format — works server-side without browser cookies
+        id3_url = f'https://drive.usercontent.google.com/download?id={file_id}&export=download&confirm=t'
+        is_new = file_id not in existing_ids
+
+        # Parse Drive file creation date as last-resort fallback
+        drive_date = None
+        raw_created = f.get('createdTime', '')
+        if raw_created:
+            try:
+                from datetime import date as _date
+                drive_date = _date.fromisoformat(raw_created[:10])
+            except Exception:
+                pass
+
+        fn = _parse_track_name(filename)
+
+        if is_new:
+            # Only hit the Drive API for ID3 on new tracks — existing ones keep their metadata
+            id3 = _read_id3_from_stream(id3_url, api_key)
+            title        = id3['title']        or fn['title']        or filename
+            artist_name  = id3['artist']       or fn['artist_name']
+            genre_raw    = id3['genre']        or fn['genre_raw']
+            recorded_date = id3['recorded_date'] or fn['recorded_date'] or drive_date
+            duration_secs = id3['duration_secs']
+        else:
+            # Existing track — only refresh position and stream_url, keep stored metadata
+            PlaylistTrack.objects.filter(drive_file_id=file_id).update(
+                position=pos, stream_url=stream_url
+            )
+            updated += 1
+            continue
+
+        recorded_at = fn['recorded_at']
+
+        # Resolve genre FK
+        genre_obj = None
+        if genre_raw:
+            genre_obj, _ = Genre.objects.get_or_create(
+                name__iexact=genre_raw,
+                defaults={'name': genre_raw.title()},
+            )
+
+        defaults = {
+            'title':         title,
+            'artist_name':   artist_name,
+            'genre':         genre_obj,
+            'genre_raw':     genre_raw,
+            'recorded_at':   recorded_at,
+            'recorded_date': recorded_date,
+            'duration_secs': duration_secs,
+            'stream_url':    stream_url,
+            'mime_type':     mime_type,
+            'position':      pos,
+        }
+        if source_type == 'artist':
+            defaults['artist'] = source_obj
+        elif source_type == 'promoter':
+            defaults['promoter'] = source_obj
+        elif source_type == 'venue':
+            defaults['venue'] = source_obj
+
+        _, created = PlaylistTrack.objects.update_or_create(
+            drive_file_id=file_id,
+            defaults=defaults,
+        )
+        if created:
+            added += 1
+        else:
+            updated += 1
+
+    return added, updated, deleted, None
+
+
+# ── Drive sync endpoint (HTMX POST) ────────────────────────────────────────────
+
+@login_required
+def drive_sync(request):
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+
+    source_type = request.POST.get('source_type')  # artist | promoter | venue
+    source_id   = request.POST.get('source_id')
+
+    if source_type == 'artist':
+        obj = get_object_or_404(Artist, pk=source_id)
+        can = request.user.is_staff or obj.claimed_by == request.user
+    elif source_type == 'promoter':
+        obj = get_object_or_404(PromoterProfile, pk=source_id)
+        can = request.user.is_staff or obj.claimed_by == request.user
+    elif source_type == 'venue':
+        obj = get_object_or_404(Venue, pk=source_id)
+        can = request.user.is_staff or obj.claimed_by == request.user
+    else:
+        return HttpResponse('<p class="sync-error">Unknown source type.</p>')
+
+    if not can:
+        return HttpResponse('<p class="sync-error">Not authorised.</p>')
+
+    added, updated, deleted, err = _sync_drive_folder(source_type, obj)
+    if err:
+        return HttpResponse(f'<p class="sync-error">Sync failed: {err}</p>')
+
+    parts = []
+    if added:   parts.append(f'{added} added')
+    if deleted: parts.append(f'{deleted} removed')
+    if updated: parts.append(f'{updated} updated')
+    summary = ', '.join(parts) if parts else 'no changes'
+    return HttpResponse(f'<p class="sync-ok" data-reload="1">✓ {summary}</p>')
+
+
+@login_required
+def delete_track(request, pk):
+    """POST — delete a PlaylistTrack. Only the owner (claimed artist/promoter/venue) or staff."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    track = get_object_or_404(PlaylistTrack, pk=pk)
+    user = request.user
+    can = user.is_staff
+    if not can:
+        if track.artist and track.artist.claimed_by == user:
+            can = True
+        elif track.promoter and track.promoter.claimed_by == user:
+            can = True
+        elif track.venue and track.venue.claimed_by == user:
+            can = True
+    if not can:
+        return JsonResponse({'error': 'forbidden'}, status=403)
+    track.delete()
+    return JsonResponse({'ok': True})
+
+
+# ── Playlist tracks JSON (for the global music player) ─────────────────────────
+
+def playlist_tracks_json(request):
+    """
+    Returns JSON list of all PlaylistTrack records with stream URLs.
+    Optional ?genre=<name> filter.
+    Used by the CP music player in the header.
+    """
+    genre_filter = request.GET.get('genre', '').strip()
+    qs = PlaylistTrack.objects.select_related('genre', 'artist', 'promoter', 'venue')
+    if genre_filter:
+        qs = qs.filter(genre__name__iexact=genre_filter)
+    def source_url(t):
+        if t.artist:
+            return f'/artists/{t.artist.slug}/'
+        if t.promoter:
+            return f'/promoters/{t.promoter.slug}/'
+        if t.venue:
+            return f'/venues/{t.venue.slug}/'
+        return ''
+
+    tracks = [
+        {
+            'id':          t.pk,
+            'title':       t.title,
+            'artist':      t.artist_name or t.source_label,
+            'genre':       t.genre.name if t.genre else t.genre_raw,
+            'recorded_at': t.recorded_at,
+            'stream_url':  t.stream_url,
+            'source':      t.source_label,
+            'source_url':  source_url(t),
+        }
+        for t in qs.order_by('-pk')  # newest first
+    ]
+    genres = list(
+        Genre.objects.filter(tracks__isnull=False)
+        .values_list('name', flat=True)
+        .distinct()
+        .order_by('name')
+    )
+    return JsonResponse({'tracks': tracks, 'genres': genres})
+
+
+@login_required
+def toggle_save_track(request):
+    """POST {id: <track_pk>} → toggles SavedTrack, returns {saved: bool}."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    import json as _json
+    try:
+        body = _json.loads(request.body)
+        track_id = int(body.get('id', 0))
+    except Exception:
+        return JsonResponse({'error': 'bad request'}, status=400)
+    track = get_object_or_404(PlaylistTrack, pk=track_id)
+    obj, created = SavedTrack.objects.get_or_create(user=request.user, track=track)
+    if not created:
+        obj.delete()
+        return JsonResponse({'saved': False})
+    return JsonResponse({'saved': True})
+
+
+def saved_tracks_json(request):
+    """Returns saved tracks for the current user (used by SAVED channel in player)."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'tracks': [], 'genres': []})
+
+    def source_url(t):
+        if t.artist:
+            return f'/artists/{t.artist.slug}/'
+        if t.promoter:
+            return f'/promoters/{t.promoter.slug}/'
+        if t.venue:
+            return f'/venues/{t.venue.slug}/'
+        return ''
+
+    saved = SavedTrack.objects.filter(user=request.user).select_related(
+        'track__genre', 'track__artist', 'track__promoter', 'track__venue'
+    ).order_by('-created_at')
+
+    tracks = [
+        {
+            'id':         s.track.pk,
+            'title':      s.track.title,
+            'artist':     s.track.artist_name or s.track.source_label,
+            'genre':      s.track.genre.name if s.track.genre else s.track.genre_raw,
+            'stream_url': s.track.stream_url,
+            'source_url': source_url(s.track),
+            'saved':      True,
+        }
+        for s in saved
+    ]
+    return JsonResponse({'tracks': tracks, 'genres': []})
+
+
+# ── Video queue (MTV Channel 4) ────────────────────────────────────────────────
+
+def api_video_queue(request):
+    """
+    Returns a weighted-shuffled list of VideoTrack records for the MTV channel.
+
+    Ordering rules:
+      1. Currently live Twitch streams → always first
+      2. Artists playing in the next 30 days → 3× weight in shuffle
+      3. Everything else → normal weight
+
+    Response includes source_type and embed_url so the player JS
+    can branch on YouTube vs Twitch without knowing URL patterns.
+    """
+    import random
+    from datetime import timedelta
+
+    now = timezone.now()
+    upcoming_cutoff = now + timedelta(days=30)
+
+    # Artist IDs with shows coming up
+    upcoming_artist_ids = set(
+        Artist.objects.filter(
+            events__start_date__gte=now,
+            events__start_date__lte=upcoming_cutoff,
+            events__status='approved',
+        ).values_list('pk', flat=True)
+    )
+
+    all_videos = list(
+        VideoTrack.objects.filter(is_active=True)
+        .select_related('artist', 'promoter', 'venue')
+        .order_by('-is_live', '-published_at')[:500]
+    )
+
+    if not all_videos:
+        return JsonResponse({'videos': []})
+
+    # Split live streams out — they always lead the queue
+    live   = [v for v in all_videos if v.is_live]
+    others = [v for v in all_videos if not v.is_live]
+
+    # Weighted shuffle of non-live videos
+    pool = []
+    for v in others:
+        weight = 3 if (v.artist_id and v.artist_id in upcoming_artist_ids) else 1
+        pool.extend([v] * weight)
+
+    random.shuffle(pool)
+    seen, shuffled = set(), []
+    for v in pool:
+        if v.pk not in seen:
+            seen.add(v.pk)
+            shuffled.append(v)
+
+    queue = live + shuffled
+
+    def source_url(v):
+        if v.artist_id and v.artist and v.artist.slug:
+            return f'/artists/{v.artist.slug}/'
+        if v.promoter_id and v.promoter and v.promoter.slug:
+            return f'/promoters/{v.promoter.slug}/'
+        if v.venue_id and v.venue and v.venue.slug:
+            return f'/venues/{v.venue.slug}/'
+        return ''
+
+    return JsonResponse({'videos': [
+        {
+            'video_id':      v.youtube_video_id,
+            'source_type':   v.source_type,
+            'embed_url':     v.embed_url,
+            'title':         v.title,
+            'artist':        v.artist_name_display or v.channel_title,
+            'thumbnail':     v.thumbnail_url,
+            'source_url':    source_url(v),
+            'is_live':       v.is_live,
+            'viewer_count':  v.live_viewer_count,
+            'has_show_soon': bool(v.artist_id and v.artist_id in upcoming_artist_ids),
+        }
+        for v in queue
+    ]})
+
+
+# ── Promoter / Crew views ───────────────────────────────────────────────────────
+
+def promoter_list(request):
+    q = request.GET.get('q', '').strip()
+    qs = PromoterProfile.objects.filter(is_public=True)
+    if q:
+        qs = qs.filter(name__icontains=q)
+        if request.headers.get('Accept', '').startswith('application/json') or request.GET.get('format') == 'json':
+            return JsonResponse({'promoters': [{'id': p.pk, 'name': p.name} for p in qs[:10]]})
+    return render(request, 'events/promoter_list.html', {'promoters': qs.order_by('name')})
+
+
+def _discogs_fetch_by_url(discogs_url):
+    """
+    Given a Discogs release/master/sell URL, extract the ID and fetch
+    cover image + label + year via the API.  Returns dict or {}.
+    """
+    import re as _re2
+    # Extract release or master ID from various Discogs URL formats
+    rel_m  = _re2.search(r'/release/(\d+)', discogs_url)
+    mast_m = _re2.search(r'/master/(\d+)', discogs_url)
+    sell_rel = _re2.search(r'/sell/release/(\d+)', discogs_url)
+    sell_mast = _re2.search(r'[?&]master_id=(\d+)', discogs_url)
+
+    api_url = None
+    disc_id = None
+    if rel_m:
+        disc_id = rel_m.group(1)
+        api_url = f'https://api.discogs.com/releases/{disc_id}'
+    elif sell_rel:
+        disc_id = sell_rel.group(1)
+        api_url = f'https://api.discogs.com/releases/{disc_id}'
+    elif mast_m:
+        disc_id = mast_m.group(1)
+        api_url = f'https://api.discogs.com/masters/{disc_id}'
+    elif sell_mast:
+        disc_id = sell_mast.group(1)
+        api_url = f'https://api.discogs.com/masters/{disc_id}'
+
+    if not api_url:
+        return {}
+
+    _headers = {
+        'User-Agent': 'CommunityPlaylist/1.0 +https://communityplaylist.com',
+        'Accept': 'application/json',
+    }
+
+    def _fetch(url):
+        r = requests.get(url, timeout=8, headers=_headers)
+        r.raise_for_status()
+        return r.json()
+
+    try:
+        d = _fetch(api_url)
+        is_master = 'main_release' in d or 'main_release_url' in d
+
+        images = d.get('images') or []
+        cover = next((i['uri'] for i in images if i.get('type') == 'primary'), '')
+        if not cover and images:
+            cover = images[0].get('uri', '')
+
+        labels = d.get('labels') or []
+        label  = labels[0].get('name', '') if labels else ''
+        year   = str(d.get('year', '') or '')[:4]
+        genres = d.get('genres') or []
+        styles = d.get('styles') or []
+
+        # Masters don't carry labels — follow main_release to get them
+        if is_master and (not label or not cover):
+            main_rel_url = d.get('main_release_url') or (
+                f"https://api.discogs.com/releases/{d['main_release']}" if d.get('main_release') else None
+            )
+            if main_rel_url:
+                import time as _t2; _t2.sleep(0.5)
+                try:
+                    rel = _fetch(main_rel_url)
+                    if not label:
+                        rel_labels = rel.get('labels') or []
+                        label = rel_labels[0].get('name', '') if rel_labels else ''
+                    if not cover:
+                        rel_imgs = rel.get('images') or []
+                        cover = next((i['uri'] for i in rel_imgs if i.get('type') == 'primary'), '')
+                        if not cover and rel_imgs:
+                            cover = rel_imgs[0].get('uri', '')
+                    if not year:
+                        year = str(rel.get('year', '') or '')[:4]
+                    if not genres:
+                        genres = rel.get('genres') or []
+                    if not styles:
+                        styles = rel.get('styles') or []
+                except Exception:
+                    pass
+
+        # Grab first embeddable YouTube video URL for preview player
+        def _yt_urls(data):
+            """Collect all YouTube URLs from a Discogs release dict."""
+            out = []
+            for v in (data.get('videos') or []):
+                uri = v.get('uri', '')
+                if 'youtube.com' in uri or 'youtu.be' in uri:
+                    out.append(uri)
+            return out
+
+        def _first_embeddable(urls):
+            """Return the first URL that YouTube's oEmbed says is embeddable, or ''."""
+            for url in urls:
+                try:
+                    oe = requests.get(
+                        'https://www.youtube.com/oembed',
+                        params={'url': url, 'format': 'json'},
+                        headers={'User-Agent': 'CommunityPlaylist/1.0 +https://communityplaylist.com'},
+                        timeout=5,
+                    )
+                    if oe.status_code == 200:
+                        return url
+                except Exception:
+                    continue
+            return ''
+
+        yt_urls = _yt_urls(d)
+        # Masters: also check the main release for videos
+        if is_master and not yt_urls:
+            try:
+                main_rel_url2 = d.get('main_release_url') or (
+                    f"https://api.discogs.com/releases/{d['main_release']}" if d.get('main_release') else None
+                )
+                if main_rel_url2:
+                    rel2 = _fetch(main_rel_url2)
+                    yt_urls = _yt_urls(rel2)
+            except Exception:
+                pass
+
+        preview_url = _first_embeddable(yt_urls)
+
+        return {
+            'cover_url':   cover,
+            'label':       label,
+            'year':        year,
+            'discogs_id':  str(disc_id),
+            'genres':      genres,
+            'styles':      styles,
+            'preview_url': preview_url,
+        }
+    except Exception:
+        return {}
+
+
+def _sync_record_shop(promoter):
+    """
+    Fetch the promoter's Google Sheet (CSV), upsert RecordListing rows,
+    and fill missing metadata from Discogs.  Returns (created, updated) counts.
+
+    Supported URL types:
+      - Regular share URL:   /spreadsheets/d/SHEET_ID/edit...
+      - Publish to web URL:  /spreadsheets/d/e/PUBLISHED_ID/pubhtml
+    Column headers (case-insensitive, any order, leading cols ignored):
+      Artist | Title | Label | Year | Format | Condition | Price | Discogs | Notes
+    """
+    import csv, io, time as _t
+    import re as _re
+    url = promoter.shop_sheet_url.strip()
+    if not url:
+        return 0, 0
+
+    # Detect URL type and build CSV endpoint
+    pub_m = _re.search(r'/spreadsheets/d/e/([A-Za-z0-9_-]+)/', url)
+    if pub_m:
+        # Published-to-web URL → just swap pubhtml for pub?output=csv
+        pub_id = pub_m.group(1)
+        gid = _re.search(r'[?&]gid=(\d+)', url)
+        gid_param = f'&gid={gid.group(1)}' if gid else ''
+        csv_candidates = [
+            f'https://docs.google.com/spreadsheets/d/e/{pub_id}/pub?output=csv{gid_param}',
+        ]
+    else:
+        reg_m = _re.search(r'/spreadsheets/d/([A-Za-z0-9_-]+)', url)
+        if not reg_m:
+            return 0, 0
+        sheet_id = reg_m.group(1)
+        gid = _re.search(r'[?&]gid=(\d+)', url)
+        gid_param = f'&gid={gid.group(1)}' if gid else ''
+        csv_candidates = [
+            f'https://docs.google.com/spreadsheets/d/{sheet_id}/pub?output=csv{gid_param}',
+            f'https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv{gid_param}',
+        ]
+
+    text = None
+    for csv_url in csv_candidates:
+        try:
+            resp = requests.get(csv_url, timeout=15,
+                                headers={'User-Agent': 'CommunityPlaylist/1.0'})
+            if resp.status_code == 200 and resp.text.strip() and not resp.text.strip().startswith('<!'):
+                text = resp.text
+                break
+        except Exception:
+            continue
+    if not text:
+        return 0, 0
+
+    # Find the header row — first row with at least one recognisable column name
+    KNOWN_HEADERS = {'artist', 'title', 'label', 'price', 'discogs', 'format',
+                     'condition', 'year', 'notes', 'note', 'sol', 'youtube', 'preview', 'video'}
+    lines = [l for l in text.splitlines() if l.strip()]
+    header_line_idx = 0
+    for i, line in enumerate(lines):
+        cells = [c.strip().lower() for c in line.split(',')]
+        if any(c in KNOWN_HEADERS for c in cells):
+            header_line_idx = i
+            break
+    cleaned_text = '\n'.join(lines[header_line_idx:])
+
+    reader = csv.DictReader(io.StringIO(cleaned_text))
+
+    def _h(row, *keys):
+        """Case-insensitive column lookup, strips whitespace."""
+        for k in keys:
+            for rk in row:
+                if rk.strip().lower() == k.lower():
+                    v = row[rk]
+                    return v.strip() if v else ''
+        return ''
+
+    # Max Discogs API calls per sync request — keeps response under gunicorn timeout.
+    # Records beyond the cap get enriched on the next sync call.
+    DISCOGS_PER_SYNC = 10
+
+    created = updated = 0
+    discogs_calls = 0
+    current_row_indices = set()
+    data_idx = 0  # counts only rows that have artist+title
+
+    for row in reader:
+        artist = _h(row, 'artist')
+        title  = _h(row, 'title')
+        if not artist or not title:
+            continue
+        data_idx += 1
+        idx = data_idx
+
+        label       = _h(row, 'label')
+        year        = _h(row, 'year')
+        fmt         = _h(row, 'format')
+        condition   = _h(row, 'condition', 'cond')
+        price_raw   = _h(row, 'price sol', 'price (sol)', 'price_sol', 'price', 'sol')
+        discogs_url = _h(row, 'discogs', 'discogs url', 'discogs_url')
+        notes       = _h(row, 'notes', 'note', 'comments')
+        sheet_yt    = _h(row, 'youtube', 'youtube url', 'preview', 'preview url', 'video')
+
+        # price_display: keep the raw string; price_sol: extract numeric SOL value if present
+        price_display = price_raw
+        import re as _re2
+        sol_m = _re2.search(r'([\d.,]+)\s*(?:sol)?$', price_raw.lower().replace('sol', '').strip())
+        # Only treat as SOL if no $ sign
+        if price_raw and '$' not in price_raw:
+            try:
+                price_sol = float(price_raw.replace(',', '.').strip())
+            except ValueError:
+                price_sol = 0.0
+        else:
+            price_sol = 0.0
+
+        listing, is_new = RecordListing.objects.get_or_create(
+            promoter=promoter, row_index=idx,
+            defaults={'artist': artist, 'title': title},
+        )
+
+        listing.artist        = artist
+        listing.title         = title
+        # Only overwrite label/year from sheet if sheet has a value;
+        # otherwise preserve previously Discogs-enriched data
+        if label:
+            listing.label = label
+        if year:
+            listing.year = year
+        listing.format        = fmt
+        listing.condition     = condition[:4] if condition else ''
+        listing.price_sol     = price_sol
+        listing.price_display = price_display
+        listing.notes         = notes
+        listing.is_available  = True
+
+        # Sheet YouTube column overrides Discogs video lookup
+        if sheet_yt and ('youtube.com' in sheet_yt or 'youtu.be' in sheet_yt):
+            listing.preview_url = sheet_yt
+
+        # Discogs enrichment — only for records missing cover, metadata, or preview,
+        # and cap at DISCOGS_PER_SYNC calls per request to avoid worker timeout
+        needs_cover   = not listing.cover_url
+        needs_meta    = not listing.label or not listing.year
+        needs_preview = not listing.preview_url  # False if sheet already set it
+
+        if (needs_cover or needs_meta or needs_preview) and discogs_calls < DISCOGS_PER_SYNC:
+            disc = {}
+            if discogs_url:
+                disc = _discogs_fetch_by_url(discogs_url)
+                discogs_calls += 1
+                _t.sleep(0.4)
+            if not disc:
+                disc = _discogs_search(artist, title)
+                discogs_calls += 1
+                _t.sleep(0.4)
+            if disc:
+                if needs_cover and disc.get('cover_url'):
+                    listing.cover_url = disc['cover_url']
+                if not listing.label and disc.get('label'):
+                    listing.label = disc['label']
+                if not listing.year and disc.get('year'):
+                    listing.year = disc['year']
+                if not listing.discogs_id and disc.get('discogs_id'):
+                    listing.discogs_id = disc['discogs_id']
+                if disc.get('genres') and not listing.genres:
+                    listing.genres = ', '.join(disc['genres'][:5])
+                if disc.get('styles') and not listing.styles:
+                    listing.styles = ', '.join(disc['styles'][:8])
+                if disc.get('preview_url') and not listing.preview_url:
+                    listing.preview_url = disc['preview_url']
+
+        listing.save()
+        current_row_indices.add(idx)
+        if is_new:
+            created += 1
+        else:
+            updated += 1
+
+    # Mark rows no longer in sheet as unavailable
+    RecordListing.objects.filter(promoter=promoter).exclude(
+        row_index__in=current_row_indices
+    ).update(is_available=False)
+
+    return created, updated
+
+
+def promoter_detail(request, slug):
+    promoter = get_object_or_404(PromoterProfile, slug=slug, is_public=True)
+
+    session_key = f'viewed_promoter_{promoter.pk}'
+    if not request.session.get(session_key):
+        PromoterProfile.objects.filter(pk=promoter.pk).update(view_count=models.F('view_count') + 1)
+        request.session[session_key] = True
+        promoter.view_count += 1
+
+    tracks = promoter.tracks.select_related('genre').order_by('position', 'title')
+    can_edit = request.user.is_authenticated and (
+        request.user.is_staff or promoter.claimed_by == request.user
+    )
+    is_following = (
+        request.user.is_authenticated and
+        Follow.objects.filter(
+            user=request.user, target_type='promoter', target_id=promoter.pk
+        ).exists()
+    )
+    saved_ids = set(
+        SavedTrack.objects.filter(user=request.user, track__in=tracks).values_list('track_id', flat=True)
+    ) if request.user.is_authenticated else set()
+    yt_embed_html = _get_yt_embed_cached(promoter.youtube) if _is_yt_channel(promoter.youtube) else ''
+
+    listings = list(promoter.record_listings.filter(is_available=True)) if promoter.shop_sheet_url else []
+
+    # Annotate each listing with its pending reservation count for seller view
+    if can_edit and listings:
+        from django.db.models import Count
+        res_counts = dict(
+            RecordReservation.objects.filter(
+                listing__promoter=promoter,
+                status=RecordReservation.STATUS_PENDING,
+            ).values('listing_id').annotate(n=Count('id')).values_list('listing_id', 'n')
+        )
+        for l in listings:
+            l.reservation_count = res_counts.get(l.pk, 0)
+    else:
+        for l in listings:
+            l.reservation_count = 0
+
+    pending_reservations = (RecordReservation.objects
+                            .filter(listing__promoter=promoter,
+                                    status=RecordReservation.STATUS_PENDING)
+                            .count()) if can_edit else 0
+
+    from django.utils import timezone
+    upcoming_events = (Event.objects
+                       .filter(promoters=promoter, start_date__gte=timezone.now(), status='approved')
+                       .order_by('start_date')[:12])
+
+    return render(request, 'events/promoter_detail.html', {
+        'promoter': promoter, 'tracks': tracks,
+        'can_edit': can_edit, 'is_following': is_following,
+        'saved_ids': saved_ids,
+        'yt_embed_html': yt_embed_html,
+        'members': promoter.members.order_by('name'),
+        'listings': listings,
+        'pending_reservations': pending_reservations,
+        'upcoming_events': upcoming_events,
+    })
+
+
+def promoter_reserve(request, slug, listing_pk):
+    """POST — create a reservation for a record listing. Returns JSON."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    promoter = get_object_or_404(PromoterProfile, slug=slug, is_public=True)
+    listing  = get_object_or_404(RecordListing, pk=listing_pk, promoter=promoter, is_available=True)
+
+    name    = request.POST.get('name', '').strip()
+    email   = request.POST.get('email', '').strip()
+    contact = request.POST.get('contact', '').strip()
+    message = request.POST.get('message', '').strip()
+
+    if not name:
+        return JsonResponse({'error': 'Name is required.'}, status=400)
+
+    # Pre-fill from logged-in user if not provided
+    if request.user.is_authenticated:
+        name    = name or request.user.get_full_name() or request.user.username
+        email   = email or request.user.email
+
+    reservation = RecordReservation.objects.create(
+        listing=listing,
+        buyer=request.user if request.user.is_authenticated else None,
+        buyer_name=name,
+        buyer_email=email,
+        buyer_contact=contact,
+        message=message,
+        status=RecordReservation.STATUS_PENDING,
+    )
+    return JsonResponse({
+        'ok': True,
+        'reservation_id': reservation.pk,
+        'message': f'Reserved! {promoter.name} will be in touch.',
+    })
+
+
+@login_required
+def promoter_reservations(request, slug):
+    """Seller view — list all reservations for this promoter's shop."""
+    promoter = get_object_or_404(PromoterProfile, slug=slug)
+    if not (request.user.is_staff or promoter.claimed_by == request.user):
+        return redirect('promoter_detail', slug=slug)
+
+    reservations = (RecordReservation.objects
+                    .filter(listing__promoter=promoter)
+                    .select_related('listing')
+                    .order_by('status', '-created_at'))
+
+    if request.method == 'POST':
+        # Quick status update from seller
+        res_pk = request.POST.get('reservation_pk')
+        new_status = request.POST.get('status')
+        if res_pk and new_status in dict(RecordReservation.STATUS_CHOICES):
+            RecordReservation.objects.filter(
+                pk=res_pk, listing__promoter=promoter
+            ).update(status=new_status)
+        return redirect('promoter_reservations', slug=slug)
+
+    return render(request, 'events/promoter_reservations.html', {
+        'promoter': promoter,
+        'reservations': reservations,
+        'statuses': RecordReservation.STATUS_CHOICES,
+    })
+
+
+@login_required
+def promoter_sync_shop(request, slug):
+    """Trigger a manual sync of the promoter's record shop Google Sheet."""
+    promoter = get_object_or_404(PromoterProfile, slug=slug)
+    if not (request.user.is_staff or promoter.claimed_by == request.user):
+        return redirect('promoter_detail', slug=slug)
+    if not promoter.shop_sheet_url:
+        messages.warning(request, 'No sheet URL set — add one in your profile settings.')
+        return redirect('promoter_edit', slug=slug)
+    created, updated = _sync_record_shop(promoter)
+    messages.success(request, f'Shop synced: {created} new, {updated} updated.')
+    return redirect('promoter_detail', slug=slug)
+
+
+@login_required
+def promoter_register(request):
+    """Create or claim a promoter/crew profile."""
+    if request.method == 'GET':
+        return render(request, 'events/promoter_register.html', {})
+
+    name  = request.POST.get('name', '').strip()
+    bio   = request.POST.get('bio', '').strip()
+    website = request.POST.get('website', '').strip()
+    drive_folder_url = request.POST.get('drive_folder_url', '').strip()
+    photo = request.FILES.get('photo')
+
+    errors = {}
+    if not name:
+        errors['name'] = 'Name is required.'
+    elif PromoterProfile.objects.filter(name__iexact=name).exists():
+        errors['name'] = f'"{name}" already exists — search for it and request to be added as an admin.'
+
+    if errors:
+        return render(request, 'events/promoter_register.html', {'errors': errors, 'prev': request.POST})
+
+    p = PromoterProfile.objects.create(
+        name=name, bio=bio, website=website,
+        drive_folder_url=drive_folder_url,
+        claimed_by=request.user,
+    )
+    if photo:
+        p.photo = photo
+        p.save(update_fields=['photo'])
+
+    return redirect('promoter_detail', slug=p.slug)
+
+
+@login_required
+def promoter_edit(request, slug):
+    promoter = get_object_or_404(PromoterProfile, slug=slug)
+    if not (request.user.is_staff or promoter.claimed_by == request.user):
+        return redirect('promoter_detail', slug=slug)
+
+    SOCIAL_FIELDS = ['instagram', 'soundcloud', 'bandcamp', 'mixcloud', 'youtube',
+                     'spotify', 'mastodon', 'bluesky', 'tiktok', 'discord', 'telegram', 'twitch']
+
+    all_artists = Artist.objects.order_by('name')
+    if request.method == 'GET':
+        return render(request, 'events/promoter_edit.html', {
+            'promoter': promoter,
+            'all_artists': all_artists,
+            'member_pks': set(promoter.members.values_list('pk', flat=True)),
+        })
+
+    promoter.shop_pay_in_person = 'shop_pay_in_person' in request.POST
+    promoter.shop_open_to_trade = 'shop_open_to_trade' in request.POST
+    for field in ['name', 'bio', 'website', 'drive_folder_url',
+                  'shop_sheet_url', 'sol_wallet'] + SOCIAL_FIELDS:
+        val = request.POST.get(field, '').strip()
+        setattr(promoter, field, val)
+    if request.FILES.get('photo'):
+        promoter.photo = request.FILES['photo']
+    promoter.save()
+
+    # Update member artists
+    selected_pks = [int(x) for x in request.POST.getlist('members') if x.isdigit()]
+    promoter.members.set(Artist.objects.filter(pk__in=selected_pks))
+
+    messages.success(request, 'Profile updated.')
+    return redirect('promoter_detail', slug=promoter.slug)

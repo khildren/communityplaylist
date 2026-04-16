@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ topic.title }} — Community Board</title>
+{% extends 'base.html' %}
+{% block title %}{{ topic.title }} — Community Board{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:860px;margin:0 auto}
@@ -37,8 +34,8 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:8px}
 .rec-link:hover{border-color:#ff6b35;color:#ff6b35}
 @media(max-width:600px){body{padding:14px}h1{font-size:1.2em}}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <a href="/board/" class="back">← Board</a>
 {% if banner %}
 <div class="banner">🌹 {{ banner.text }}</div>
@@ -81,5 +78,4 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:8px}
     <button type="submit" class="btn">Post Reply</button>
   </form>
 </div>
-</body>
-</html>
+{% endblock %}

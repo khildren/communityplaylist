@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% if aid_filter %}Aid & Mutual Aid{% else %}Community Board{% endif %} — Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}{% if aid_filter %}Aid & Mutual Aid{% else %}Community Board{% endif %} — Community Playlist{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:860px;margin:0 auto}
@@ -34,8 +31,8 @@ h1{color:#ff6b35;font-size:1.6em;margin-bottom:6px}
 .banner a{color:#4caf50;font-weight:600}
 @media(max-width:600px){body{padding:14px}h1{font-size:1.3em}}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <a href="/" class="back">← Back to events</a>
 {% if banner %}
 <div class="banner">🌹 {{ banner.text }} — <a href="/board/aid/">See aid & mutual aid topics →</a></div>
@@ -68,5 +65,4 @@ h1{color:#ff6b35;font-size:1.6em;margin-bottom:6px}
 {% else %}
 <p class="empty">No topics yet. Be the first to post!</p>
 {% endif %}
-</body>
-</html>
+{% endblock %}

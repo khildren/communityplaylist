@@ -45,10 +45,11 @@ h1{color:#ff6b35;font-size:1.6em;margin-bottom:8px}
 <div class="header">
   <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
 </div>
+{% include 'events/_nav_strip.html' %}
 <a href="/" class="back">← Back to events</a>
 <h1>Submit an Event</h1>
 <p class="sub">All events are reviewed before publishing. Usually approved within 24 hours.</p>
-<form method="post" enctype="multipart/form-data" id="submit-form">
+<form method="post" enctype="multipart/form-data" data-turbo="false" id="submit-form">
 {% csrf_token %}
 
 <div class="section">Event details</div>

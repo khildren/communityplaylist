@@ -91,6 +91,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'OPTIONS': {
+            'timeout': 30,  # Wait up to 30s for locked DB (prevents transient 500s during drive sync)
+        },
     }
 }
 
@@ -147,6 +150,23 @@ EVENTBRITE_API_KEY = config('EVENTBRITE_API_KEY', default='')
 # MusicBrainz — no key needed, free & open. Contact email for User-Agent header.
 # https://musicbrainz.org/doc/MusicBrainz_API — 1 req/sec rate limit
 MUSICBRAINZ_CONTACT = config('MUSICBRAINZ_CONTACT', default='hello@communityplaylist.com')
+
+# Google Drive API key — used to list files in public Drive folders for the music player.
+# Get one at https://console.cloud.google.com/ → APIs & Services → Credentials → API Key
+# Enable: Google Drive API. Restrict key to: Drive API only.
+# Leave blank to disable Drive sync (profiles still work, just no music player content).
+GOOGLE_DRIVE_API_KEY = config('GOOGLE_DRIVE_API_KEY', default='')
+
+# YouTube Data API v3 — used to harvest videos from connected artist/venue/promoter channels.
+# Same Google Cloud project as Drive: console.cloud.google.com → APIs & Services → Credentials
+# Enable "YouTube Data API v3" then create or reuse an API key (restrict to YouTube Data API).
+YOUTUBE_API_KEY = config('YOUTUBE_API_KEY', default='')
+
+# Twitch API — used to harvest VODs and detect live streams from connected channels.
+# Get credentials at: dev.twitch.tv → Your Console → Register Your Application
+# Set OAuth Redirect URL to https://communityplaylist.com, Category: Website Integration
+TWITCH_CLIENT_ID     = config('TWITCH_CLIENT_ID', default='')
+TWITCH_CLIENT_SECRET = config('TWITCH_CLIENT_SECRET', default='')
 
 # Email — Plesk local SMTP with SASL auth
 # Uses communityplaylist/email_backend.py to skip self-signed cert verification

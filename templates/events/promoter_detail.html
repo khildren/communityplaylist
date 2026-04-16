@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+{% block title %}{{ promoter.name }} — Community Playlist{% endblock %}
+{% block styles %}
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif}
+.topbar{padding:6px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;gap:12px}
+.topbar a{color:#ff6b35;text-decoration:none;font-size:.82em}
+.topbar a:hover{text-decoration:underline}
+.logo-link img{height:34px;width:auto;display:block}
+.page{max-width:860px;margin:0 auto;padding:24px 16px}
+.hero{display:flex;align-items:flex-start;gap:20px;margin-bottom:28px;flex-wrap:wrap}
+.hero-photo{width:96px;height:96px;border-radius:12px;object-fit:cover;background:#1a1a1a;flex-shrink:0}
+.hero-placeholder{width:96px;height:96px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:2.4em;color:#333;flex-shrink:0}
+.hero-info{flex:1;min-width:0}
+h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
+.verified-badge{display:inline-block;background:#1a3a1a;color:#4caf50;font-size:.7em;padding:2px 7px;border-radius:3px;border:1px solid #2a5a2a;vertical-align:middle;margin-left:6px;letter-spacing:.05em}
+.bio{color:#bbb;line-height:1.6;font-size:.9em;margin:10px 0}
+.genres{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.genre-tag{background:#1e1228;color:#cc88ff;font-size:.75em;padding:3px 9px;border-radius:3px;font-weight:600;letter-spacing:.04em}
+.socials{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.social-pill{display:inline-flex;align-items:center;gap:5px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:4px 10px;text-decoration:none;color:#888;font-size:.78em;transition:all .15s}
+.social-pill:hover{border-color:#ff6b35;color:#ff6b35}
+.action-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.follow-btn{background:transparent;border:1px solid #333;color:#aaa;padding:5px 14px;border-radius:6px;cursor:pointer;font-size:.8em;transition:all .15s}
+.follow-btn:hover{border-color:#ff6b35;color:#ff6b35}
+.follow-btn.active{background:#1a1a10;border-color:#ddaa33;color:#ddaa33}
+.edit-link{display:inline-block;background:transparent;border:1px solid #333;color:#666;padding:5px 14px;border-radius:6px;text-decoration:none;font-size:.8em}
+.edit-link:hover{border-color:#ff6b35;color:#ff6b35}
+.section-title{color:#666;font-size:.75em;text-transform:uppercase;letter-spacing:.09em;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid #1a1a1a}
+.track-list{display:flex;flex-direction:column;gap:3px}
+.track-row{display:flex;align-items:center;gap:12px;background:#161616;border:1px solid #222;border-radius:8px;padding:10px 14px;cursor:pointer;transition:border-color .15s}
+.track-row:hover{border-color:#ff6b35}
+.track-row.playing{border-color:#ff6b35;background:#1a1208}
+.track-play{width:28px;height:28px;border-radius:50%;background:#ff6b35;border:none;color:#fff;font-size:.75em;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.track-play:hover{background:#e55a25}
+.track-info{flex:1;min-width:0}
+.track-title{color:#ddd;font-size:.88em;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track-meta{color:#555;font-size:.75em;margin-top:3px;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.meta-sep{color:#333}
+.meta-artist{color:#777}
+.meta-venue{color:#666}
+.meta-date{color:#555}
+.track-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;text-align:right}
+.track-genre{display:inline-block;background:#1e1228;color:#cc88ff;font-size:.68em;padding:1px 6px;border-radius:3px;font-weight:600;letter-spacing:.04em}
+.track-dur{color:#444;font-size:.7em;font-family:monospace}
+.drive-sync-wrap{margin-top:10px}
+.drive-sync-btn{background:transparent;border:1px solid #1a4a2a;color:#4caf50;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.78em;transition:all .15s}
+.drive-sync-btn:hover{border-color:#4caf50;background:#0f2a18}
+.sync-ok{color:#4caf50;font-size:.82em;margin-top:6px}
+.sync-ok a{color:#ff6b35}
+.sync-error{color:#ff6b6b;font-size:.82em;margin-top:6px}
+.save-btn{background:transparent;border:none;color:#333;font-size:1em;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;transition:color .15s}
+.save-btn:hover{color:#cc4466}
+.save-btn.saved{color:#cc4466}
+@media(max-width:600px){h1{font-size:1.2em}.hero-photo,.hero-placeholder{width:72px;height:72px;font-size:1.8em}}
+</style>
+{% endblock %}
+{% block body %}
+
+<div class="topbar">
+  <a href="/" class="logo-link"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="CP"></a>
+  <a href="/">← Events</a>
+  <a href="/promoters/">← Promoters</a>
+</div>
+{% include 'events/_nav_strip.html' %}
+
+<div class="page">
+
+<div class="hero">
+  {% if promoter.photo %}
+    <img src="{{ promoter.photo.url }}" alt="{{ promoter.name }}" class="hero-photo">
+  {% else %}
+    <div class="hero-placeholder">📣</div>
+  {% endif %}
+
+  <div class="hero-info">
+    <h1>
+      {{ promoter.name }}
+      {% if promoter.is_verified %}<span class="verified-badge">✓ verified</span>{% endif %}
+    </h1>
+
+    {% if promoter.genres.all %}
+    <div class="genres">{% for g in promoter.genres.all %}<span class="genre-tag">{{ g.name }}</span>{% endfor %}</div>
+    {% endif %}
+
+    {% if promoter.bio %}<p class="bio">{{ promoter.bio }}</p>{% endif %}
+
+    <div class="socials">
+      {% if promoter.website %}<a href="{{ promoter.website }}" class="social-pill" target="_blank" rel="noopener">🌐 Website</a>{% endif %}
+      {% if promoter.instagram %}<a href="https://instagram.com/{{ promoter.instagram }}" class="social-pill" target="_blank" rel="noopener">📷 @{{ promoter.instagram }}</a>{% endif %}
+      {% if promoter.soundcloud %}<a href="https://soundcloud.com/{{ promoter.soundcloud }}" class="social-pill" target="_blank" rel="noopener">☁ SoundCloud</a>{% endif %}
+      {% if promoter.bandcamp %}<a href="{{ promoter.bandcamp }}" class="social-pill" target="_blank" rel="noopener">🏕 Bandcamp</a>{% endif %}
+      {% if promoter.mixcloud %}<a href="https://mixcloud.com/{{ promoter.mixcloud }}" class="social-pill" target="_blank" rel="noopener">🎛 Mixcloud</a>{% endif %}
+      {% if promoter.youtube %}<a href="{{ promoter.youtube }}" class="social-pill" target="_blank" rel="noopener">▶ YouTube</a>{% endif %}
+      {% if promoter.twitch %}<a href="https://twitch.tv/{{ promoter.twitch }}" class="social-pill" target="_blank" rel="noopener" style="border-color:#6441a5;color:#9f7fd4">📺 Twitch</a>{% endif %}
+      {% if promoter.spotify %}<a href="{{ promoter.spotify }}" class="social-pill" target="_blank" rel="noopener">🎵 Spotify</a>{% endif %}
+      {% if promoter.discord %}<a href="{{ promoter.discord }}" class="social-pill" target="_blank" rel="noopener">💬 Discord</a>{% endif %}
+      {% if promoter.mastodon %}<a href="{{ promoter.mastodon }}" class="social-pill" target="_blank" rel="noopener">🐘 Mastodon</a>{% endif %}
+      {% if promoter.bluesky %}<a href="https://bsky.app/profile/{{ promoter.bluesky }}" class="social-pill" target="_blank" rel="noopener">🦋 Bluesky</a>{% endif %}
+    </div>
+
+    <div class="action-row">
+      {% if request.user.is_authenticated %}
+      <button class="follow-btn {% if is_following %}active{% endif %}" id="follow-btn"
+        data-type="promoter" data-id="{{ promoter.pk }}">
+        {% if is_following %}★ Following{% else %}☆ Follow{% endif %}
+      </button>
+      {% endif %}
+      {% if can_edit %}
+      <a href="{% url 'promoter_edit' promoter.slug %}" class="edit-link">✏ Edit profile</a>
+      {% endif %}
+      {% if promoter.view_count %}<span style="color:#444;font-size:.78em">👁 {{ promoter.view_count }}</span>{% endif %}
+    </div>
+  </div>
+</div>
+
+{# ── Embeds — Spotify / YouTube / Twitch / Mixcloud / Beatport / Apple Music ── #}
+{% if promoter.spotify or promoter.youtube or promoter.mixcloud or promoter.bandcamp or promoter.twitch %}
+<script>
+window.cpEmbedLinks = [
+  {% if promoter.spotify %}{"url":"{{ promoter.spotify|escapejs }}","label":"Spotify"},{% endif %}
+  {% if promoter.youtube %}{"url":"{{ promoter.youtube|escapejs }}","label":"YouTube"{% if yt_embed_html %},"embed_html":"{{ yt_embed_html|escapejs }}"{% endif %}},{% endif %}
+  {% if promoter.twitch %}{"url":"https://twitch.tv/{{ promoter.twitch|escapejs }}","label":"Twitch"},{% endif %}
+  {% if promoter.mixcloud %}{"url":"https://www.mixcloud.com/{{ promoter.mixcloud|escapejs }}/","label":"Mixcloud"},{% endif %}
+  {% if promoter.bandcamp %}{"url":"{{ promoter.bandcamp|escapejs }}","label":"Bandcamp"},{% endif %}
+];
+</script>
+{% include 'events/_embeds.html' %}
+{% endif %}
+
+{# ── Tracks ── #}
+<p class="section-title">Live Sets &amp; Mixes</p>
+
+{% if tracks %}
+<div class="track-list">
+  {% for t in tracks %}
+  <div class="track-row" data-stream="{{ t.stream_url }}" data-title="{{ t.title }}" data-artist="{{ t.artist_name|default:promoter.name }}" data-track-id="{{ t.pk }}">
+    <button class="track-play" onclick="cpPlay(this)" title="Play">▶</button>
+    <div class="track-info">
+      <div class="track-title">{{ t.title }}</div>
+      <div class="track-meta">
+        {% if t.artist_name %}<span class="meta-artist">{{ t.artist_name }}</span>{% endif %}
+        {% if t.recorded_at %}<span class="meta-sep">·</span><span class="meta-venue">📍 {{ t.recorded_at }}</span>{% endif %}
+        {% if t.recorded_date %}<span class="meta-sep">·</span><span class="meta-date">{{ t.recorded_date|date:"M j, Y" }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="track-right">
+      {% if t.genre %}<span class="track-genre">{{ t.genre.name }}</span>{% elif t.genre_raw %}<span class="track-genre">{{ t.genre_raw }}</span>{% endif %}
+      {% if t.duration_display %}<span class="track-dur">{{ t.duration_display }}</span>{% endif %}
+    </div>
+    {% if request.user.is_authenticated %}
+    <button class="save-btn {% if t.pk in saved_ids %}saved{% endif %}" title="Save" onclick="cpSaveTrack(this)" data-id="{{ t.pk }}">{% if t.pk in saved_ids %}♥{% else %}♡{% endif %}</button>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p style="color:#444;font-size:.85em;padding:8px 0">No tracks synced yet.</p>
+{% endif %}
+
+{# ── Members ── #}
+{% if members %}
+<p class="section-title">Artists &amp; Members</p>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+  {% for artist in members %}
+  <a href="{{ artist.get_absolute_url }}" style="display:inline-flex;align-items:center;gap:7px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:5px 12px;text-decoration:none;color:#aaa;font-size:.8em;transition:all .15s" onmouseover="this.style.borderColor='#ff6b35';this.style.color='#ff6b35'" onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#aaa'">
+    {% if artist.photo %}<img src="{{ artist.photo.url }}" style="width:22px;height:22px;border-radius:50%;object-fit:cover">{% else %}<span>🎤</span>{% endif %}
+    {{ artist.name }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── Upcoming Events ── #}
+{% if upcoming_events %}
+<p class="section-title">Upcoming Events</p>
+<div style="display:flex;flex-direction:column;gap:2px;margin-bottom:24px">
+  {% for e in upcoming_events %}
+  <a href="/events/{{ e.slug }}/" style="display:flex;align-items:center;gap:12px;padding:9px 12px;background:#161616;border:1px solid #222;border-radius:7px;text-decoration:none;color:inherit;transition:border-color .15s" onmouseover="this.style.borderColor='#ff6b35'" onmouseout="this.style.borderColor='#222'">
+    <span style="color:#555;font-size:.77em;white-space:nowrap;min-width:90px">{{ e.start_date|date:"D, M j" }}</span>
+    <span style="color:#ccc;font-size:.88em;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.title }}</span>
+    {% if e.is_free %}<span style="background:#1a3a1a;color:#4caf50;font-size:.65em;padding:1px 5px;border-radius:3px;flex-shrink:0">FREE</span>{% endif %}
+    {% if e.location %}<span style="color:#555;font-size:.75em;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">{{ e.location }}</span>{% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if can_edit %}
+<div class="drive-sync-wrap">
+  {% if promoter.drive_folder_url %}
+  <button class="drive-sync-btn" onclick="cpDriveSync(this,'promoter','{{ promoter.pk }}')">
+    ↻ Sync Drive folder
+  </button>
+  <script>
+  function cpDriveSync(btn, srcType, srcId) {
+    btn.disabled = true;
+    btn.textContent = '⟳ Syncing…';
+    fetch('{% url "drive_sync" %}', {
+      method: 'POST',
+      headers: {'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken':'{{ csrf_token }}'},
+      body: 'source_type=' + srcType + '&source_id=' + srcId
+    }).then(function(r){ return r.text(); }).then(function(html){
+      var wrap = document.getElementById('drive-sync-result');
+      wrap.innerHTML = html;
+      btn.disabled = false;
+      btn.textContent = '↻ Sync Drive folder';
+      var el = wrap.querySelector('[data-reload]');
+      if (el) {
+        btn.textContent = '↻ Reloading…';
+        setTimeout(function(){ location.reload(); }, 1200);
+      }
+    }).catch(function(e){
+      document.getElementById('drive-sync-result').innerHTML = '<p class="sync-error">Request failed.</p>';
+      btn.disabled = false;
+      btn.textContent = '↻ Sync Drive folder';
+    });
+  }
+  </script>
+  {% else %}
+  <p style="color:#555;font-size:.82em">Add a Google Drive folder URL in your <a href="{% url 'promoter_edit' promoter.slug %}" style="color:#ff6b35">profile settings</a> to enable track sync.</p>
+  {% endif %}
+  <div id="drive-sync-result"></div>
+</div>
+{% endif %}
+
+{% include 'events/_record_shop.html' %}
+
+</div>{# /page #}
+
+<script>
+(function(){
+  var btn = document.getElementById('follow-btn');
+  if (!btn) return;
+  var following = btn.classList.contains('active');
+  btn.addEventListener('click', function(){
+    fetch('/follow/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+      body:JSON.stringify({type:'promoter', id:parseInt(btn.dataset.id)})
+    }).then(r=>r.json()).then(d=>{
+      following = d.following;
+      btn.textContent = following ? '★ Following' : '☆ Follow';
+      btn.classList.toggle('active', following);
+    });
+  });
+  function getCookie(n){var v=document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');return v?v[2]:null}
+})();
+
+// ── Save track toggle ──
+function cpSaveTrack(btn) {
+  var id = parseInt(btn.dataset.id);
+  fetch('/save-track/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+    body: JSON.stringify({id: id})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    btn.classList.toggle('saved', d.saved);
+    btn.textContent = d.saved ? '♥' : '♡';
+  });
+}
+function getCookie(n){var v=document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');return v?v[2]:null}
+
+// ── Track play buttons → global CP player ──
+function cpPlay(btn) {
+  var row    = btn.closest('.track-row');
+  var url    = row.dataset.stream;
+  var title  = row.dataset.title;
+  var artist = row.dataset.artist;
+  document.querySelectorAll('.track-row').forEach(function(r){
+    r.classList.remove('playing');
+    var b = r.querySelector('.track-play');
+    if (b) b.textContent = '▶';
+  });
+  row.classList.add('playing');
+  btn.textContent = '⏸';
+  if (window.cpLoad) window.cpLoad(url, title, artist, window.location.pathname);
+}
+</script>
+
+{% endblock %}

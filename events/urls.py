@@ -2,14 +2,35 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # Music player API
+    path('api/genres/filter/', views.api_genre_filter, name='api_genre_filter'),
+    path('api/tracks/', views.playlist_tracks_json, name='playlist_tracks_json'),
+    path('api/saved-tracks/', views.saved_tracks_json, name='saved_tracks_json'),
+    path('api/videos/', views.api_video_queue, name='api_video_queue'),
+    path('api/parse-lineup/', views.api_parse_lineup, name='api_parse_lineup'),
+    path('save-track/', views.toggle_save_track, name='toggle_save_track'),
+    path('drive-sync/', views.drive_sync, name='drive_sync'),
+    path('tracks/<int:pk>/delete/', views.delete_track, name='delete_track'),
+    # Promoters / Crews
+    path('promoters/', views.promoter_list, name='promoter_list'),
+    path('promoters/register/', views.promoter_register, name='promoter_register'),
+    path('promoters/<slug:slug>/', views.promoter_detail, name='promoter_detail'),
+    path('promoters/<slug:slug>/edit/', views.promoter_edit, name='promoter_edit'),
+    path('promoters/<slug:slug>/sync-shop/', views.promoter_sync_shop, name='promoter_sync_shop'),
+    path('promoters/<slug:slug>/reserve/<int:listing_pk>/', views.promoter_reserve, name='promoter_reserve'),
+    path('promoters/<slug:slug>/reservations/', views.promoter_reservations, name='promoter_reservations'),
     path('', views.event_list, name='event_list'),
     path('submit/', views.event_submit, name='event_submit'),
     path('archive/', views.event_archive, name='event_archive'),
     path('genres/', views.genre_autocomplete, name='genre_autocomplete'),
     path('artists/', views.artist_autocomplete, name='artist_autocomplete'),
     path('artists/add/', views.artist_add, name='artist_add'),
-    path('artists/<int:pk>/', views.artist_profile, name='artist_profile'),
+    path('artists/<int:pk>/', views.artist_by_pk, name='artist_by_pk'),       # legacy redirect
+    path('artists/<slug:slug>/', views.artist_profile, name='artist_profile'),
+    path('artists/<slug:slug>/edit/', views.artist_edit, name='artist_edit'),
     path('events/<slug:slug>/', views.event_detail, name='event_detail'),
+    path('events/<slug:slug>/lineup/', views.event_lineup_edit, name='event_lineup_edit'),
+    path('events/<slug:slug>/lineup/create/', views.event_lineup_create, name='event_lineup_create'),
     path('events/<slug:slug>/claim/', views.claim_event, name='claim_event'),
     path('events/<slug:slug>/edit/', views.event_edit, name='event_edit'),
     # Venues

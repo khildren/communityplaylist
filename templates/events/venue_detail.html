@@ -1,10 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ venue.name }} — Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}{{ venue.name }} — Community Playlist{% endblock %}
+{% block head_extra %}
 <link rel="alternate" type="text/calendar" title="{{ venue.name }} events" href="/venues/{{ venue.slug }}/feed.ics">
+{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:860px;margin:0 auto}
@@ -49,11 +48,12 @@ body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:86
 .free{background:#1a3a1a;color:#4caf50;padding:1px 6px;border-radius:3px;font-size:.75em;margin-left:6px}
 .empty{color:#555;font-size:.85em;padding:16px 0}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <div class="header">
   <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
 </div>
+{% include 'events/_nav_strip.html' %}
 <a href="/venues/" class="back">← All venues</a>
 
 <div class="venue-hero">
@@ -113,6 +113,9 @@ body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:86
       {% endif %}
       {% if venue.youtube %}
         <a href="{{ venue.youtube }}" target="_blank" rel="noopener" class="social-link"><span class="si">▶</span> YouTube</a>
+      {% endif %}
+      {% if venue.twitch %}
+        <a href="https://twitch.tv/{{ venue.twitch }}" target="_blank" rel="noopener" class="social-link" style="border-color:#6441a5;color:#9f7fd4"><span class="si">📺</span> Twitch</a>
       {% endif %}
       {% if venue.bandcamp %}
         <a href="{{ venue.bandcamp }}" target="_blank" rel="noopener" class="social-link"><span class="si">🎵</span> Bandcamp</a>
@@ -190,5 +193,4 @@ body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:86
   function getCookie(n){var v=document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');return v?v[2]:null}
 })();
 </script>
-</body>
-</html>
+{% endblock %}

@@ -79,7 +79,7 @@ class VenueForm(forms.ModelForm):
         model = Venue
         fields = ['name', 'description', 'address', 'neighborhood', 'website', 'logo',
                   'instagram', 'threads', 'bluesky', 'twitter', 'mastodon',
-                  'youtube', 'tiktok', 'bandcamp', 'soundcloud', 'mixcloud',
+                  'youtube', 'twitch', 'tiktok', 'bandcamp', 'soundcloud', 'mixcloud',
                   'discord', 'medium', 'linkedin']
         widgets = {
             'name':         forms.TextInput(attrs={'placeholder': 'Venue name'}),
@@ -93,6 +93,7 @@ class VenueForm(forms.ModelForm):
             'twitter':      forms.TextInput(attrs={'placeholder': 'yourhandle (no @)'}),
             'mastodon':     forms.URLInput(attrs={'placeholder': 'https://pdx.social/@yourhandle'}),
             'youtube':      forms.URLInput(attrs={'placeholder': 'https://youtube.com/@yourchannel'}),
+            'twitch':       forms.TextInput(attrs={'placeholder': 'username (no @)'}),
             'tiktok':       forms.TextInput(attrs={'placeholder': 'yourhandle (no @)'}),
             'bandcamp':     forms.URLInput(attrs={'placeholder': 'https://yourband.bandcamp.com'}),
             'soundcloud':   forms.TextInput(attrs={'placeholder': 'username or profile slug'}),
@@ -106,7 +107,7 @@ class VenueForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for f in ['description', 'neighborhood', 'website', 'logo',
                   'instagram', 'threads', 'bluesky', 'twitter', 'mastodon',
-                  'youtube', 'tiktok', 'bandcamp', 'soundcloud', 'mixcloud',
+                  'youtube', 'twitch', 'tiktok', 'bandcamp', 'soundcloud', 'mixcloud',
                   'discord', 'medium', 'linkedin']:
             self.fields[f].required = False
 

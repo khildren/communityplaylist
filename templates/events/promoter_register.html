@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add Your Crew — Community Playlist</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif;padding:24px 16px}
+.wrap{max-width:620px;margin:0 auto}
+.back{color:#ff6b35;text-decoration:none;font-size:.82em;display:inline-block;margin-bottom:20px}
+.back:hover{text-decoration:underline}
+h1{color:#ff6b35;font-size:1.2em;margin-bottom:6px}
+.subtitle{color:#555;font-size:.82em;margin-bottom:24px}
+.card{background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:22px;margin-bottom:16px}
+.card-title{color:#ff6b35;font-size:.8em;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;font-weight:600}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:.8em;color:#888;margin-bottom:5px}
+.fg input,.fg textarea{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:8px 11px;color:#eee;font-size:.88em;font-family:inherit}
+.fg input:focus,.fg textarea:focus{outline:none;border-color:#ff6b35}
+.fg textarea{resize:vertical;min-height:80px}
+.hint{font-size:.74em;color:#444;margin-top:4px}
+.error-field{border-color:#c44!important}
+.field-error{color:#f77;font-size:.78em;margin-top:4px}
+.btn{background:#ff6b35;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:.88em}
+.btn:hover{background:#e55a25}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a href="/promoters/" class="back">← Promoters</a>
+<h1>Add your crew / collective</h1>
+<p class="subtitle">Sound systems, labels, event crews — any group that makes PDX culture happen.</p>
+
+<form method="post" enctype="multipart/form-data" data-turbo="false">
+{% csrf_token %}
+
+<div class="card">
+  <div class="card-title">Basics</div>
+  <div class="fg">
+    <label>Crew / Collective Name *</label>
+    <input type="text" name="name" value="{{ prev.name|default:'' }}" class="{% if errors.name %}error-field{% endif %}">
+    {% if errors.name %}<div class="field-error">{{ errors.name }}</div>{% endif %}
+  </div>
+  <div class="fg">
+    <label>Bio / Description</label>
+    <textarea name="bio">{{ prev.bio|default:'' }}</textarea>
+  </div>
+  <div class="fg">
+    <label>Photo / Logo</label>
+    <input type="file" name="photo" accept="image/*">
+  </div>
+  <div class="fg">
+    <label>Website</label>
+    <input type="url" name="website" value="{{ prev.website|default:'' }}" placeholder="https://...">
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Music Folder (optional)</div>
+  <div class="fg">
+    <label>Google Drive Folder URL</label>
+    <input type="url" name="drive_folder_url" value="{{ prev.drive_folder_url|default:'' }}" placeholder="https://drive.google.com/drive/folders/...">
+    <div class="hint">Share a public folder of live sets, DJ mixes, or recorded sessions. No downloads — streaming only. Filename format: <code>Artist - Title [genre] @ Venue 2024-01-15.mp3</code> or add a <code>playlist.json</code> for custom metadata.</div>
+  </div>
+</div>
+
+<button type="submit" class="btn">Create profile</button>
+</form>
+</div>
+</body>
+</html>

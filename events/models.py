@@ -55,6 +55,9 @@ class VenueFeed(models.Model):
                                               help_text='Applied to imported events when category is Music')
     residents        = models.ManyToManyField('Artist', blank=True, related_name='resident_feeds',
                                               help_text='Regular/resident artists — auto-tagged on every imported event')
+    promoter         = models.ForeignKey('PromoterProfile', null=True, blank=True,
+                                         on_delete=models.SET_NULL, related_name='feeds',
+                                         help_text='Promoter/crew this feed belongs to — events are auto-linked to their profile')
     last_synced     = models.DateTimeField(null=True, blank=True)
     last_error      = models.TextField(blank=True)
     created_at      = models.DateTimeField(auto_now_add=True)
@@ -69,6 +72,8 @@ class VenueFeed(models.Model):
 
 class SiteStats(models.Model):
     visit_count = models.BigIntegerField(default=0)
+    daily_count = models.BigIntegerField(default=0)
+    daily_date  = models.DateField(null=True, blank=True)
 
     class Meta:
         verbose_name_plural = 'site stats'
@@ -76,13 +81,34 @@ class SiteStats(models.Model):
     @classmethod
     def record_visit(cls, request):
         if not request.session.get('cp_counted'):
-            cls.objects.filter(pk=1).update(visit_count=F('visit_count') + 1)
+            from django.utils import timezone
+            today = timezone.localdate()
+            obj, _ = cls.objects.get_or_create(pk=1)
+            if obj.daily_date != today:
+                cls.objects.filter(pk=1).update(
+                    visit_count=F('visit_count') + 1,
+                    daily_count=1,
+                    daily_date=today,
+                )
+            else:
+                cls.objects.filter(pk=1).update(
+                    visit_count=F('visit_count') + 1,
+                    daily_count=F('daily_count') + 1,
+                )
             request.session['cp_counted'] = True
 
     @classmethod
     def get_count(cls):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj.visit_count
+
+    @classmethod
+    def get_counts(cls):
+        from django.utils import timezone
+        obj, _ = cls.objects.get_or_create(pk=1)
+        today = timezone.localdate()
+        daily = obj.daily_count if obj.daily_date == today else 0
+        return obj.visit_count, daily
 
 
 class Genre(models.Model):
@@ -98,15 +124,274 @@ class Genre(models.Model):
 
 class Artist(models.Model):
     name   = models.CharField(max_length=200, unique=True)
+    slug   = models.SlugField(max_length=220, unique=True, blank=True, null=True)
     mb_id  = models.CharField(max_length=100, blank=True, help_text='MusicBrainz artist ID')
     bio    = models.TextField(blank=True)
     website = models.URLField(blank=True)
+    photo  = models.ImageField(upload_to='artists/', blank=True, null=True)
+
+    # Social links
+    instagram  = models.CharField(max_length=100, blank=True, help_text='Handle without @')
+    soundcloud = models.CharField(max_length=100, blank=True, help_text='Username / profile slug')
+    bandcamp   = models.URLField(blank=True, help_text='Full Bandcamp URL')
+    mixcloud   = models.CharField(max_length=100, blank=True, help_text='Username / profile slug')
+    youtube    = models.URLField(blank=True)
+    spotify    = models.URLField(blank=True, help_text='Artist page URL')
+    mastodon   = models.URLField(blank=True, help_text='Full profile URL e.g. https://pdx.social/@you')
+    bluesky    = models.CharField(max_length=100, blank=True, help_text='Handle e.g. yourname.bsky.social')
+    tiktok     = models.CharField(max_length=100, blank=True, help_text='Handle without @')
+    twitch     = models.CharField(max_length=100, blank=True, help_text='Channel name without @')
+
+    # Music folder
+    drive_folder_url = models.URLField(
+        blank=True,
+        help_text='Public Google Drive folder URL — live sets, DJ sessions, mixes',
+    )
+
+    claimed_by = models.ForeignKey(
+        'auth.User', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='claimed_artists',
+    )
+    is_verified = models.BooleanField(default=False, help_text='Admin-verified artist')
+    view_count  = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['name']
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.name)
+            slug, n = base, 1
+            while Artist.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f'{base}-{n}'; n += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('artist_profile', kwargs={'slug': self.slug})
+
+
+class PromoterProfile(models.Model):
+    """A promoter, sound system, crew, label, or collective with a public profile."""
+    name   = models.CharField(max_length=200, unique=True)
+    slug   = models.SlugField(max_length=220, unique=True, blank=True)
+    bio    = models.TextField(blank=True)
+    photo  = models.ImageField(upload_to='promoters/', blank=True, null=True)
+    website = models.URLField(blank=True)
+
+    # Social links (same set as Artist)
+    instagram  = models.CharField(max_length=100, blank=True, help_text='Handle without @')
+    soundcloud = models.CharField(max_length=100, blank=True, help_text='Username / profile slug')
+    bandcamp   = models.URLField(blank=True)
+    mixcloud   = models.CharField(max_length=100, blank=True, help_text='Username / profile slug')
+    youtube    = models.URLField(blank=True)
+    spotify    = models.URLField(blank=True)
+    mastodon   = models.URLField(blank=True, help_text='Full profile URL')
+    bluesky    = models.CharField(max_length=100, blank=True)
+    tiktok     = models.CharField(max_length=100, blank=True)
+    twitch     = models.CharField(max_length=100, blank=True, help_text='Channel name without @')
+    discord    = models.URLField(blank=True, help_text='Invite link')
+    telegram   = models.CharField(max_length=100, blank=True, help_text='Username without @')
+
+    genres  = models.ManyToManyField('Genre', blank=True, related_name='promoters')
+    members = models.ManyToManyField('Artist', blank=True, related_name='crews',
+                                     help_text='Artists / DJs who are members of this crew')
+
+    # Music folder
+    drive_folder_url = models.URLField(
+        blank=True,
+        help_text='Public Google Drive folder URL — live sets, DJ sessions, mixes',
+    )
+
+    # Record shop
+    shop_sheet_url = models.URLField(
+        blank=True,
+        help_text='Public Google Sheets URL — your record inventory (Artist, Title, Label, Year, Format, Condition, Price SOL, Notes)',
+    )
+    sol_wallet = models.CharField(
+        max_length=120, blank=True,
+        help_text='Solana wallet address — payments go here (e.g. Phantom public key)',
+    )
+    shop_pay_in_person = models.BooleanField(
+        default=False,
+        help_text='Accept in-person payment at events / pickup',
+    )
+    shop_open_to_trade = models.BooleanField(
+        default=False,
+        help_text='Open to record trades / partial trades',
+    )
+
+    admin_email = models.EmailField(
+        blank=True,
+        help_text='Internal contact email — used to send claim instructions. Not shown publicly.',
+    )
+
+    claimed_by = models.ForeignKey(
+        'auth.User', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='claimed_promoters',
+    )
+    is_verified = models.BooleanField(default=False)
+    is_public   = models.BooleanField(default=True)
+    created_at  = models.DateTimeField(auto_now_add=True)
+    view_count  = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Promoter / Crew'
+        verbose_name_plural = 'Promoters / Crews'
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.name)
+            slug, n = base, 1
+            while PromoterProfile.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f'{base}-{n}'; n += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('promoter_detail', kwargs={'slug': self.slug})
+
+
+class RecordListing(models.Model):
+    """A single record/item in a promoter's SOL shop, synced from a Google Sheet."""
+    CONDITION_CHOICES = [
+        ('M',   'Mint (M)'),
+        ('NM',  'Near Mint (NM)'),
+        ('VG+', 'Very Good Plus (VG+)'),
+        ('VG',  'Very Good (VG)'),
+        ('G+',  'Good Plus (G+)'),
+        ('G',   'Good (G)'),
+        ('F',   'Fair (F)'),
+        ('P',   'Poor (P)'),
+    ]
+
+    promoter    = models.ForeignKey(PromoterProfile, on_delete=models.CASCADE,
+                                    related_name='record_listings')
+    row_index   = models.PositiveIntegerField(default=0, help_text='Row position in sheet (for ordering/dedup)')
+    artist      = models.CharField(max_length=200)
+    title       = models.CharField(max_length=200)
+    label       = models.CharField(max_length=200, blank=True)
+    year        = models.CharField(max_length=10, blank=True)
+    format      = models.CharField(max_length=50, blank=True, help_text='e.g. Vinyl, LP, 12", CD')
+    condition   = models.CharField(max_length=4, blank=True, choices=CONDITION_CHOICES)
+    price_sol     = models.DecimalField(max_digits=10, decimal_places=4, default=0)
+    price_display = models.CharField(max_length=50, blank=True,
+                                     help_text='Raw price from sheet e.g. "$ 30" or "0.5 SOL"')
+    notes         = models.TextField(blank=True)
+    cover_url   = models.URLField(blank=True, help_text='Pulled from Discogs')
+    preview_url = models.URLField(blank=True, help_text='YouTube video URL from Discogs — for in-card preview player')
+    discogs_id  = models.CharField(max_length=30, blank=True)
+    genres      = models.CharField(max_length=200, blank=True, help_text='Discogs genres, comma-separated')
+    styles      = models.CharField(max_length=200, blank=True, help_text='Discogs styles, comma-separated')
+    is_available = models.BooleanField(default=True)
+    synced_at   = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['row_index']
+
+    def __str__(self):
+        return f'{self.artist} — {self.title} ({self.promoter.name})'
+
+
+class RecordReservation(models.Model):
+    STATUS_PENDING   = 'pending'
+    STATUS_CONFIRMED = 'confirmed'
+    STATUS_SOLD      = 'sold'
+    STATUS_CANCELLED = 'cancelled'
+    STATUS_CHOICES = [
+        (STATUS_PENDING,   'Pending'),
+        (STATUS_CONFIRMED, 'Confirmed'),
+        (STATUS_SOLD,      'Sold'),
+        (STATUS_CANCELLED, 'Cancelled'),
+    ]
+
+    listing      = models.ForeignKey(RecordListing, on_delete=models.CASCADE,
+                                     related_name='reservations')
+    buyer        = models.ForeignKey('auth.User', null=True, blank=True,
+                                     on_delete=models.SET_NULL,
+                                     related_name='record_reservations')
+    buyer_name   = models.CharField(max_length=120)
+    buyer_email  = models.EmailField(blank=True)
+    buyer_contact = models.CharField(max_length=200, blank=True,
+                                     help_text='Discord handle, Telegram, phone, etc.')
+    message      = models.TextField(blank=True)
+    status       = models.CharField(max_length=12, choices=STATUS_CHOICES,
+                                    default=STATUS_PENDING)
+    created_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.buyer_name} → {self.listing} [{self.status}]'
+
+
+class PlaylistTrack(models.Model):
+    """A single audio track sourced from a Google Drive folder."""
+    # Source — exactly one of these will be set
+    artist   = models.ForeignKey(Artist, null=True, blank=True,
+                                 on_delete=models.CASCADE, related_name='tracks')
+    promoter = models.ForeignKey('PromoterProfile', null=True, blank=True,
+                                 on_delete=models.CASCADE, related_name='tracks')
+    venue    = models.ForeignKey('Venue', null=True, blank=True,
+                                 on_delete=models.CASCADE, related_name='tracks')
+
+    drive_file_id = models.CharField(max_length=200, unique=True)
+    title         = models.CharField(max_length=300)
+    artist_name   = models.CharField(max_length=200, blank=True, help_text='Parsed from filename or metadata')
+    genre         = models.ForeignKey('Genre', null=True, blank=True,
+                                      on_delete=models.SET_NULL, related_name='tracks')
+    genre_raw     = models.CharField(max_length=100, blank=True, help_text='Raw genre string from filename')
+    recorded_at   = models.CharField(max_length=200, blank=True, help_text='Venue or event name')
+    recorded_date = models.DateField(null=True, blank=True)
+    duration_secs = models.PositiveIntegerField(null=True, blank=True)
+    stream_url    = models.URLField(max_length=500, blank=True, help_text='Cached direct stream URL')
+    mime_type     = models.CharField(max_length=50, blank=True)
+    position      = models.PositiveIntegerField(default=0, help_text='Sort order within folder')
+    last_synced   = models.DateTimeField(auto_now=True)
+    created_at    = models.DateTimeField(auto_now_add=True, null=True)
+
+    class Meta:
+        ordering = ['position', 'title']
+
+    def __str__(self):
+        return f'{self.title} — {self.artist_name or "Unknown"}'
+
+    @property
+    def stream_url_direct(self):
+        """Construct a streamable URL from the Drive file ID."""
+        return f'https://www.googleapis.com/drive/v3/files/{self.drive_file_id}?alt=media'
+
+    @property
+    def duration_display(self):
+        """Human-readable duration, e.g. '1h 23m' or '45:32'."""
+        if not self.duration_secs:
+            return ''
+        s = self.duration_secs
+        h, rem = divmod(s, 3600)
+        m, sec = divmod(rem, 60)
+        if h:
+            return f'{h}h {m:02d}m'
+        return f'{m}:{sec:02d}'
+
+    @property
+    def source_label(self):
+        if self.artist:
+            return self.artist.name
+        if self.promoter:
+            return self.promoter.name
+        if self.venue:
+            return self.venue.name
+        return ''
 
 
 class RecurringEvent(models.Model):
@@ -297,9 +582,11 @@ class Event(models.Model):
     submitted_user = models.ForeignKey(
         'auth.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='events'
     )
-    genres  = models.ManyToManyField('Genre',  blank=True, related_name='events')
-    artists = models.ManyToManyField('Artist', blank=True, related_name='events',
-                                     help_text='Performing artists / headliners')
+    genres     = models.ManyToManyField('Genre',  blank=True, related_name='events')
+    artists    = models.ManyToManyField('Artist', blank=True, related_name='events',
+                                        help_text='Performing artists / headliners')
+    promoters  = models.ManyToManyField('PromoterProfile', blank=True, related_name='events',
+                                        help_text='Crews / promoters for this event')
     recurring_event = models.ForeignKey('RecurringEvent', null=True, blank=True,
                         on_delete=models.SET_NULL, related_name='instances')
     latitude = models.FloatField(blank=True, null=True)
@@ -371,6 +658,7 @@ class Venue(models.Model):
     bluesky      = models.CharField(max_length=100, blank=True, help_text='Handle without @ e.g. yourname.bsky.social')
     linkedin     = models.CharField(max_length=100, blank=True, help_text='Company page slug')
     tiktok       = models.CharField(max_length=100, blank=True, help_text='Handle without @')
+    twitch       = models.CharField(max_length=100, blank=True, help_text='Channel name without @')
     threads      = models.CharField(max_length=100, blank=True, help_text='Handle without @')
     soundcloud   = models.CharField(max_length=100, blank=True, help_text='Username / profile slug')
     mixcloud     = models.CharField(max_length=100, blank=True, help_text='Username / profile slug')
@@ -459,6 +747,7 @@ class Neighborhood(models.Model):
     longitude   = models.FloatField(null=True, blank=True)
     active      = models.BooleanField(default=True)
     created_at  = models.DateTimeField(auto_now_add=True)
+    view_count  = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['name']
@@ -607,14 +896,16 @@ class EditSuggestion(models.Model):
 
 
 class Follow(models.Model):
-    """A user following an artist, venue, or neighborhood."""
+    """A user following an artist, venue, neighborhood, or promoter."""
     TYPE_ARTIST       = 'artist'
     TYPE_VENUE        = 'venue'
     TYPE_NEIGHBORHOOD = 'neighborhood'
+    TYPE_PROMOTER     = 'promoter'
     TYPE_CHOICES = [
         (TYPE_ARTIST,       'Artist'),
         (TYPE_VENUE,        'Venue'),
         (TYPE_NEIGHBORHOOD, 'Neighborhood'),
+        (TYPE_PROMOTER,     'Promoter'),
     ]
     user        = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='follows')
     target_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
@@ -636,7 +927,99 @@ class Follow(models.Model):
             return Venue.objects.filter(pk=self.target_id).first()
         if self.target_type == self.TYPE_NEIGHBORHOOD:
             return Neighborhood.objects.filter(pk=self.target_id).first()
+        if self.target_type == self.TYPE_PROMOTER:
+            return PromoterProfile.objects.filter(pk=self.target_id).first()
         return None
+
+
+class SavedTrack(models.Model):
+    """A user's saved (bookmarked) track."""
+    user       = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='saved_tracks')
+    track      = models.ForeignKey(PlaylistTrack, on_delete=models.CASCADE, related_name='saved_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('user', 'track')]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user} ♥ {self.track}'
+
+
+class VideoTrack(models.Model):
+    """A video (YouTube or Twitch) harvested from a connected artist/venue/promoter channel."""
+
+    SOURCE_YOUTUBE     = 'youtube'
+    SOURCE_TWITCH_VOD  = 'twitch_vod'
+    SOURCE_TWITCH_LIVE = 'twitch_live'
+    SOURCE_CHOICES = [
+        (SOURCE_YOUTUBE,     'YouTube'),
+        (SOURCE_TWITCH_VOD,  'Twitch VOD'),
+        (SOURCE_TWITCH_LIVE, 'Twitch Live'),
+    ]
+
+    # Content source type
+    source_type = models.CharField(max_length=20, default=SOURCE_YOUTUBE,
+                                   choices=SOURCE_CHOICES, db_index=True)
+
+    # Profile source — exactly one of these will be set
+    artist   = models.ForeignKey('Artist', null=True, blank=True,
+                                 on_delete=models.SET_NULL, related_name='videos')
+    promoter = models.ForeignKey('PromoterProfile', null=True, blank=True,
+                                 on_delete=models.SET_NULL, related_name='videos')
+    venue    = models.ForeignKey('Venue', null=True, blank=True,
+                                 on_delete=models.SET_NULL, related_name='videos')
+
+    # YouTube-specific
+    youtube_video_id   = models.CharField(max_length=60, unique=True,
+                                          help_text='YouTube video ID, or synthetic twitch_live_{user} / twitch_vod_{id}')
+    youtube_channel_id = models.CharField(max_length=40, blank=True, db_index=True)
+
+    # Twitch-specific
+    twitch_username = models.CharField(max_length=100, blank=True,
+                                       help_text='Twitch channel name (for live streams and VODs)')
+    twitch_video_id = models.CharField(max_length=30, blank=True,
+                                       help_text='Twitch VOD ID (numeric)')
+
+    # Shared metadata
+    channel_title      = models.CharField(max_length=200, blank=True)
+    title              = models.CharField(max_length=300)
+    artist_name_display = models.CharField(max_length=200, blank=True,
+                                           help_text='Denormalized display name')
+    description        = models.TextField(blank=True)
+    thumbnail_url      = models.URLField(max_length=500, blank=True)
+    published_at       = models.DateTimeField(null=True, blank=True)
+    duration_secs      = models.PositiveIntegerField(null=True, blank=True)
+
+    # Live stream status (refreshed by harvest_twitch)
+    is_live         = models.BooleanField(default=False, db_index=True)
+    live_checked_at = models.DateTimeField(null=True, blank=True)
+    live_viewer_count = models.PositiveIntegerField(null=True, blank=True)
+
+    play_count  = models.PositiveIntegerField(default=0)
+    is_active   = models.BooleanField(default=True, help_text='Uncheck to hide from MTV channel')
+    created_at  = models.DateTimeField(auto_now_add=True)
+    last_synced = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-is_live', '-published_at']
+
+    def __str__(self):
+        live = ' 🔴 LIVE' if self.is_live else ''
+        return f'{self.artist_name_display or self.channel_title} — {self.title}{live}'
+
+    @property
+    def embed_url(self):
+        if self.source_type == self.SOURCE_YOUTUBE:
+            return (f'https://www.youtube.com/embed/{self.youtube_video_id}'
+                    f'?enablejsapi=1&autoplay=1&rel=0&modestbranding=1&playsinline=1')
+        if self.source_type == self.SOURCE_TWITCH_LIVE:
+            return (f'https://player.twitch.tv/?channel={self.twitch_username}'
+                    f'&parent=communityplaylist.com&autoplay=true')
+        if self.source_type == self.SOURCE_TWITCH_VOD:
+            return (f'https://player.twitch.tv/?video={self.twitch_video_id}'
+                    f'&parent=communityplaylist.com&autoplay=true')
+        return ''
 
 
 class CronStatus(models.Model):
