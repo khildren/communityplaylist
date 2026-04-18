@@ -3,7 +3,8 @@
 {% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:860px;margin:0 auto}
+body{background:#111;color:#eee;font-family:sans-serif}
+.page-wrap{max-width:860px;margin:0 auto;padding:16px}
 .back{color:#ff6b35;text-decoration:none;font-size:.85em;display:inline-block;margin-bottom:20px}
 .back:hover{text-decoration:underline}
 h1{color:#ff6b35;font-size:1.6em;margin-bottom:8px}
@@ -77,7 +78,7 @@ h1{color:#ff6b35;font-size:1.6em;margin-bottom:8px}
 </style>
 {% endblock %}
 {% block body %}
-{% include 'events/_nav_strip.html' %}
+<div class="page-wrap">
 <a href="/neighborhoods/" class="back">← Neighborhoods</a>
 
 <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px">
@@ -245,4 +246,5 @@ function toggleTopic(pk) {
   }
 })();
 </script>
+</div>{# /page-wrap #}
 {% endblock %}

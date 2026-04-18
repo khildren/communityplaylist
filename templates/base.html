@@ -2,53 +2,41 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>{% block title %}Community Playlist{% endblock %}</title>
+<meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="CP · PDX">
+<link rel="manifest" href="/static/manifest.json">
 {% block head_extra %}{% endblock %}
 <script src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-umd.js" data-turbo-track="reload"></script>
 <style>
-/* ── Footer Player ── */
+/* ── Corner Player Widget ── */
 .cp-player{
-  position:fixed;bottom:0;left:0;right:0;z-index:9000;
-  background:#0d0d0d;
-  display:flex;align-items:center;
-  height:52px;padding:0 12px;gap:10px;
+  position:fixed;bottom:0;left:0;z-index:9000;
+  width:300px;
+  background:#111;
+  border-top:1px solid #2a2a2a;
+  border-right:1px solid #2a2a2a;
+  border-top-right-radius:12px;
+  display:none;
+  flex-direction:column;
   font-family:sans-serif;font-size:.82em;
-  border-top:1px solid #1a1a1a;
+  overflow:hidden;
 }
 
-/* Seek bar sits flush at the very top of the player */
-.cp-seek{position:absolute;top:0;left:0;right:0;height:3px;background:#1c1c1c;cursor:pointer}
+/* Seek bar — full width strip at very top of panel */
+.cp-seek{
+  width:100%;height:4px;background:#1c1c1c;cursor:pointer;flex-shrink:0;
+  position:relative;
+}
 .cp-seek-fill{height:100%;background:#ff6b35;position:relative;pointer-events:none;min-width:0}
 .cp-seek-dot{position:absolute;right:-5px;top:-3px;width:9px;height:9px;background:#ff6b35;border-radius:50%;pointer-events:none;opacity:0;transition:opacity .15s}
 .cp-seek:hover .cp-seek-dot{opacity:1}
 
-/* Genre channel toggle (always visible in player bar) */
-.cp-ch-toggle{background:transparent;border:1px solid #2a2a2a;color:#555;padding:2px 8px;border-radius:2px;cursor:pointer;font-family:monospace;font-size:.72em;white-space:nowrap;flex-shrink:0;transition:all .12s;line-height:1.4}
-.cp-ch-toggle:hover,.cp-ch-toggle.open{border-color:#ff6b35;color:#ff6b35}
-
-/* Genre channel popup — floats above player, expands upward on click */
-.cp-channels{
-  position:fixed;bottom:52px;left:12px;
-  background:#0d0d0d;border:1px solid #2a2a2a;border-bottom:none;
-  border-radius:4px 4px 0 0;
-  display:flex;flex-direction:column;gap:3px;padding:5px 4px;
-  min-width:88px;
-  visibility:hidden;opacity:0;transform:translateY(6px);
-  transition:opacity .15s,transform .15s,visibility .15s;
-  z-index:8999;max-height:260px;overflow-y:auto;scrollbar-width:none;
-}
-.cp-channels::-webkit-scrollbar{display:none}
-.cp-channels.open{visibility:visible;opacity:1;transform:translateY(0)}
-.cp-ch{background:transparent;border:1px solid #2a2a2a;color:#555;padding:3px 10px;border-radius:2px;cursor:pointer;font-family:monospace;font-size:.72em;white-space:nowrap;transition:all .12s;text-align:left;width:100%}
-.cp-ch:hover{border-color:#ff6b35;color:#ff6b35}
-.cp-ch.active{background:#ff6b35;color:#111;border-color:#ff6b35}
-.cp-ch.saved-ch{border-color:#3a1a2a;color:#aa4466}
-.cp-ch.saved-ch:hover{border-color:#cc4466;color:#cc4466}
-.cp-ch.saved-ch.active{background:#cc4466;border-color:#cc4466;color:#fff}
-
-/* Track info — fills remaining space, single row with marquee */
-.cp-track{flex:1;min-width:0;overflow:hidden;display:flex;align-items:center}
+/* Track info */
+.cp-track{min-width:0;overflow:hidden;padding:8px 12px 2px;display:flex;align-items:center}
 .cp-track-inner{display:flex;align-items:center;gap:0;white-space:nowrap;will-change:transform}
 .cp-track-inner.marquee{animation:cp-marquee 18s linear infinite}
 @keyframes cp-marquee{
@@ -59,11 +47,22 @@
 }
 .cp-title-link{color:#ddd;font-size:1em;font-weight:700;text-decoration:none;flex-shrink:0}
 .cp-title-link:hover{color:#ff6b35}
-.cp-sep{color:#444;margin:0 7px;font-weight:300;flex-shrink:0}
-.cp-artist-text{color:#888;font-size:.9em;flex-shrink:0}
+.cp-sep{color:#444;margin:0 6px;font-weight:300;flex-shrink:0}
+.cp-artist-text{color:#888;font-size:.9em;flex-shrink:0;text-decoration:none}
+.cp-artist-text[href]:hover{color:#ccc}
+/* In video mode: hide track title + separator; show artist name only */
+#cp-player.video-mode #cp-title,
+#cp-player.video-mode .cp-sep{display:none}
+/* Artist is shown in the footer bar — hide the duplicate in the overlay lower-third */
+#cp-video-artist-card{display:none}
 
-/* Controls */
-.cp-controls{display:flex;align-items:center;gap:4px;flex-shrink:0}
+/* Controls row */
+.cp-controls-row{
+  display:flex;align-items:center;gap:5px;
+  padding:5px 10px 9px;
+  flex-wrap:nowrap;
+}
+.cp-controls{display:flex;align-items:center;gap:3px;flex-shrink:0}
 .cp-btn{background:transparent;border:1px solid #2a2a2a;color:#888;width:28px;height:28px;border-radius:3px;cursor:pointer;font-size:.78em;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0;font-family:monospace}
 .cp-btn:hover{border-color:#ff6b35;color:#ff6b35}
 .cp-btn.play{background:#ff6b35;border-color:#ff6b35;color:#111;font-size:.85em}
@@ -71,31 +70,54 @@
 
 /* Volume */
 .cp-vol-wrap{display:flex;align-items:center;gap:4px;flex-shrink:0}
-.cp-vol{-webkit-appearance:none;appearance:none;width:60px;height:3px;background:#2a2a2a;border-radius:2px;cursor:pointer;outline:none}
+.cp-vol{-webkit-appearance:none;appearance:none;width:52px;height:3px;background:#2a2a2a;border-radius:2px;cursor:pointer;outline:none}
 .cp-vol::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:#ff6b35;cursor:pointer}
 .cp-vol::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:#ff6b35;border:none;cursor:pointer}
 .cp-mute.muted{color:#ff6b35}
 
-body.has-player{padding-bottom:56px}
+/* Channel toggle */
+.cp-ch-toggle{background:transparent;border:1px solid #2a2a2a;color:#555;padding:2px 7px;border-radius:2px;cursor:pointer;font-family:monospace;font-size:.7em;white-space:nowrap;flex-shrink:0;transition:all .12s;line-height:1.4}
+.cp-ch-toggle:hover,.cp-ch-toggle.open{border-color:#ff6b35;color:#ff6b35}
 
-/* ── PDXTV Video Panel ── */
+/* Genre channel popup — position set dynamically via JS */
+.cp-channels{
+  position:fixed;
+  background:#0d0d0d;border:1px solid #2a2a2a;
+  border-radius:6px;
+  display:flex;flex-direction:column;gap:3px;padding:5px 4px;
+  min-width:88px;
+  visibility:hidden;opacity:0;transform:translateY(6px);
+  transition:opacity .15s,transform .15s,visibility .15s;
+  z-index:9100;max-height:260px;overflow-y:auto;scrollbar-width:none;
+}
+.cp-channels::-webkit-scrollbar{display:none}
+.cp-channels.open{visibility:visible;opacity:1;transform:translateY(0)}
+.cp-ch{background:transparent;border:1px solid #2a2a2a;color:#555;padding:3px 10px;border-radius:2px;cursor:pointer;font-family:monospace;font-size:.72em;white-space:nowrap;transition:all .12s;text-align:left;width:100%}
+.cp-ch:hover{border-color:#ff6b35;color:#ff6b35}
+.cp-ch.active{background:#ff6b35;color:#111;border-color:#ff6b35}
+.cp-ch.saved-ch{border-color:#3a1a2a;color:#aa4466}
+.cp-ch.saved-ch:hover{border-color:#cc4466;color:#cc4466}
+.cp-ch.saved-ch.active{background:#cc4466;border-color:#cc4466;color:#fff}
+
+/* ── PDXTV Video Section (inside corner player) ── */
 #cp-video-panel{
-  position:fixed;top:0;left:0;right:0;bottom:52px;z-index:8500;
-  background:#000;
-  display:none;flex-direction:column;
+  width:100%;display:none;flex-direction:column;flex-shrink:0;
+  position:relative;
 }
 #cp-video-panel.active{display:flex}
 #cp-video-iframe-wrap{
-  flex:1;position:relative;overflow:hidden;
+  width:100%;padding-bottom:56.25%;position:relative;overflow:hidden;
+  background:#000;
 }
-#cp-video-iframe-wrap iframe{
+#cp-video-iframe-wrap iframe,
+#cp-video-iframe-wrap > div{
   position:absolute;top:0;left:0;width:100%;height:100%;border:none;
 }
-/* Title card — PDXTV-style lower-third */
+/* Title card lower-third */
 #cp-video-title-card{
   position:absolute;bottom:0;left:0;right:0;z-index:1;
   background:linear-gradient(transparent,rgba(0,0,0,.85) 60%);
-  padding:28px 20px 12px;
+  padding:20px 12px 8px;
   pointer-events:none;
   opacity:0;transition:opacity .4s;
 }
@@ -112,83 +134,301 @@ body.has-player{padding-bottom:56px}
   border:1px solid #55dd55;border-radius:3px;padding:1px 6px;
   margin-left:8px;vertical-align:middle}
 
-/* TV static channel-change flash */
-@keyframes cp-static{
-  0%{opacity:1}10%{opacity:0}30%{opacity:.6}50%{opacity:.1}70%{opacity:.8}100%{opacity:0}
-}
-.cp-static-flash{
-  position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;
-  background:repeating-linear-gradient(
-    0deg,
-    rgba(255,255,255,.04) 0px,
-    rgba(255,255,255,.04) 1px,
-    transparent 1px,
-    transparent 2px
-  ),
-  repeating-linear-gradient(
-    90deg,
-    rgba(0,0,0,.06) 0px,
-    rgba(0,0,0,.06) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  pointer-events:none;animation:cp-static .35s ease-out forwards;
-}
-
-/* Video mode — override player footer for video controls */
-.cp-player.video-mode .cp-ch-toggle{display:none}
-.cp-player.video-mode .cp-vol-wrap{display:none}
-.cp-player.video-mode .cp-seek{display:none}
-.cp-player.video-mode .cp-track-inner{opacity:.75}
-.cp-video-ch-label{
-  font-family:monospace;font-size:.72em;color:#ff6b35;
-  border:1px solid #ff6b35;border-radius:3px;padding:2px 8px;
-  white-space:nowrap;flex-shrink:0;cursor:pointer;
-  transition:all .12s;
-}
-.cp-video-ch-label:hover{background:#ff6b35;color:#111}
-/* Wiggle-to-show exit button — floats top-right over the video panel */
+/* Exit button over video */
 #cp-video-exit{
-  position:absolute;top:14px;right:14px;z-index:1;
+  position:absolute;top:8px;right:8px;z-index:2;
   background:rgba(0,0,0,.55);
   border:1px solid rgba(255,107,53,.4);color:rgba(255,107,53,.85);
   font-family:monospace;font-size:.72em;letter-spacing:.07em;
-  padding:5px 13px;border-radius:3px;cursor:pointer;
+  padding:4px 10px;border-radius:3px;cursor:pointer;
   opacity:0;pointer-events:none;
   transition:opacity .3s,border-color .15s,color .15s;
   backdrop-filter:blur(4px);
 }
 #cp-video-exit.vis{opacity:1;pointer-events:auto}
 #cp-video-exit:hover{border-color:#ff6b35;color:#ff6b35;background:rgba(0,0,0,.75)}
+
+/* Video mode — hide audio-only controls */
+.cp-player.video-mode .cp-ch-toggle{display:none}
+.cp-player.video-mode .cp-vol-wrap{display:none}
+.cp-player.video-mode .cp-seek{display:none}
+.cp-player.video-mode .cp-track-inner{opacity:.75}
+
+/* TV label */
+.cp-video-ch-label{
+  font-family:monospace;font-size:.7em;color:#ff6b35;
+  border:1px solid #ff6b35;border-radius:3px;padding:2px 6px;
+  white-space:nowrap;flex-shrink:0;cursor:pointer;
+  transition:all .12s;
+}
+.cp-video-ch-label:hover{background:#ff6b35;color:#111}
+
 /* LIVE badge */
 .cp-live-badge{
   display:inline-flex;align-items:center;gap:4px;
   font-family:monospace;font-size:.68em;font-weight:700;
   color:#fff;background:#e53;border-radius:3px;
-  padding:2px 7px;letter-spacing:.05em;flex-shrink:0;
+  padding:2px 6px;letter-spacing:.05em;flex-shrink:0;
 }
 .cp-live-dot{width:6px;height:6px;background:#fff;border-radius:50%;
   animation:cp-live-pulse 1.2s ease-in-out infinite}
 @keyframes cp-live-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
 
-/* Track row progress fill (used on artist/promoter pages) */
+/* TV static flash */
+@keyframes cp-static{
+  0%{opacity:1}10%{opacity:0}30%{opacity:.6}50%{opacity:.1}70%{opacity:.8}100%{opacity:0}
+}
+.cp-static-flash{
+  position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.04) 0px,rgba(255,255,255,.04) 1px,transparent 1px,transparent 2px),
+  repeating-linear-gradient(90deg,rgba(0,0,0,.06) 0px,rgba(0,0,0,.06) 1px,transparent 1px,transparent 3px);
+  pointer-events:none;animation:cp-static .35s ease-out forwards;
+}
+
+/* Track row progress fill */
 .track-row{position:relative;overflow:hidden}
 .track-bg-progress{position:absolute;left:0;top:0;bottom:0;width:0%;background:rgba(255,107,53,.09);pointer-events:none}
 
-/* Mobile */
-@media(max-width:540px){
-  .cp-ch-toggle{display:none}
-  .cp-channels{display:none}
-  .cp-vol-wrap{display:none}
+/* Mobile player — full width strip pinned to bottom */
+@media(max-width:640px){
+  .cp-player{width:100%;border-top-right-radius:0;border-right:none}
   .cp-artist-text{display:none}
   .cp-sep{display:none}
   .cp-title-link{font-size:.95em}
 }
+
+/* ── Event info corner panel (for map / artist clicks) ── */
+#cp-event-panel{
+  position:fixed;
+  bottom:8px;
+  left:308px;
+  width:320px;
+  max-height:70vh;
+  background:#111;
+  border:1px solid #2a2a2a;
+  border-radius:10px;
+  box-shadow:0 8px 32px rgba(0,0,0,.7);
+  z-index:8900;
+  display:flex;
+  flex-direction:column;
+  transform:translateY(calc(100% + 20px));
+  opacity:0;
+  transition:transform .28s cubic-bezier(.4,0,.2,1),opacity .28s ease;
+  pointer-events:none;
+  overflow:hidden;
+}
+#cp-event-panel.open{
+  transform:translateY(0);
+  opacity:1;
+  pointer-events:auto;
+}
+#cp-ep-close{
+  position:absolute;top:8px;right:8px;
+  background:rgba(0,0,0,.6);border:1px solid #333;
+  color:#aaa;cursor:pointer;border-radius:50%;
+  width:26px;height:26px;font-size:14px;
+  display:flex;align-items:center;justify-content:center;
+  z-index:1;line-height:1;
+}
+#cp-ep-close:hover{color:#fff;border-color:#ff6b35}
+#cp-ep-photo{width:100%;height:140px;object-fit:cover;display:block;flex-shrink:0}
+#cp-ep-scroll{overflow-y:auto;padding:12px 14px 14px;flex:1;min-height:0}
+#cp-ep-cat{
+  display:inline-block;font-size:.68em;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 8px;border-radius:3px;margin-bottom:6px;
+}
+#cp-ep-title{margin:0 0 8px;font-size:1.05em;font-weight:700;color:#fff;line-height:1.3}
+.cp-ep-meta{font-size:.8em;color:#888;display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+.cp-ep-meta span{display:flex;align-items:baseline;gap:5px}
+#cp-ep-genres{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.cp-ep-genre{font-size:.7em;background:#1e1e1e;border:1px solid #333;border-radius:3px;padding:2px 7px;color:#aaa}
+#cp-ep-desc{font-size:.82em;color:#bbb;line-height:1.55;margin:0 0 10px;white-space:pre-line}
+#cp-ep-links{display:flex;flex-direction:column;gap:6px}
+.cp-ep-link{
+  font-size:.8em;color:#ff6b35;text-decoration:none;
+  border:1px solid #2a2a2a;border-radius:5px;
+  padding:6px 10px;display:block;
+  background:#161616;transition:border-color .15s;word-break:break-all;
+}
+.cp-ep-link:hover{border-color:#ff6b35}
+.cp-ep-fullpage{margin-top:4px;text-align:center;font-size:.75em;color:#555;text-decoration:none;display:block;padding:4px}
+.cp-ep-fullpage:hover{color:#888}
+
+/* Mobile: bottom sheet */
+@media(max-width:640px){
+  #cp-event-panel{
+    left:0;right:0;bottom:0;width:100%;
+    max-height:75vh;border-radius:14px 14px 0 0;
+    transform:translateY(100%);
+  }
+}
+
+/* ── Universal Site Header ── */
+.site-header{background:#111;border-bottom:1px solid #1a1a1a;font-family:sans-serif;position:sticky;top:0;z-index:850}
+.sh-inner{display:flex;align-items:center;gap:8px;padding:6px 14px;min-height:50px}
+.sh-logo img{height:34px;width:auto;display:block;flex-shrink:0}
+.sh-weather{display:flex;align-items:center;gap:5px;font-size:.8em;color:#666;white-space:nowrap;flex:1;justify-content:center;padding:5px 12px;background:#1a1a1a;border:1px solid #222;border-radius:6px;margin:0 6px}
+.sh-weather .wtemp{color:#ddd;font-weight:700}
+.sh-weather .wcond{color:#888}
+.sh-weather .wsep{color:#2a2a2a;margin:0 1px}
+.sh-weather .wextra{color:#555;font-size:.92em}
+@media(max-width:960px){.sh-weather .wextra,.sh-weather .wsep{display:none}}
+.sh-nav{display:flex;gap:5px;align-items:center;margin-left:auto}
+.sh-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:6px;text-decoration:none;font-size:.8em;font-weight:500;white-space:nowrap;border:1px solid transparent;transition:all .15s;line-height:1;flex-shrink:0}
+.sh-primary{background:#ff6b35;color:#111;border-color:#ff6b35}
+.sh-primary:hover{background:#e55a25;border-color:#e55a25}
+.sh-secondary{background:#1a1a1a;color:#888;border-color:#2a2a2a}
+.sh-secondary:hover{border-color:#ff6b35;color:#ff6b35}
+.sh-accent{background:#1a1a1a;color:#ff6b35;border-color:#ff6b35}
+.sh-accent:hover{background:#ff6b35;color:#111}
+.sh-badge{background:rgba(255,255,255,.16);border-radius:10px;padding:1px 6px;font-size:.8em;margin-left:2px}
+.sh-burger{display:none;background:transparent;border:1px solid #333;color:#aaa;padding:6px 11px;border-radius:6px;cursor:pointer;font-size:1.1em;line-height:1;margin-left:auto;flex-shrink:0;transition:all .15s}
+.sh-burger.open,.sh-burger:hover{color:#ff6b35;border-color:#ff6b35}
+@media(max-width:860px){
+  .sh-weather{display:none!important}
+  .sh-burger{display:inline-flex;align-items:center}
+  .sh-nav{display:none;flex-wrap:wrap;gap:6px;position:absolute;top:100%;left:0;right:0;background:#111;border-bottom:1px solid #1a1a1a;padding:8px 12px;z-index:799}
+  .sh-nav.open{display:flex}
+  .sh-nav .sh-btn{flex:1;min-width:120px;justify-content:center}
+}
 </style>
-{% block styles %}{% endblock %}
 </head>
 <body>
+{% block styles %}{% endblock %}
+{% block site_header %}{% include 'events/_header.html' %}{% endblock %}
+{% block nav_strip %}{% include 'events/_nav_strip.html' %}{% endblock %}
 {% block body %}{% endblock %}
 {% include 'events/_player.html' %}
+
+<!-- ── Event info panel (map / artist clicks) ── -->
+<div id="cp-event-panel" data-turbo-permanent>
+  <button id="cp-ep-close" aria-label="Close">✕</button>
+  <img id="cp-ep-photo" src="" alt="" style="display:none">
+  <div id="cp-ep-scroll">
+    <span id="cp-ep-cat"></span>
+    <h3 id="cp-ep-title"></h3>
+    <div class="cp-ep-meta">
+      <span id="cp-ep-date"></span>
+      <span id="cp-ep-hood" style="display:none"></span>
+      <span id="cp-ep-loc"></span>
+      <span id="cp-ep-price" style="display:none"></span>
+    </div>
+    <div id="cp-ep-genres"></div>
+    <p id="cp-ep-desc"></p>
+    <div id="cp-ep-links"></div>
+    <a id="cp-ep-fullpage" class="cp-ep-fullpage" href="#" target="_blank">open full event page →</a>
+  </div>
+</div>
+
+<script>
+(function(){
+  if (window.cpEventPanelInitialized) return;
+  window.cpEventPanelInitialized = true;
+
+  var panel    = document.getElementById('cp-event-panel');
+  var closeBtn = document.getElementById('cp-ep-close');
+  var photo    = document.getElementById('cp-ep-photo');
+  var catEl    = document.getElementById('cp-ep-cat');
+  var titleEl  = document.getElementById('cp-ep-title');
+  var dateEl   = document.getElementById('cp-ep-date');
+  var hoodEl   = document.getElementById('cp-ep-hood');
+  var locEl    = document.getElementById('cp-ep-loc');
+  var priceEl  = document.getElementById('cp-ep-price');
+  var genresEl = document.getElementById('cp-ep-genres');
+  var descEl   = document.getElementById('cp-ep-desc');
+  var linksEl  = document.getElementById('cp-ep-links');
+  var fullPage = document.getElementById('cp-ep-fullpage');
+
+  var CAT_COLORS = {
+    music:'#cc88ff',arts:'#66bbff',bike:'#55dd55',
+    fund:'#6699ff',food:'#ddaa33',hybrid:'#ff9944'
+  };
+
+  // Keep panel above player — update bottom offset to match player height
+  function updateOffset() {
+    var pl = document.getElementById('cp-player');
+    if (!pl || pl.style.display === 'none') return;
+    var h = pl.offsetHeight;
+    if (window.innerWidth <= 640) {
+      panel.style.bottom = (h > 0 ? h : 0) + 'px';
+      panel.style.left = '';
+    } else {
+      panel.style.bottom = '8px';
+      panel.style.left = '308px';
+    }
+  }
+  window.cpUpdateEventPanelOffset = updateOffset;
+  var pl = document.getElementById('cp-player');
+  if (pl && window.ResizeObserver) new ResizeObserver(updateOffset).observe(pl);
+
+  function openPanel(slug) {
+    fetch('/api/events/' + slug + '/')
+      .then(function(r){ return r.json(); })
+      .then(function(d){ populate(d); updateOffset(); panel.classList.add('open'); })
+      .catch(function(){});
+  }
+
+  function closePanel() { panel.classList.remove('open'); }
+
+  function populate(d) {
+    if (d.photo_url) {
+      photo.src = d.photo_url; photo.alt = d.title; photo.style.display = 'block';
+    } else {
+      photo.style.display = 'none'; photo.src = '';
+    }
+    if (d.category) {
+      catEl.textContent = d.category_display || d.category;
+      catEl.style.background = CAT_COLORS[d.category] || '#444';
+      catEl.style.color = '#000';
+      catEl.style.display = 'inline-block';
+    } else { catEl.style.display = 'none'; }
+    titleEl.textContent = d.title;
+    dateEl.textContent = '📅 ' + d.start_date + (d.end_date ? ' – ' + d.end_date : '');
+    if (d.neighborhood) { hoodEl.textContent = '📍 ' + d.neighborhood; hoodEl.style.display = ''; }
+    else { hoodEl.style.display = 'none'; }
+    locEl.textContent = d.location;
+    if (d.price_info || d.is_free) {
+      priceEl.textContent = d.is_free && !d.price_info ? 'FREE' : d.price_info;
+      priceEl.style.display = '';
+    } else { priceEl.style.display = 'none'; }
+    genresEl.innerHTML = '';
+    (d.genres || []).forEach(function(g){
+      var s = document.createElement('span');
+      s.className = 'cp-ep-genre'; s.textContent = g;
+      genresEl.appendChild(s);
+    });
+    descEl.textContent = d.description || '';
+    linksEl.innerHTML = '';
+    if (d.website) {
+      var a = document.createElement('a');
+      a.className = 'cp-ep-link'; a.href = d.website;
+      a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.textContent = '🎟 ' + d.website;
+      linksEl.appendChild(a);
+    }
+    (d.extra_links || []).forEach(function(lnk){
+      var url = typeof lnk === 'string' ? lnk : (lnk.url || '');
+      var label = typeof lnk === 'string' ? lnk : (lnk.label || lnk.url || '');
+      if (!url) return;
+      var a = document.createElement('a');
+      a.className = 'cp-ep-link'; a.href = url;
+      a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.textContent = label;
+      linksEl.appendChild(a);
+    });
+    fullPage.href = '/events/' + d.slug + '/';
+  }
+
+  closeBtn.addEventListener('click', closePanel);
+  document.addEventListener('click', function(e){
+    if (panel.classList.contains('open') && !panel.contains(e.target))
+      closePanel();
+  });
+
+  // Expose — map markers and artist links trigger this; card clicks use inline expansion
+  window.cpEventPanel = { open: openPanel, close: closePanel };
+})();
+</script>
 </body>
 </html>

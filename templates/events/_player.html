@@ -1,50 +1,59 @@
-{% comment %}CP Music Player partial — styles live in base.html <head> to survive Turbo body swaps{% endcomment %}
-
-{% comment %}PDXTV Video Panel — fixed overlay above the player footer{% endcomment %}
-<div id="cp-video-panel" data-turbo-permanent>
-  <button id="cp-video-exit" aria-label="Exit video">✕ exit</button>
-  <div id="cp-video-iframe-wrap">
-    <div id="cp-yt-placeholder"></div>
-  </div>
-  <div id="cp-video-title-card" aria-hidden="true">
-    <div class="cp-video-meta-artist">
-      <span class="cp-ch-badge" id="cp-ch-badge-card">CH 4</span>
-      <span id="cp-video-artist-card"></span>
-      <span class="cp-show-soon" id="cp-show-soon" style="display:none">playing soon ↗</span>
-    </div>
-    <div class="cp-video-meta-title" id="cp-video-title-card-text"></div>
-  </div>
-</div>
-
-{% comment %}data-turbo-permanent keeps these elements alive across Turbo page swaps{% endcomment %}
+{% comment %}CP Music Player — bottom-left corner widget; styles in base.html{% endcomment %}
 <div id="cp-player" class="cp-player" style="display:none" role="region" aria-label="Community Playlist music player" data-turbo-permanent>
+
+  {% comment %}PDXTV video section — embedded at top of corner panel{% endcomment %}
+  <div id="cp-video-panel">
+    <button id="cp-video-exit" aria-label="Exit video">✕ exit</button>
+    <div id="cp-video-iframe-wrap">
+      <div id="cp-yt-placeholder"></div>
+    </div>
+    <div id="cp-video-title-card" aria-hidden="true">
+      <div class="cp-video-meta-artist">
+        <span class="cp-ch-badge" id="cp-ch-badge-card">CH 4</span>
+        <a id="cp-video-artist-card" href="#" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none"></a>
+        <span class="cp-show-soon" id="cp-show-soon" style="display:none">playing soon ↗</span>
+      </div>
+      <div class="cp-video-meta-title" id="cp-video-title-card-text"></div>
+    </div>
+  </div>
+
+  {% comment %}Seek bar — full width at top of controls area{% endcomment %}
   <div class="cp-seek" id="cp-seek">
     <div class="cp-seek-fill" id="cp-seek-fill" style="width:0%">
       <div class="cp-seek-dot"></div>
     </div>
   </div>
-  <button class="cp-ch-toggle" id="cp-ch-toggle">ALL ▾</button>
-  <div class="cp-channels" id="cp-channels"></div>
-  <span class="cp-video-ch-label" id="cp-video-ch-label" style="display:none" title="Switch to PDXTV video channel">📺 VIDEO</span>
-  <span class="cp-live-badge" id="cp-live-badge" style="display:none">
-    <span class="cp-live-dot"></span>LIVE
-  </span>
+
+  {% comment %}Track info{% endcomment %}
   <div class="cp-track">
     <div class="cp-track-inner" id="cp-track-inner">
       <a class="cp-title-link" id="cp-title" href="#" style="color:inherit;text-decoration:none">—</a>
       <span class="cp-sep">·</span>
-      <span class="cp-artist-text" id="cp-artist"></span>
+      <a class="cp-artist-text" id="cp-artist" href="#" target="_blank" rel="noopener noreferrer"></a>
     </div>
   </div>
-  <div class="cp-controls">
-    <button class="cp-btn" id="cp-prev" title="Previous">◀◀</button>
-    <button class="cp-btn play" id="cp-play" title="Play / Pause">▶</button>
-    <button class="cp-btn" id="cp-next" title="Next">▶▶</button>
+
+  {% comment %}Controls row{% endcomment %}
+  <div class="cp-controls-row">
+    <button class="cp-ch-toggle" id="cp-ch-toggle">ALL ▾</button>
+    <div class="cp-controls">
+      <button class="cp-btn" id="cp-prev" title="Previous">◀◀</button>
+      <button class="cp-btn play" id="cp-play" title="Play / Pause">▶</button>
+      <button class="cp-btn" id="cp-next" title="Next">▶▶</button>
+    </div>
+    <div class="cp-vol-wrap">
+      <button class="cp-btn cp-mute" id="cp-mute" title="Mute">🔈</button>
+      <input type="range" class="cp-vol" id="cp-vol" min="0" max="100" value="8" title="Volume">
+    </div>
+    <span class="cp-live-badge" id="cp-live-badge" style="display:none">
+      <span class="cp-live-dot"></span>LIVE
+    </span>
+    <span class="cp-video-ch-label" id="cp-video-ch-label" style="display:none" title="PDXTV video channel">📺 VIDEO</span>
   </div>
-  <div class="cp-vol-wrap">
-    <button class="cp-btn cp-mute" id="cp-mute" title="Mute">🔈</button>
-    <input type="range" class="cp-vol" id="cp-vol" min="0" max="100" value="8" title="Volume">
-  </div>
+
+  {% comment %}Channel popup — position set via JS to appear above the panel{% endcomment %}
+  <div class="cp-channels" id="cp-channels"></div>
+
 </div>
 
 <audio id="cp-audio" preload="none" data-turbo-permanent></audio>
@@ -82,6 +91,7 @@
   function show() {
     player.style.display = 'flex';
     document.body.classList.add('has-player');
+    if (window.cpUpdateEventPanelOffset) window.cpUpdateEventPanelOffset();
   }
 
   // Pre-inject has-player into the incoming body BEFORE the swap —
@@ -90,16 +100,58 @@
     if (player.style.display !== 'none') {
       e.detail.newBody.classList.add('has-player');
     }
-    // Strip is-hybrid from <html> before the new page renders — Turbo never swaps
-    // <html> so this class persists across navigations and locks scroll/layout.
-    // Removing it here (before new body scripts run) lets the events page re-apply
-    // it cleanly from localStorage without fighting a stale value.
-    document.documentElement.classList.remove('is-hybrid');
+    // Determine if the incoming page is the event list (has .hybrid-wrap).
+    // If so, pre-apply is-hybrid to <html> BEFORE the swap so there's no
+    // one-frame layout flash. Mirror the getDefaultView() logic exactly.
+    var isEventList = !!e.detail.newBody.querySelector('.hybrid-wrap');
+    if (isEventList) {
+      var _sv = localStorage.getItem('cp_view');
+      var _w = window.innerWidth;
+      var _resolved;
+      if (_sv) {
+        if (_w < 640 && (_sv === 'map' || _sv === 'hybrid')) _resolved = 'list';
+        else if (_w < 900 && _sv === 'hybrid') _resolved = 'map';
+        else _resolved = _sv;
+      } else {
+        _resolved = _w >= 900 ? 'hybrid' : (_w >= 768 ? 'map' : 'list');
+      }
+      if (_resolved === 'hybrid') {
+        document.documentElement.classList.add('is-hybrid');
+      } else {
+        document.documentElement.classList.remove('is-hybrid');
+      }
+    } else {
+      // Not the event list — strip is-hybrid so other pages don't inherit it.
+      document.documentElement.classList.remove('is-hybrid');
+    }
   });
   // Belt-and-suspenders: also apply after load in case of non-Turbo navigations
+  // or Turbo page-cache restores that bypass before-render.
   document.addEventListener('turbo:load', function(){
     if (player.style.display !== 'none') {
       document.body.classList.add('has-player');
+    }
+    // Reconcile is-hybrid: turbo:before-render handles the common case but
+    // page-cache restores (back button) can bypass it.
+    var isEventList = !!document.querySelector('.hybrid-wrap');
+    if (isEventList) {
+      var _sv2 = localStorage.getItem('cp_view');
+      var _w2 = window.innerWidth;
+      var _resolved2;
+      if (_sv2) {
+        if (_w2 < 640 && (_sv2 === 'map' || _sv2 === 'hybrid')) _resolved2 = 'list';
+        else if (_w2 < 900 && _sv2 === 'hybrid') _resolved2 = 'map';
+        else _resolved2 = _sv2;
+      } else {
+        _resolved2 = _w2 >= 900 ? 'hybrid' : (_w2 >= 768 ? 'map' : 'list');
+      }
+      if (_resolved2 === 'hybrid') {
+        document.documentElement.classList.add('is-hybrid');
+      } else {
+        document.documentElement.classList.remove('is-hybrid');
+      }
+    } else {
+      document.documentElement.classList.remove('is-hybrid');
     }
     // Re-process HTMX attributes on every Turbo navigation.
     if (typeof htmx !== 'undefined') htmx.process(document.body);
@@ -179,6 +231,7 @@
     audio.src = t.stream_url;
     setTrackDisplay(t.title, t.artist);
     setTitleLink(t.source_url || '');
+    artistEl.href = t.source_url || '#';
     seekFill.style.width = '0%';
     clearRowProgress();
     if (seekTo > 0) {
@@ -268,12 +321,18 @@
     fetchTracks(g);
   }
 
-  // Toggle channel popup open/closed
+  // Toggle channel popup — position fixed above the player corner
   if (chToggle) {
     chToggle.addEventListener('click', function(e){
       e.stopPropagation();
       var isOpen = channels.classList.toggle('open');
       chToggle.classList.toggle('open', isOpen);
+      if (isOpen) {
+        var r = player.getBoundingClientRect();
+        channels.style.bottom = (window.innerHeight - r.top + 4) + 'px';
+        channels.style.left   = r.left + 'px';
+        channels.style.width  = r.width + 'px';
+      }
     });
   }
   // Click outside closes the popup
@@ -373,6 +432,7 @@
   var isVideoMode  = false;
   var exitHideTimer = null;
   var STORE_V = 'cp_video_state';
+  var _pendingStartSeconds = 0;  // timestamp to resume after Turbo nav
   var exitBtn  = document.getElementById('cp-video-exit');
 
   // ── Load YouTube IFrame API once ──
@@ -407,9 +467,11 @@
   // ── YouTube player (YT IFrame API — needed for onEnded auto-advance) ──
   function createYTPlayer(videoId) {
     _resetWrap();
+    var startAt = _pendingStartSeconds || 0;
+    _pendingStartSeconds = 0;
     ytPlayer = new YT.Player('cp-yt-placeholder', {
       videoId: videoId,
-      playerVars: { autoplay:1, rel:0, modestbranding:1, playsinline:1, controls:1 },
+      playerVars: { autoplay:1, rel:0, modestbranding:1, playsinline:1, controls:1, start: startAt },
       events: {
         onStateChange: function(e) {
           if (e.data === YT.PlayerState.ENDED) { nextVideo(); }
@@ -443,7 +505,10 @@
 
     // ── Update title card lower-third ──
     if (titleCard)  titleCard.textContent  = v.title  || '—';
-    if (artistCard) artistCard.textContent = v.artist || '';
+    if (artistCard) {
+      artistCard.textContent = v.artist || '';
+      artistCard.href = v.source_url || '#';
+    }
     if (showSoon)   showSoon.style.display = (!isLive && v.has_show_soon) ? 'inline-block' : 'none';
 
     // Badge in title card
@@ -462,7 +527,10 @@
       titleEl.target = '_blank';  // open in new tab — keep user on current page
       titleEl.rel    = 'noopener noreferrer';
     }
-    if (artistEl) artistEl.textContent = v.artist || '';
+    if (artistEl) {
+      artistEl.textContent = v.artist || '';
+      artistEl.href = v.source_url || '#';
+    }
 
     // ── Hide play button for live streams (no pause/seek) ──
     var playBtn = document.getElementById('cp-play');
@@ -483,7 +551,9 @@
 
     if (!ytAPIReady) { ytPending = ytId; return; }
     if (ytPlayer && ytPlayer.loadVideoById) {
-      ytPlayer.loadVideoById(ytId);
+      var startAt = _pendingStartSeconds || 0;
+      _pendingStartSeconds = 0;
+      ytPlayer.loadVideoById({ videoId: ytId, startSeconds: startAt });
     } else {
       createYTPlayer(ytId);
     }
@@ -655,7 +725,50 @@
       chLabel.style.display = 'inline-block';
     }
   }
-  document.addEventListener('turbo:load', _syncVideoLabel);
+  // ── Video continuity across Turbo navigation ─────────────────────────────
+  // Chrome reloads cross-origin iframes whenever they are detached from the
+  // document — even briefly. Turbo's permanent-element transplant detaches
+  // #cp-player during the body swap, so the YouTube iframe always reloads.
+  //
+  // Strategy: accept the reload; save position before the swap and recreate
+  // the player from the saved state so playback resumes at the right spot.
+  // The brief loading gap (~1-2 s) is preferable to restarting from 0.
+
+  document.addEventListener('turbo:before-render', function() {
+    if (!isVideoMode) return;
+    // Save current playhead position
+    var t = 0;
+    if (ytPlayer) {
+      try { t = Math.floor(ytPlayer.getCurrentTime() || 0); } catch(e) {}
+    }
+    try {
+      sessionStorage.setItem('cp_video_nav', JSON.stringify({
+        wasPlaying: true,
+        idx: videoIdx,
+        startSeconds: t
+      }));
+    } catch(e) {}
+    // Null out ytPlayer so turbo:load knows the player needs to be rebuilt.
+    // (The iframe will reload when Turbo transplants the permanent element.)
+    isVideoMode = false;
+    ytPlayer = null;
+  });
+
+  document.addEventListener('turbo:load', function() {
+    try {
+      var nav = JSON.parse(sessionStorage.getItem('cp_video_nav') || 'null');
+      if (nav && nav.wasPlaying) {
+        sessionStorage.removeItem('cp_video_nav');
+        videoIdx = nav.idx || 0;
+        _pendingStartSeconds = nav.startSeconds || 0;
+        // isVideoMode is false, ytPlayer is null → enterVideoMode → createYTPlayer
+        // with start: _pendingStartSeconds so video resumes at saved position.
+        enterVideoMode();
+        return;
+      }
+    } catch(e) {}
+    _syncVideoLabel();
+  });
   _syncVideoLabel();
   var _playerObs = new MutationObserver(_syncVideoLabel);
   if (footerBar) _playerObs.observe(footerBar, {attributes: true, attributeFilter: ['style']});

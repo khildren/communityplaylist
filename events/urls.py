@@ -8,6 +8,7 @@ urlpatterns = [
     path('api/saved-tracks/', views.saved_tracks_json, name='saved_tracks_json'),
     path('api/videos/', views.api_video_queue, name='api_video_queue'),
     path('api/parse-lineup/', views.api_parse_lineup, name='api_parse_lineup'),
+    path('api/events/<slug:slug>/', views.api_event_detail, name='api_event_detail'),
     path('save-track/', views.toggle_save_track, name='toggle_save_track'),
     path('drive-sync/', views.drive_sync, name='drive_sync'),
     path('tracks/<int:pk>/delete/', views.delete_track, name='delete_track'),

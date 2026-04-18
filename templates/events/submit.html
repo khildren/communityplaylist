@@ -1,15 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Submit an Event - Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}Submit an Event - Community Playlist{% endblock %}
+{% block head_extra %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:700px;margin:0 auto}
-.header{text-align:center;padding:20px 0 16px}
-.header img{max-width:180px;width:100%;display:block;margin:0 auto}
+body{background:#111;color:#eee;font-family:sans-serif}
+.page-wrap{padding:16px;max-width:700px;margin:0 auto}
 h1{color:#ff6b35;font-size:1.6em;margin-bottom:8px}
 .sub{color:#aaa;font-size:.9em;margin-bottom:30px;text-align:center}
 .back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:24px}
@@ -25,13 +23,11 @@ h1{color:#ff6b35;font-size:1.6em;margin-bottom:8px}
 .btn{background:#ff6b35;color:#fff;border:none;padding:12px 32px;border-radius:6px;cursor:pointer;font-size:1em;width:100%;margin-top:10px}
 .btn:hover{background:#e55a25}
 .section{color:#ff6b35;font-size:.8em;text-transform:uppercase;letter-spacing:.1em;margin:24px 0 14px;border-bottom:1px solid #222;padding-bottom:6px}
-/* Location map preview */
 #location-status{font-size:.78em;margin-top:5px;min-height:1.2em}
 #location-status.ok{color:#4caf50}
 #location-status.err{color:#e55a25}
 #location-status.searching{color:#888}
 #location-map{height:110px;border-radius:8px;margin-top:10px;border:1px solid #333;display:none}
-/* Multi-link rows */
 .link-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
 .link-row input{flex:1}
 .link-remove{background:transparent;border:1px solid #444;color:#888;width:28px;height:28px;border-radius:5px;cursor:pointer;font-size:1em;flex-shrink:0;display:flex;align-items:center;justify-content:center}
@@ -40,12 +36,9 @@ h1{color:#ff6b35;font-size:1.6em;margin-bottom:8px}
 .add-link-btn:hover{border-color:#ff6b35;color:#ff6b35}
 @media(max-width:500px){.form-row{grid-template-columns:1fr}}
 </style>
-</head>
-<body>
-<div class="header">
-  <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
-</div>
-{% include 'events/_nav_strip.html' %}
+{% endblock %}
+{% block body %}
+<div class="page-wrap">
 <a href="/" class="back">← Back to events</a>
 <h1>Submit an Event</h1>
 <p class="sub">All events are reviewed before publishing. Usually approved within 24 hours.</p>
@@ -192,7 +185,6 @@ h1{color:#ff6b35;font-size:1.6em;margin-bottom:8px}
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ── Genre show/hide based on category ──
 const categorySelect = document.getElementById('id_category');
 const genreSection   = document.getElementById('genre-section');
 const genreGroup     = document.getElementById('genre-group');
@@ -205,7 +197,6 @@ function updateGenreVisibility() {
 categorySelect.addEventListener('change', updateGenreVisibility);
 updateGenreVisibility();
 
-// ── Genre autocomplete ──
 const search = document.getElementById('genre-search');
 const suggestions = document.getElementById('genre-suggestions');
 const tagsContainer = document.getElementById('genre-tags');
@@ -258,7 +249,6 @@ document.addEventListener('click', e => {
     suggestions.style.display = 'none';
 });
 
-// ── Multiple links ──
 const linkList  = document.getElementById('link-list');
 const addLinkBtn = document.getElementById('add-link-btn');
 const MAX_LINKS = 10;
@@ -279,7 +269,6 @@ addLinkBtn.addEventListener('click', () => {
   row.querySelector('input').focus();
 });
 
-// ── Address geocode + neighborhood autodetect + map preview ──
 let previewMap = null;
 let previewMarker = null;
 let geocodeTimer = null;
@@ -298,7 +287,6 @@ async function tryGeocode(query) {
   return r.json();
 }
 
-// Detect if string already contains a state abbreviation or zip code
 function hasLocation(s) { return /\b[A-Z]{2}\b|\b\d{5}\b/.test(s); }
 
 function pickNeighborhood(result) {
@@ -333,7 +321,6 @@ if (locationField) {
     statusEl.className = 'searching';
     geocodeTimer = setTimeout(async () => {
       try {
-        // Try as-is first; only append Portland OR if address has no city/state/zip
         let data = await tryGeocode(val);
         if (!data.length && !hasLocation(val)) {
           data = await tryGeocode(val + ', Portland, OR');
@@ -362,7 +349,6 @@ if (locationField) {
   });
 }
 
-// ── Artist autocomplete + auto-detect ────────────────────────────────────────
 const artistSearch      = document.getElementById('artist-search');
 const artistSuggestions = document.getElementById('artist-suggestions');
 const artistTags        = document.getElementById('artist-tags');
@@ -388,7 +374,6 @@ artistSearch.addEventListener('input', () => {
       div.onclick = () => addArtist(a);
       artistSuggestions.appendChild(div);
     });
-    // "Add locally" if nothing found
     if (filtered.length === 0) {
       const add = document.createElement('div');
       add.style = 'padding:10px 14px;cursor:pointer;color:#66bbff;font-size:.9em';
@@ -435,7 +420,6 @@ document.addEventListener('click', e => {
     artistSuggestions.style.display = 'none';
 });
 
-// Auto-detect artists from event title
 const titleField = document.getElementById('id_title');
 let detectTimer;
 if (titleField) {
@@ -446,7 +430,6 @@ if (titleField) {
 }
 
 async function autoDetectArtists(title) {
-  // Extract names after: ft., feat., featuring, w/, with, presents, +, ×, x , vs.
   const pattern = /(?:ft\.?|feat\.?|featuring|w\/|presents|vs\.?|\bx\b)\s+([^,\(\)\[\]]+?)(?=[,\(\[\+×]|$)/gi;
   const names = [];
   let m;
@@ -465,7 +448,6 @@ async function autoDetectArtists(title) {
   artistHint.textContent = names.length ? `Auto-detected from title` : '';
 }
 
-// ── Recurring event UI ────────────────────────────────────────────────────────
 const isRecurringCb     = document.getElementById('is-recurring');
 const recurringOptions  = document.getElementById('recurring-options');
 const recurFreq         = document.getElementById('recur-frequency');
@@ -492,5 +474,5 @@ function updateRecurUI() {
 recurFreq.addEventListener('change', updateRecurUI);
 updateRecurUI();
 </script>
-</body>
-</html>
+</div>
+{% endblock %}

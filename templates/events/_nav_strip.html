@@ -15,17 +15,25 @@
   {% endif %}
 </div>
 <style>
-.cp-nav-strip{display:flex;align-items:center;justify-content:space-evenly;padding:5px 16px;border-bottom:1px solid #1a1a1a;gap:0}
-.cp-nav-tagline{color:#444;font-size:.7em;letter-spacing:.03em;white-space:nowrap}
-.cp-nav-sep{color:#2a2a2a;font-size:.7em}
-.cp-nav-icon{color:#444;text-decoration:none;font-size:1em;transition:opacity .15s;line-height:1}
-.cp-nav-icon:hover{opacity:.65}
-.cp-nav-rose{font-size:.9em;line-height:1}
-.cp-nav-stat{font-size:.65em;color:#555;white-space:nowrap;line-height:1}
-.cp-nav-stat-label{color:#383838}
-@media(max-width:760px){.cp-nav-stat,.cp-nav-sep{display:none}}
+.cp-nav-strip{display:flex;align-items:center;padding:2px 10px;border-bottom:1px solid #161616;background:#0d0d0d;gap:0;position:sticky;top:50px;z-index:840}
+.cp-nav-tagline{color:#333;font-size:.68em;letter-spacing:.03em;white-space:nowrap;flex-shrink:0;padding:0 6px 0 2px}
+.cp-nav-sep{color:#222;font-size:.7em}
+.cp-nav-icon{
+  color:#484848;text-decoration:none;
+  font-size:1.35em;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:40px;min-height:40px;
+  border-radius:8px;flex-shrink:0;
+  transition:background .15s,color .15s;
+}
+.cp-nav-icon:hover{color:#ff6b35;background:rgba(255,107,53,.1)}
+.cp-nav-icon.active{color:#ff6b35}
+.cp-nav-rose{font-size:1em;line-height:1;color:#2a2a2a;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;min-width:28px;min-height:40px}
+.cp-nav-stat{font-size:.63em;color:#444;white-space:nowrap;line-height:1;flex-shrink:0;padding:0 4px}
+.cp-nav-stat-label{color:#333}
+@media(max-width:700px){.cp-nav-stat,.cp-nav-sep,.cp-nav-tagline{display:none}}
 /* Help button */
-.cp-help-btn{background:transparent;border:1px solid #2a2a2a;color:#3a3a3a;width:16px;height:16px;border-radius:50%;font-size:.6em;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-family:sans-serif;flex-shrink:0;padding:0;line-height:1;transition:border-color .15s,color .15s;margin-left:2px}
+.cp-help-btn{background:transparent;border:1px solid #272727;color:#383838;width:28px;height:28px;border-radius:50%;font-size:.7em;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-family:sans-serif;flex-shrink:0;padding:0;line-height:1;transition:all .15s;margin-left:2px}
 .cp-help-btn:hover{border-color:#ff6b35;color:#ff6b35}
 /* Tour overlay */
 #cp-tour-overlay{position:fixed;bottom:66px;left:50%;transform:translateX(-50%);z-index:9500;width:min(460px,92vw);background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:18px 18px 14px;box-shadow:0 6px 28px rgba(0,0,0,.8);display:none;font-family:sans-serif}

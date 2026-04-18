@@ -4,10 +4,6 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif}
-.topbar{padding:6px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;gap:12px}
-.topbar a{color:#ff6b35;text-decoration:none;font-size:.82em}
-.topbar a:hover{text-decoration:underline}
-.logo-link img{height:34px;width:auto;display:block}
 .page{max-width:860px;margin:0 auto;padding:24px 16px}
 
 /* Hero */
@@ -17,6 +13,8 @@ body{background:#111;color:#eee;font-family:sans-serif}
 .hero-info{flex:1;min-width:0}
 h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
 .verified-badge{display:inline-block;background:#1a3a1a;color:#4caf50;font-size:.7em;padding:2px 7px;border-radius:3px;border:1px solid #2a5a2a;vertical-align:middle;margin-left:6px;letter-spacing:.05em}
+.live-badge{display:inline-flex;align-items:center;gap:5px;background:#1a0000;color:#ff3333;font-size:.72em;font-weight:700;padding:3px 9px;border-radius:4px;border:1px solid #550000;vertical-align:middle;margin-left:8px;letter-spacing:.06em;text-transform:uppercase;animation:livepulse 2s ease-in-out infinite}
+@keyframes livepulse{0%,100%{border-color:#550000;color:#ff3333}50%{border-color:#ff3333;color:#ff6666}}
 .bio{color:#bbb;line-height:1.6;font-size:.9em;margin:10px 0}
 
 /* Socials */
@@ -83,14 +81,6 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
 {% endblock %}
 {% block body %}
 
-<div class="topbar">
-  <a href="/" class="logo-link"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="CP"></a>
-  <a href="/">← Events</a>
-  <a href="/artists/">Artists</a>
-  <a href="/promoters/">Promoters</a>
-</div>
-{% include 'events/_nav_strip.html' %}
-
 <div class="page">
 
 <div class="hero">
@@ -104,6 +94,7 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
     <h1>
       {{ artist.name }}
       {% if artist.is_verified %}<span class="verified-badge">✓ verified</span>{% endif %}
+      {% if artist.is_live %}<span class="live-badge">● PDXTV Live</span>{% endif %}
     </h1>
 
     {% if artist.bio %}<p class="bio">{{ artist.bio }}</p>{% endif %}

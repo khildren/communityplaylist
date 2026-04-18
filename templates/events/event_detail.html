@@ -3,7 +3,8 @@
 {% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:860px;margin:0 auto}
+body{background:#111;color:#eee;font-family:sans-serif}
+.page-wrap{max-width:860px;margin:0 auto;padding:16px}
 .back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:20px}
 .back:hover{text-decoration:underline}
 h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
@@ -66,7 +67,7 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
 </style>
 {% endblock %}
 {% block body %}
-<a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist" style="height:36px;width:auto;display:block;margin-bottom:14px;opacity:.85"></a>
+<div class="page-wrap">
 <a href="/" class="back">← Back to all events</a>
 {% if event.category %}<a href="/?category={{ event.category }}" class="cat-badge cat-{{ event.category }}" style="text-decoration:none">{{ event.get_category_display }}</a>{% endif %}
 <h1>{% if upload_success %}
@@ -423,4 +424,5 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); }
 {% if user.is_authenticated %}
 {% include "partials/suggest_edit.html" with target_type="event" target_id=event.pk fields=event_edit_fields %}
 {% endif %}
+</div>{# /page-wrap #}
 {% endblock %}

@@ -11,27 +11,6 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif}
-.header{padding:6px 16px;border-bottom:1px solid #1a1a1a}
-.header-inner{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
-.logo-link{flex-shrink:0}
-.logo-link img{height:38px;width:auto;display:block}
-.header-center{flex:1;text-align:center;min-width:0;padding:0 8px}
-.header-center p{color:#555;font-size:.72em;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0}
-.header-btns{display:flex;gap:6px;align-items:center;flex-shrink:0}
-/* Header burger — mobile only */
-.header-burger{display:none;background:transparent;border:1px solid #444;color:#aaa;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:1.1em;line-height:1;flex-shrink:0}
-.header-burger.open{color:#ff6b35;border-color:#ff6b35}
-/* Weather widget */
-.header-weather{display:flex;align-items:center;gap:6px;font-size:.8em;color:#666;white-space:nowrap;flex-shrink:0;padding:6px 14px;background:#1a1a1a;border:1px solid #222;border-radius:6px}
-.header-weather .wicon{font-size:1.1em;line-height:1}
-.header-weather .wtemp{color:#ddd;font-weight:700}
-.header-weather .wcond{color:#888}
-.header-weather .wsep{color:#2a2a2a;margin:0 1px}
-.header-weather .wextra{color:#555;font-size:.92em}
-@media(max-width:960px){.header-weather .wextra,.header-weather .wsep{display:none}}
-@media(max-width:860px){.header-weather{flex:1;justify-content:center}}
-@media(max-width:700px){.header-weather .wcond{display:none};.header-weather{padding:5px 10px}}
-@media(max-width:600px){.header-weather{display:flex!important;padding:4px 8px}}
 /* Happening now strip */
 .now-strip{background:#1a1a0f;border-bottom:1px solid #2a2a10}
 .now-toggle{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;user-select:none;font-size:.8em;color:#ddaa33;font-weight:600;letter-spacing:.03em}
@@ -49,26 +28,6 @@ body{background:#111;color:#eee;font-family:sans-serif}
 .now-meta{color:#666;font-size:.75em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .now-arr{color:#555;font-size:.9em;flex-shrink:0;transition:color .15s}
 .now-event:hover .now-arr{color:#ff6b35}
-.site-meta{text-align:center;font-size:.7em;color:#444;padding:4px 0;border-bottom:1px solid #1a1a1a;letter-spacing:.03em}
-.site-meta span{margin:0 6px}
-.meta-icon-link{color:#444;text-decoration:none;font-size:1.1em;margin:0 2px;transition:opacity .15s}
-.meta-icon-link:hover{opacity:.7}
-/* ── Unified header buttons — all same size, logo palette ── */
-.submit-link,.discord-link,.board-link{
-  display:inline-flex;align-items:center;gap:5px;
-  padding:6px 12px;border-radius:6px;text-decoration:none;
-  font-size:.8em;font-weight:500;white-space:nowrap;border:1px solid transparent;
-  transition:all .15s;flex-shrink:0;
-}
-/* Submit — primary CTA, orange fill */
-.submit-link{background:#ff6b35;color:#111;border-color:#ff6b35}
-.submit-link:hover{background:#e55a25;border-color:#e55a25}
-/* Discord + secondary links — dark, orange on hover */
-.discord-link{background:#1a1a1a;color:#888;border-color:#2a2a2a}
-.discord-link:hover{border-color:#ff6b35;color:#ff6b35}
-/* Board / nav links — dark, orange on hover */
-.board-link{background:#1a1a1a;color:#888;border-color:#2a2a2a}
-.board-link:hover{border-color:#ff6b35;color:#ff6b35}
 /* Aid marquee */
 .aid-marquee-wrap{background:#0f1f0f;border-bottom:1px solid #1a3a1a;overflow:hidden;white-space:nowrap;padding:5px 0;width:100%}
 .aid-marquee-inner{display:inline-block;animation:marquee 55s linear infinite}
@@ -77,8 +36,6 @@ body{background:#111;color:#eee;font-family:sans-serif}
 .aid-marquee-inner a:hover{text-decoration:underline}
 .aid-marquee-sep{color:#1a4a1a;margin:0 20px;font-size:.75em;user-select:none}
 @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-.discord-link svg{width:14px;height:14px;flex-shrink:0}
-.discord-count{background:rgba(255,255,255,.18);border-radius:10px;padding:1px 6px;font-size:.8em;margin-left:2px}
 /* Category badges */
 .cat-music {background:#1e1228;color:#cc88ff}
 .cat-arts  {background:#1a1a2a;color:#66bbff}
@@ -89,10 +46,9 @@ body{background:#111;color:#eee;font-family:sans-serif}
 .cat-badge {display:inline-block;padding:2px 9px;border-radius:3px;font-size:.75em;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;cursor:pointer}
 
 
-/* View toggle — tucked into filter bar as a group */
-.view-group{display:flex;gap:3px;border-left:1px solid #333;padding-left:10px;margin-left:4px}
-.view-btn{background:#222;color:#aaa;border:1px solid #333;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:.82em;white-space:nowrap}
-.view-btn.active{background:#ff6b35;color:#fff;border-color:#ff6b35}
+/* View button shared style */
+.view-btn{background:#1a1a1a;color:#888;border:1px solid #2a2a2a;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:.78em;white-space:nowrap;transition:all .15s}
+.view-btn.active{background:#ff6b35;color:#111;border-color:#ff6b35}
 
 /* Layout container */
 .hybrid-wrap{display:block}
@@ -116,88 +72,50 @@ body{background:#111;color:#eee;font-family:sans-serif}
 .empty{text-align:center;padding:60px;color:#555}
 
 /* ── Filter bar ── */
-.filter-topbar{display:flex;align-items:center;background:#1a1a1a;border-bottom:1px solid #222;padding:6px 10px;gap:6px;flex-wrap:nowrap;overflow-x:auto;overflow-y:visible;position:relative;z-index:900;scrollbar-width:none;-ms-overflow-style:none;white-space:nowrap}
-.filter-topbar::-webkit-scrollbar{display:none}
-.filter-topbar .search-input{background:#222;border:1px solid #333;border-radius:6px;padding:5px 9px;color:#eee;font-size:.82em;width:140px;min-width:80px;flex-shrink:0}
-.filter-topbar .search-input:focus{outline:none;border-color:#ff6b35}
-.filter-topbar .search-input.mob-search-top{display:none}
-.filter-divider{width:1px;height:20px;background:#333;flex-shrink:0;margin:0 2px}
-.filter-topbar select{background:#222;border:1px solid #333;border-radius:6px;padding:5px 6px;color:#eee;font-size:.78em;flex-shrink:0;max-width:130px}
-.filter-topbar select:focus{outline:none;border-color:#ff6b35}
-.filter-topbar .free-label{color:#aaa;font-size:.78em;display:flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0}
-.filter-topbar .filter-btn{background:#ff6b35;color:#fff;border:none;padding:5px 11px;border-radius:6px;cursor:pointer;font-size:.78em;flex-shrink:0;white-space:nowrap}
-.filter-topbar .clear-btn{background:transparent;color:#666;border:1px solid #2a2a2a;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:.78em;text-decoration:none;flex-shrink:0}
-.filter-topbar .view-group{display:flex;gap:3px;flex-shrink:0;margin-left:auto;padding-left:6px;border-left:1px solid #333}
-/* View burger */
-.view-burger-wrap{display:none;position:relative;flex-shrink:0}
-.view-burger{background:#222;border:1px solid #333;color:#aaa;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:.78em;display:flex;align-items:center;gap:3px;white-space:nowrap}
+.filter-bar{background:#151515;border-bottom:1px solid #1c1c1c;position:sticky;top:94px;z-index:900;font-family:sans-serif}
+.filter-search-row{display:flex;align-items:center;gap:7px;padding:7px 10px}
+.filter-q{flex:1;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;padding:8px 12px;color:#eee;font-size:.85em;min-width:0;transition:border-color .15s}
+.filter-q:focus{outline:none;border-color:#ff6b35}
+/* ⊕ expand toggle */
+.filter-toggle-btn{flex-shrink:0;width:30px;height:30px;border-radius:50%;background:#1a1a1a;border:1.5px solid #333;color:#555;font-size:1.1em;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;padding:0}
+.filter-toggle-btn:hover,.filter-toggle-btn.open{background:#ff6b35;border-color:#ff6b35;color:#111}
+/* View buttons row */
+.filter-view-group{display:flex;gap:3px;flex-shrink:0}
+.filter-view-burger{display:none;position:relative;flex-shrink:0}
+.view-burger{background:#1a1a1a;border:1px solid #2a2a2a;color:#aaa;padding:6px 9px;border-radius:6px;cursor:pointer;font-size:.78em;display:flex;align-items:center;gap:3px;white-space:nowrap;transition:all .15s}
 .view-burger.has-active{color:#ff6b35;border-color:#ff6b35}
 .view-dropdown{display:none;position:absolute;right:0;top:calc(100% + 5px);background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:4px;z-index:1100;min-width:110px;box-shadow:0 4px 20px rgba(0,0,0,.7)}
 .view-dropdown.open{display:flex;flex-direction:column;gap:2px}
-.view-dropdown .view-btn{width:100%;justify-content:flex-start;border-color:transparent;border-radius:5px}
-
-/* ── Mobile filter panel ── */
-.mob-filter-btn{display:none;align-items:center;gap:5px;background:#222;border:1px solid #333;color:#aaa;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:.78em;white-space:nowrap;flex-shrink:0}
-.mob-filter-btn.active{border-color:#ff6b35;color:#ff6b35}
-.mob-badge{background:#ff6b35;color:#fff;border-radius:10px;padding:0 5px;font-size:.7em;font-weight:700;min-width:16px;text-align:center;line-height:1.5}
-.mob-filter-panel{display:none;background:#1a1a1a;border-bottom:1px solid #2a2a2a;padding:12px;z-index:890}
-.mob-filter-panel.open{display:block}
-.mob-filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
-.mob-filter-grid select,.mob-filter-panel .mob-search{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.85em}
-.mob-filter-panel .mob-search:focus,.mob-filter-grid select:focus{outline:none;border-color:#ff6b35}
-.mob-filter-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.mob-free-label{color:#aaa;font-size:.85em;display:flex;align-items:center;gap:6px}
-.mob-actions{display:flex;gap:8px}
-.mob-apply{flex:1;background:#ff6b35;color:#fff;border:none;padding:9px;border-radius:6px;cursor:pointer;font-size:.85em;font-weight:600}
-.mob-clear{background:transparent;color:#666;border:1px solid #2a2a2a;padding:9px 14px;border-radius:6px;cursor:pointer;font-size:.85em;text-decoration:none;text-align:center}
-
+.view-dropdown .view-btn{width:100%;text-align:left;border-color:transparent;border-radius:5px}
+/* Expandable filters */
+.filter-extras{overflow:hidden;max-height:0;transition:max-height .3s cubic-bezier(.4,0,.2,1);background:#111;border-top:0 solid #1e1e1e;transition:max-height .3s cubic-bezier(.4,0,.2,1),border-top-width 0s}
+.filter-extras.open{max-height:350px;border-top-width:1px}
+.filter-extras-inner{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 10px 10px}
+.filter-extras select{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:5px 6px;color:#eee;font-size:.78em;flex-shrink:0;max-width:130px}
+.filter-extras select:focus{outline:none;border-color:#ff6b35}
+.filter-extras .free-label{color:#aaa;font-size:.78em;display:flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0}
+.filter-extras .filter-btn{background:#ff6b35;color:#fff;border:none;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.78em;flex-shrink:0}
+.filter-extras .clear-btn{background:transparent;color:#666;border:1px solid #2a2a2a;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:.78em;text-decoration:none;flex-shrink:0}
 @media(max-width:640px){
-  .filter-topbar .search-input,.filter-topbar select,.filter-topbar .free-label,
-  .filter-topbar .filter-btn,.filter-topbar .clear-btn,.filter-divider{display:none}
-  .filter-topbar .view-group>.view-btn{display:none}
-  .mob-filter-btn{display:flex}
-  .view-burger-wrap{display:block}
-  /* Remove overflow-x:auto so view dropdown isn't clipped */
-  .filter-topbar{gap:8px;padding:6px 10px;overflow:visible}
-  .filter-topbar .search-input.mob-search-top{display:block;flex:1;width:auto;min-width:0;font-size:.85em;padding:6px 10px}
-  /* Dropdown uses fixed positioning on mobile; top is set by JS below */
+  .filter-view-group{display:none}
+  .filter-view-burger{display:block}
   .view-dropdown{position:fixed;right:10px}
+  .filter-extras-inner{gap:8px}
+  .filter-extras select{max-width:none;flex:1;min-width:calc(50% - 4px);padding:8px 6px;font-size:.82em}
+  .filter-extras .filter-btn{flex:1;padding:9px;font-size:.85em}
+  .filter-extras .clear-btn{padding:9px 14px;font-size:.85em}
 }
 @media(min-width:641px) and (max-width:820px){
-  .filter-topbar .view-group>.view-btn{display:none}
-  .view-burger-wrap{display:block}
-  .filter-topbar{overflow:visible}
+  .filter-view-group{display:none}
+  .filter-view-burger{display:block}
   .view-dropdown{position:fixed;right:10px}
 }
-@media(min-width:821px){
-  .mob-filter-btn{display:none!important}
-  .mob-filter-panel{display:none!important}
-}
-
-/* ── Header collapse at ≤860px — burger replaces buttons ── */
-@media(max-width:860px){
-  .header-inner{flex-wrap:wrap}
-  .header-burger{display:inline-flex}
-  .header-center{display:none}
-  .header-btns{display:none;gap:6px;flex-wrap:wrap;padding:8px 0;border-top:1px solid #1a1a1a;flex-basis:100%;order:10}
-  .header-btns.open{display:flex}
-  .header-btns a{flex:1;min-width:130px;justify-content:center}
-}
-
-/* Weather pill in cycle mode: hide wind/feel */
-.header-weather.cycle-mode .wsep,
-.header-weather.cycle-mode .wextra{display:none!important}
+/* Weather cycle mode (autopilot): hide wind/feel from global header */
+.sh-weather.cycle-mode .wsep,
+.sh-weather.cycle-mode .wextra{display:none!important}
 
 /* ── Mobile ── */
 @media(max-width:600px){
-  /* Header */
-  .header{padding:8px 12px}
-  .header-inner{gap:10px;flex-wrap:wrap;justify-content:flex-start}
-  .logo-link img{height:40px}
-  .header-text{gap:4px}
-  .header-text p{font-size:.72em;line-height:1.45}
-  .submit-link,.discord-link{padding:6px 12px;font-size:.78em;justify-content:center}
-  .view-btn{padding:4px 8px;font-size:.75em}
   /* Cards slimmer */
   .event{padding:10px 12px;gap:10px}
   .event-thumb{width:38px;height:68px}
@@ -206,11 +124,10 @@ body{background:#111;color:#eee;font-family:sans-serif}
 
 /* ── Player height CSS variable — auto-tracked via has-player class ── */
 body{--player-h:0px}
-body.has-player{--player-h:56px}
 
 /* ── View: Map only ── */
 body.view-map #events-list{display:none}
-body.view-map #map{display:block!important;height:calc(100vh - var(--top-h, 180px) - var(--player-h))}
+body.view-map #map{display:block!important;height:calc(100vh - var(--top-h, 180px))}
 
 /* ── View: Hybrid ── */
 html.is-hybrid,html.is-hybrid body{height:100%;overflow:hidden}
@@ -222,6 +139,10 @@ html.is-hybrid #events-list::-webkit-scrollbar-track{background:#111}
 html.is-hybrid #events-list::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:3px}
 html.is-hybrid #events-list::-webkit-scrollbar-thumb:hover{background:#ff6b35}
 html.is-hybrid .events-grid{max-width:none;margin:0;padding:14px}
+/* Pad bottom of scrollable lists so last card isn't hidden behind player corner */
+body.has-player #events-list,
+body.has-player .events-grid{padding-bottom:130px}
+html.is-hybrid body.has-player #events-list{padding-bottom:130px}
 html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
 
 /* Smooth route line fade-in/out */
@@ -280,45 +201,43 @@ body.night-builder-mode .cp-nb-btn{border-color:#ff6b35;background:#1a0c06;color
 .cp-nb-exit:hover{border-color:#f55;color:#f55}
 /* ── /Night Builder ─────────────────────────────────── */
 
-/* player styles injected by _player.html include */
+/* ── Inline event expansion ── */
+a.event{position:relative}
+a.event.ee-loading{opacity:.6;pointer-events:none}
+.event-expand{
+  background:#161616;
+  border:1px solid #2a2a2a;
+  border-top:none;
+  border-radius:0 0 8px 8px;
+  overflow:hidden;
+  max-height:0;
+  transition:max-height .38s cubic-bezier(.4,0,.2,1);
+}
+.event-expand.open{max-height:700px}
+.event-expand-inner{padding:14px 16px 16px}
+.ee-photo{width:100%;max-height:180px;object-fit:cover;border-radius:4px;display:block;margin-bottom:10px}
+.ee-meta{font-size:.8em;color:#888;display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.ee-meta span{display:flex;align-items:baseline;gap:5px}
+.ee-genres{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.ee-genre{font-size:.7em;background:#1e1e1e;border:1px solid #333;border-radius:3px;padding:2px 7px;color:#aaa}
+.ee-desc{font-size:.83em;color:#bbb;line-height:1.55;margin:0 0 12px;white-space:pre-line}
+.ee-links{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.ee-link{
+  font-size:.8em;color:#ff6b35;text-decoration:none;
+  border:1px solid #2a2a2a;border-radius:5px;
+  padding:6px 10px;display:block;background:#111;
+  transition:border-color .15s;word-break:break-all;
+}
+.ee-link:hover{border-color:#ff6b35}
+.ee-fullpage{
+  display:block;text-align:center;font-size:.75em;
+  color:#555;text-decoration:none;padding:4px;
+}
+.ee-fullpage:hover{color:#888}
 </style>
 {% endblock %}
 {% block body %}
 
-<div class="header">
-  <div class="header-inner">
-    <a href="/" class="logo-link">
-      <img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist">
-    </a>
-    <div class="header-center"></div>
-    <div class="header-weather" id="header-weather" style="display:none">
-      <span class="wicon" id="hw-icon"></span>
-      <span class="wtemp" id="hw-temp"></span>
-      <span class="wcond" id="hw-cond"></span>
-      <span class="wsep">·</span>
-      <span class="wextra" id="hw-wind"></span>
-      <span class="wsep">·</span>
-      <span class="wextra" id="hw-feel"></span>
-    </div>
-    <button type="button" class="header-burger" id="header-burger" onclick="toggleHeaderBtns()">☰</button>
-    <div class="header-btns" id="header-btns">
-      <a href="/submit/" class="submit-link">+ Submit an Event</a>
-      <a href="https://discord.gg/WHhxRPDdFV" class="discord-link" id="discord-btn" target="_blank" rel="noopener">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.033.056a19.908 19.908 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
-        Discord<span class="discord-count" id="discord-count" style="display:none"></span>
-      </a>
-      <a href="https://discord.gg/WHhxRPDdFV" class="discord-link" target="_blank" rel="noopener">💬 Ideas &amp; Feedback</a>
-      <a href="/board/" class="board-link">📋 Board</a>
-      <a href="/neighborhoods/" class="board-link">📍 Hoods</a>
-      {% if user.is_authenticated %}
-      <a href="/dashboard/" class="board-link" style="border-color:#ff6b35;color:#ff6b35">👤 Profile</a>
-      {% else %}
-      <a href="/login/" class="board-link" style="border-color:#ff6b35;color:#ff6b35">👤 Sign In</a>
-      {% endif %}
-    </div>
-  </div>
-</div>
-{% include 'events/_nav_strip.html' %}
 {% if banners %}
 <div class="aid-marquee-wrap">
   <div class="aid-marquee-inner">
@@ -328,141 +247,81 @@ body.night-builder-mode .cp-nb-btn{border-color:#ff6b35;background:#1a0c06;color
 {% endif %}
 
 <form method="get" action="/" id="filter-form">
-<!-- Desktop + tablet filter bar -->
-<div class="filter-topbar" id="filter-body">
-  <!-- Mobile: full-width search replaces hidden desktop input -->
-  <input type="text" name="q" class="search-input mob-search-top" placeholder="🔍 Search..." value="{{ search_query|default:'' }}" id="mob-search-input">
-  <!-- Mobile: filter toggle button -->
-  <button type="button" class="mob-filter-btn {% if selected_genre or selected_category or selected_neighborhood or selected_event_type or free_only or selected_radius %}active{% endif %}" onclick="toggleMobFilters()" id="mob-filter-toggle">
-    ⚙ Filters{% if selected_genre or selected_category or selected_neighborhood or selected_event_type or free_only or selected_radius %} <span class="mob-badge" id="mob-badge"></span>{% endif %}
-  </button>
-  <!-- Desktop-only controls -->
-  <input type="text" name="q" class="search-input" placeholder="🔍 Search..." value="{{ search_query|default:'' }}">
-  <div class="filter-divider"></div>
-  <select name="genre" id="desk-genre">
-    <option value="">All genres</option>
-    {% for g in genres %}
-    <option value="{{ g.id }}" {% if selected_genre == g.id|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>
-    {% endfor %}
-  </select>
-  <select name="category" id="desk-category">
-    <option value="" {% if not selected_category %}selected{% endif %}>All types</option>
-    <option value="music"   {% if selected_category == 'music'   %}selected{% endif %}>🎵 Music</option>
-    <option value="bike"    {% if selected_category == 'bike'    %}selected{% endif %}>🚲 Bike</option>
-    <option value="fund"    {% if selected_category == 'fund'    %}selected{% endif %}>💛 Fundraiser</option>
-    <option value="food"    {% if selected_category == 'food'    %}selected{% endif %}>🍜 Food</option>
-    <option value="hybrid"  {% if selected_category == 'hybrid'  %}selected{% endif %}>✨ Hybrid</option>
-    <option value="artists">🎤 Artists</option>
-  </select>
-  <select name="event_type">
-    <option value="" {% if not selected_event_type %}selected{% endif %}>Online &amp; Local</option>
-    <option value="local" {% if selected_event_type == 'local' %}selected{% endif %}>Local</option>
-    <option value="online" {% if selected_event_type == 'online' %}selected{% endif %}>Online</option>
-  </select>
-  <select name="neighborhood">
-    <option value="">All neighborhoods</option>
-    {% for n in neighborhoods %}
-    <option value="{{ n }}" {% if selected_neighborhood == n %}selected{% endif %}>{{ n }}</option>
-    {% endfor %}
-  </select>
-  <select name="radius" id="desk-radius">
-    <option value="">Any distance</option>
-    <option value="1">Within 1 mi</option>
-    <option value="5">Within 5 mi</option>
-    <option value="10">Within 10 mi</option>
-    <option value="15">Within 15 mi</option>
-    <option value="30">Within 30 mi</option>
-    <option value="60">Within 60 mi</option>
-  </select>
-  <select name="date">
-    <option value="today" {% if selected_date == 'today' %}selected{% endif %}>Today</option>
-    <option value="week" {% if selected_date == 'week' %}selected{% endif %}>This Week</option>
-    <option value="month" {% if selected_date == 'month' %}selected{% endif %}>This Month</option>
-    <option value="future" {% if selected_date == 'future' or not selected_date %}selected{% endif %}>Any Future</option>
-    <option value="past" {% if selected_date == 'past' %}selected{% endif %}>Past</option>
-  </select>
-  <label class="free-label">
-    <input type="checkbox" name="free" value="1" {% if free_only %}checked{% endif %}> Free only
-  </label>
-  <button type="submit" class="filter-btn">Filter</button>
-  <a href="/" class="clear-btn">Clear</a>
-  <button type="button" class="cp-near-pill" id="cp-near-pill" onclick="cpNearPillClick(this)" title="Set your starting point">
-    <span class="cp-near-label" id="cp-near-label">📍 Near</span>
-    <span class="cp-near-x" id="cp-near-x" style="display:none" onclick="event.stopPropagation();cpHomeClear()" title="Clear">✕</span>
-  </button>
-  <button type="button" class="cp-nb-btn" id="cp-nb-btn" onclick="cpNightBuilderToggle()" title="Night Builder GPS mode">🧭 <span class="cp-nb-text">Night Builder</span></button>
-  <div class="filter-divider"></div>
-  <div class="view-group">
-    <button type="button" class="view-btn" id="list-btn" data-view="list" onclick="setView('list')">≡ List</button>
-    <button type="button" class="view-btn" id="map-btn"  data-view="map"  onclick="setView('map')">⊙ Map</button>
-    <button type="button" class="view-btn" id="hybrid-btn" data-view="hybrid" onclick="setView('hybrid')">⊟ Hybrid</button>
-  </div>
-  <div class="view-burger-wrap">
-    <button type="button" class="view-burger" id="view-burger" onclick="toggleViewMenu(event)">
-      <span id="view-icon">☰</span> ▾
-    </button>
-    <div class="view-dropdown" id="view-dropdown">
-      <button type="button" class="view-btn" data-view="list" onclick="setView('list')">≡ List</button>
-      <button type="button" class="view-btn" data-view="map"  onclick="setView('map')">⊙ Map</button>
-      <button type="button" class="view-btn" data-view="hybrid" onclick="setView('hybrid')">⊟ Hybrid</button>
+<div class="filter-bar" id="filter-body">
+  <div class="filter-search-row">
+    <input type="text" name="q" id="filter-q" class="filter-q" placeholder="🔍 Search events..." value="{{ search_query|default:'' }}" autocomplete="off">
+    <button type="button" class="filter-toggle-btn {% if selected_genre or selected_category or selected_neighborhood or selected_event_type or free_only or selected_radius %}open{% endif %}" id="filter-toggle-btn" onclick="toggleFilterExpand()" title="Filters">⊕</button>
+    <div class="filter-view-group">
+      <button type="button" class="view-btn" id="list-btn"   data-view="list"   onclick="setView('list')">≡ List</button>
+      <button type="button" class="view-btn" id="map-btn"    data-view="map"    onclick="setView('map')">⊙ Map</button>
+      <button type="button" class="view-btn" id="hybrid-btn" data-view="hybrid" onclick="setView('hybrid')">⊟ Hybrid</button>
+    </div>
+    <div class="filter-view-burger">
+      <button type="button" class="view-burger" id="view-burger" onclick="toggleViewMenu(event)">
+        <span id="view-icon">☰</span> ▾
+      </button>
+      <div class="view-dropdown" id="view-dropdown">
+        <button type="button" class="view-btn" data-view="list"   onclick="setView('list')">≡ List</button>
+        <button type="button" class="view-btn" data-view="map"    onclick="setView('map')">⊙ Map</button>
+        <button type="button" class="view-btn" data-view="hybrid" onclick="setView('hybrid')">⊟ Hybrid</button>
+      </div>
     </div>
   </div>
-</div>
-
-<!-- Mobile filter panel (below bar) -->
-<div class="mob-filter-panel" id="mob-filter-panel">
-  <div class="mob-filter-grid">
-    <select name="genre" id="mob-genre">
-      <option value="">All genres</option>
-      {% for g in genres %}
-      <option value="{{ g.id }}" {% if selected_genre == g.id|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>
-      {% endfor %}
-    </select>
-    <select name="category" id="mob-category">
-      <option value="" {% if not selected_category %}selected{% endif %}>All types</option>
-      <option value="music"  {% if selected_category == 'music'  %}selected{% endif %}>🎵 Music</option>
-      <option value="bike"   {% if selected_category == 'bike'   %}selected{% endif %}>🚲 Bike</option>
-      <option value="fund"   {% if selected_category == 'fund'   %}selected{% endif %}>💛 Fundraiser</option>
-      <option value="food"   {% if selected_category == 'food'   %}selected{% endif %}>🍜 Food</option>
-      <option value="hybrid" {% if selected_category == 'hybrid' %}selected{% endif %}>✨ Hybrid</option>
-      <option value="artists">🎤 Artists</option>
-    </select>
-    <select name="neighborhood" id="mob-neighborhood">
-      <option value="">All neighborhoods</option>
-      {% for n in neighborhoods %}
-      <option value="{{ n }}" {% if selected_neighborhood == n %}selected{% endif %}>{{ n }}</option>
-      {% endfor %}
-    </select>
-    <select name="date" id="mob-date">
-      <option value="today" {% if selected_date == 'today' %}selected{% endif %}>Today</option>
-      <option value="week" {% if selected_date == 'week' %}selected{% endif %}>This Week</option>
-      <option value="month" {% if selected_date == 'month' %}selected{% endif %}>This Month</option>
-      <option value="future" {% if selected_date == 'future' or not selected_date %}selected{% endif %}>Any Future</option>
-      <option value="past" {% if selected_date == 'past' %}selected{% endif %}>Past</option>
-    </select>
-    <select name="event_type" id="mob-event-type">
-      <option value="" {% if not selected_event_type %}selected{% endif %}>Online &amp; Local</option>
-      <option value="local" {% if selected_event_type == 'local' %}selected{% endif %}>Local only</option>
-      <option value="online" {% if selected_event_type == 'online' %}selected{% endif %}>Online only</option>
-    </select>
-    <select name="radius" id="mob-radius">
-      <option value="">Any distance</option>
-      <option value="1">Within 1 mi</option>
-      <option value="5">Within 5 mi</option>
-      <option value="10">Within 10 mi</option>
-      <option value="15">Within 15 mi</option>
-      <option value="30">Within 30 mi</option>
-      <option value="60">Within 60 mi</option>
-    </select>
-  </div>
-  <div class="mob-filter-row">
-    <label class="mob-free-label">
-      <input type="checkbox" name="free" value="1" id="mob-free" {% if free_only %}checked{% endif %}> Free only
-    </label>
-  </div>
-  <div class="mob-actions">
-    <button type="submit" class="mob-apply">Apply filters</button>
-    <a href="/" class="mob-clear">Clear</a>
+  <div class="filter-extras {% if selected_genre or selected_category or selected_neighborhood or selected_event_type or free_only or selected_radius %}open{% endif %}" id="filter-extras">
+    <div class="filter-extras-inner">
+      <select name="genre" id="desk-genre">
+        <option value="">All genres</option>
+        {% for g in genres %}
+        <option value="{{ g.id }}" {% if selected_genre == g.id|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>
+        {% endfor %}
+      </select>
+      <select name="category" id="desk-category">
+        <option value="" {% if not selected_category %}selected{% endif %}>All types</option>
+        <option value="music"   {% if selected_category == 'music'   %}selected{% endif %}>🎵 Music</option>
+        <option value="bike"    {% if selected_category == 'bike'    %}selected{% endif %}>🚲 Bike</option>
+        <option value="fund"    {% if selected_category == 'fund'    %}selected{% endif %}>💛 Fundraiser</option>
+        <option value="food"    {% if selected_category == 'food'    %}selected{% endif %}>🍜 Food</option>
+        <option value="hybrid"  {% if selected_category == 'hybrid'  %}selected{% endif %}>✨ Hybrid</option>
+        <option value="artists">🎤 Artists</option>
+      </select>
+      <select name="event_type">
+        <option value="" {% if not selected_event_type %}selected{% endif %}>Online &amp; Local</option>
+        <option value="local"   {% if selected_event_type == 'local'   %}selected{% endif %}>Local</option>
+        <option value="online"  {% if selected_event_type == 'online'  %}selected{% endif %}>Online</option>
+      </select>
+      <select name="neighborhood">
+        <option value="">All neighborhoods</option>
+        {% for n in neighborhoods %}
+        <option value="{{ n }}" {% if selected_neighborhood == n %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+      <select name="radius" id="desk-radius">
+        <option value="">Any distance</option>
+        <option value="1">Within 1 mi</option>
+        <option value="5">Within 5 mi</option>
+        <option value="10">Within 10 mi</option>
+        <option value="15">Within 15 mi</option>
+        <option value="30">Within 30 mi</option>
+        <option value="60">Within 60 mi</option>
+      </select>
+      <select name="date">
+        <option value="today"  {% if selected_date == 'today'  %}selected{% endif %}>Today</option>
+        <option value="week"   {% if selected_date == 'week'   %}selected{% endif %}>This Week</option>
+        <option value="month"  {% if selected_date == 'month'  %}selected{% endif %}>This Month</option>
+        <option value="future" {% if selected_date == 'future' or not selected_date %}selected{% endif %}>Any Future</option>
+        <option value="past"   {% if selected_date == 'past'   %}selected{% endif %}>Past</option>
+      </select>
+      <label class="free-label">
+        <input type="checkbox" name="free" value="1" {% if free_only %}checked{% endif %}> Free
+      </label>
+      <button type="submit" class="filter-btn">Filter</button>
+      <a href="/" class="clear-btn">Clear</a>
+      <button type="button" class="cp-near-pill" id="cp-near-pill" onclick="cpNearPillClick(this)" title="Set starting point">
+        <span class="cp-near-label" id="cp-near-label">📍 Near</span>
+        <span class="cp-near-x" id="cp-near-x" style="display:none" onclick="event.stopPropagation();cpHomeClear()" title="Clear">✕</span>
+      </button>
+      <button type="button" class="cp-nb-btn" id="cp-nb-btn" onclick="cpNightBuilderToggle()" title="Night Builder GPS mode">🧭 <span class="cp-nb-text">Night Builder</span></button>
+    </div>
   </div>
 </div>
 </form>
@@ -544,14 +403,34 @@ body.night-builder-mode .cp-nb-btn{border-color:#ff6b35;background:#1a0c06;color
 
 <script src="/static/leaflet/leaflet.js" data-turbo-eval="false"></script>
 <script>
-const mapEvents = {{ map_events|safe }};
-let mapInitialized = false;
-let map;
-let tileLayer;
-const markersBySlug = {};
-const categoryBySlug = {};
+var mapEvents = {{ map_events|safe }};
+var mapInitialized = false;
+var map;
+var tileLayer;
+var markersBySlug = {};
+var categoryBySlug = {};
 
-const CAT_COLORS = {
+// ── Turbo cleanup: destroy Leaflet BEFORE snapshot is taken ──────────────────
+// turbo:before-cache fires before Turbo snapshots the page for its cache.
+// Cleaning up here ensures the snapshot has a bare #map div — no Leaflet panes,
+// tiles, or window listeners. On restore, initMap() gets a genuinely clean slate.
+// turbo:before-render is kept as a safety net for non-cached navigations.
+function _destroyMap() {
+  if (map) {
+    try { map.remove(); } catch(e) {}
+    map = null;
+    window.map = null;
+    mapInitialized = false;
+  }
+  document.documentElement.style.removeProperty('--top-h');
+  // Remove hybrid/view classes so other pages don't inherit event-list layout
+  document.documentElement.classList.remove('is-hybrid');
+  document.body.classList.remove('view-list', 'view-map', 'view-hybrid');
+}
+document.addEventListener('turbo:before-cache', _destroyMap);
+document.addEventListener('turbo:before-render', _destroyMap);
+
+var CAT_COLORS = {
   music: '#cc88ff',
   arts:  '#66bbff',
   bike:  '#55dd55',
@@ -590,9 +469,11 @@ function highlightCard(slug) {
 
 function initMap() {
   if (mapInitialized) return;
-  // If Turbo restored a snapshot the container already has Leaflet state — wipe it
   const _mc = document.getElementById('map');
-  if (_mc && _mc._leaflet_id != null) { delete _mc._leaflet_id; }
+  if (!_mc) return;
+  // Safety: clear any residual Leaflet id in case cleanup didn't fire
+  delete _mc._leaflet_id;
+  if (_mc.children.length) { _mc.innerHTML = ''; }
   try {
     map = L.map('map').setView([45.5051, -122.6750], 12);
     window.map = map;
@@ -616,7 +497,7 @@ function initMap() {
         </div>
       </div>
     `);
-    marker.on('click', () => highlightCard(e.slug));
+    marker.on('click', () => { highlightCard(e.slug); if (window.cpEventPanel) window.cpEventPanel.open(e.slug); });
     markersBySlug[e.slug] = marker;
     categoryBySlug[e.slug] = e.category;
   });
@@ -1017,76 +898,26 @@ function filterByCategory(e, el) {
   window.location.href = '/?category=' + el.dataset.cat;
 }
 
-// ── Mobile filter panel ──
-function toggleMobFilters() {
-  const panel  = document.getElementById('mob-filter-panel');
-  const toggle = document.getElementById('mob-filter-toggle');
+// ── Filter expand toggle ──
+function toggleFilterExpand() {
+  const panel  = document.getElementById('filter-extras');
+  const toggle = document.getElementById('filter-toggle-btn');
   const open   = panel.classList.toggle('open');
-  toggle.classList.toggle('active', open);
+  toggle.classList.toggle('open', open);
 }
 
-// Before submit: disable the set of inputs NOT being used so each param
-// appears only once in the query string. Django takes the first value when
-// duplicates exist, so without this mobile values were silently ignored.
+// Before submit: disable radius (client-side only) to keep URL clean
 document.getElementById('filter-form').addEventListener('submit', function(e) {
-  // "Artists" type redirects to the artist directory instead of event filter
-  const cat = (document.getElementById('mob-category') && window.innerWidth <= 640)
-    ? document.getElementById('mob-category').value
-    : (document.getElementById('desk-category') ? document.getElementById('desk-category').value : '');
+  const cat = (document.getElementById('desk-category') || {}).value || '';
   if (cat === 'artists') {
     e.preventDefault();
-    const q = (document.querySelector('.search-input.mob-search-top') && window.innerWidth <= 640)
-      ? document.querySelector('.search-input.mob-search-top').value
-      : (document.querySelector('.search-input:not(.mob-search-top)') || {value:''}).value;
+    const q = (document.getElementById('filter-q') || {}).value || '';
     window.location.href = '/artists/' + (q.trim() ? '?q=' + encodeURIComponent(q.trim()) : '');
     return;
   }
-  const isMob = window.innerWidth <= 640;
-
-  // radius is handled client-side (geo), always disable both to keep URL clean
-  ['desk-radius','mob-radius'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.disabled = true;
-  });
-
-  const mobIds   = ['mob-genre','mob-category','mob-neighborhood','mob-date','mob-event-type','mob-free','mob-search-input'];
-  const deskSels = [
-    '[name="genre"]:not(#mob-genre)',
-    '[name="category"]:not(#mob-category)',
-    '[name="neighborhood"]:not(#mob-neighborhood)',
-    '[name="date"]:not(#mob-date)',
-    '[name="event_type"]:not(#mob-event-type)',
-    'input[name="free"]:not(#mob-free)',
-    '.search-input:not(.mob-search-top)',
-  ];
-
-  if (isMob) {
-    // Disable desktop duplicates so only mobile values are submitted
-    deskSels.forEach(sel => {
-      const el = document.querySelector(sel);
-      if (el) el.disabled = true;
-    });
-  } else {
-    // Disable mobile duplicates so only desktop values are submitted
-    mobIds.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.disabled = true;
-    });
-  }
+  const radius = document.getElementById('desk-radius');
+  if (radius) radius.disabled = true;
 });
-
-// Count active filters for the badge
-(function updateMobBadge() {
-  const badge  = document.getElementById('mob-badge');
-  if (!badge) return;
-  const params = new URLSearchParams(window.location.search);
-  let count = 0;
-  ['genre','category','neighborhood','event_type','free','radius'].forEach(k => { if (params.get(k)) count++; });
-  badge.textContent = count || '';
-  badge.style.display = count ? '' : 'none';
-  const toggle = document.getElementById('mob-filter-toggle');
-  if (toggle) toggle.classList.toggle('active', count > 0);
-})();
 
 // ── Live genre dropdown ──────────────────────────────────────────────────────
 (function() {
@@ -1163,20 +994,12 @@ document.getElementById('filter-form').addEventListener('submit', function(e) {
   });
 })();
 
-// ── Header buttons toggle (mobile) ──
-function toggleHeaderBtns() {
-  const btns = document.getElementById('header-btns');
-  const burger = document.getElementById('header-burger');
-  const open = btns.classList.toggle('open');
-  burger.classList.toggle('open', open);
-  burger.textContent = open ? '✕' : '☰';
-}
-// Reset burger on every Turbo navigation so open state never bleeds across pages
+// Reset nav burger on every Turbo navigation so open state never bleeds across pages
 document.addEventListener('turbo:load', function(){
-  const btns   = document.getElementById('header-btns');
-  const burger = document.getElementById('header-burger');
-  if (btns)   { btns.classList.remove('open'); }
-  if (burger) { burger.classList.remove('open'); burger.textContent = '☰'; }
+  const nav    = document.getElementById('sh-nav');
+  const burger = document.getElementById('sh-burger');
+  if (nav)    { nav.classList.remove('open'); }
+  if (burger) { burger.classList.remove('open'); burger.textContent = '☰'; burger.setAttribute('aria-expanded','false'); }
 });
 
 // ── View burger (mobile) ──
@@ -1192,15 +1015,18 @@ function toggleViewMenu(e) {
   dd.classList.toggle('open');
 }
 document.addEventListener('click', function(e) {
-  if (!e.target.closest('.view-burger-wrap') && !e.target.closest('#view-dropdown'))
-    document.getElementById('view-dropdown').classList.remove('open');
+  if (!e.target.closest('.view-burger-wrap') && !e.target.closest('#view-dropdown')) {
+    var _dd = document.getElementById('view-dropdown');
+    if (_dd) _dd.classList.remove('open');
+  }
 });
 
 // ── View switching ──
-const VIEW_ICONS = {list: '≡', map: '⊙', hybrid: '⊟'};
+var VIEW_ICONS = {list: '≡', map: '⊙', hybrid: '⊟'};
 function setView(v, persist) {
   // Close dropdown if open
-  document.getElementById('view-dropdown').classList.remove('open');
+  var _vdd = document.getElementById('view-dropdown');
+  if (_vdd) _vdd.classList.remove('open');
 
   // Update body/html classes
   document.body.classList.remove('view-list', 'view-map', 'view-hybrid');
@@ -1215,23 +1041,27 @@ function setView(v, persist) {
   // Update burger icon + highlight
   const icon = document.getElementById('view-icon');
   if (icon) icon.textContent = VIEW_ICONS[v];
-  document.getElementById('view-burger').classList.add('has-active');
+  var _vb = document.getElementById('view-burger');
+  if (_vb) _vb.classList.add('has-active');
 
   // Init map if needed
   if (v === 'map' || v === 'hybrid') {
-    initMap();
-    // Measure top offset for map-only height, then invalidateSize AFTER layout settles
     if (v === 'map') {
-      requestAnimationFrame(() => {
+      // Scroll to top first so the sticky filter bar is in its natural position —
+      // getBoundingClientRect() is viewport-relative and gives wrong values when scrolled.
+      window.scrollTo({top: 0, behavior: 'instant'});
+      const top = document.getElementById('map').getBoundingClientRect().top;
+      document.documentElement.style.setProperty('--top-h', top + 'px');
+    }
+    initMap();
+    // Follow-up invalidateSize handles any layout shift (player bar, CSS settle)
+    setTimeout(function() {
+      if (v === 'map') {
         const top = document.getElementById('map').getBoundingClientRect().top;
         document.documentElement.style.setProperty('--top-h', top + 'px');
-        // --player-h is managed by CSS (body.has-player{--player-h:56px})
-        setTimeout(() => map && map.invalidateSize({animate: false}), 80);
-      });
-    } else {
-      // hybrid — just needs a size refresh after flex layout settles
-      setTimeout(() => map && map.invalidateSize({animate: false}), 200);
-    }
+      }
+      if (map) map.invalidateSize({animate: false});
+    }, 150);
   }
 
   if (persist !== false) localStorage.setItem('cp_view', v);
@@ -1240,8 +1070,13 @@ function setView(v, persist) {
 // ── Default view by screen size (respects saved preference) ──
 function getDefaultView() {
   const saved = localStorage.getItem('cp_view');
-  if (saved) return saved;
   const w = window.innerWidth;
+  if (saved) {
+    // Never show map/hybrid on phones — saved desktop prefs shouldn't carry over
+    if (w < 640 && (saved === 'map' || saved === 'hybrid')) return 'list';
+    if (w < 900 && saved === 'hybrid') return 'map';
+    return saved;
+  }
   if (w >= 900) return 'hybrid';
   if (w >= 768) return 'map';
   return 'list';
@@ -1249,33 +1084,7 @@ function getDefaultView() {
 
 setView(getDefaultView(), false);  // auto-default: don't overwrite user's saved choice
 
-// ── Resize map when player appears (has-player added asynchronously) ──
-(function(){
-  // If player is already visible (Turbo navigation with player active),
-  // has-player was pre-injected before our scripts ran — nothing to do.
-  // If player appears later (initial load, async fetchTracks), we need to
-  // recalculate --top-h and invalidateSize so the map fills the right area.
-  if (!document.body.classList.contains('has-player')) {
-    var _obs = new MutationObserver(function(mutations) {
-      for (var m of mutations) {
-        if (m.attributeName === 'class' && document.body.classList.contains('has-player')) {
-          _obs.disconnect();
-          if (document.body.classList.contains('view-map')) {
-            requestAnimationFrame(function() {
-              var top = document.getElementById('map').getBoundingClientRect().top;
-              document.documentElement.style.setProperty('--top-h', top + 'px');
-              setTimeout(function(){ map && map.invalidateSize({animate:false}); }, 80);
-            });
-          } else if (document.documentElement.classList.contains('is-hybrid')) {
-            setTimeout(function(){ map && map.invalidateSize({animate:false}); }, 80);
-          }
-          break;
-        }
-      }
-    });
-    _obs.observe(document.body, {attributes:true, attributeFilter:['class']});
-  }
-})();
+// Player is now a floating corner widget — no map resize needed when it appears
 
 // ── Distance filter using browser geolocation ──────────────────────────────
 // Coords stay in JS memory only — never sent to the server, never stored.
@@ -1395,16 +1204,18 @@ setView(getDefaultView(), false);  // auto-default: don't overwrite user's saved
 })();
 </script>
 <script>
-const DISCORD_SERVER_ID = '812440676158799882';
-fetch('https://discord.com/api/guilds/' + DISCORD_SERVER_ID + '/widget.json')
-  .then(r => r.json())
-  .then(d => {
-    if (d && d.presence_count) {
-      const el = document.getElementById('discord-count');
-      el.textContent = d.presence_count + ' online';
-      el.style.display = 'inline';
-    }
-  }).catch(() => {});
+(function() {
+  const DISCORD_SERVER_ID = '812440676158799882';
+  fetch('https://discord.com/api/guilds/' + DISCORD_SERVER_ID + '/widget.json')
+    .then(r => r.json())
+    .then(d => {
+      if (d && d.presence_count) {
+        const el = document.getElementById('discord-count');
+        el.textContent = d.presence_count + ' online';
+        el.style.display = 'inline';
+      }
+    }).catch(() => {});
+})();
 </script>
 <script>
 // ── Header weather (Portland, OR) — save to window._portlandWx for restore ──
@@ -1437,9 +1248,10 @@ if (!window._cpPrewarmBound) {
   window._cpPrewarmBound = true;
   window.addEventListener('load', function(){
     setTimeout(function(){
-      if(!mapInitialized){
+      // Skip prewarm on mobile — map isn't shown by default, and initializing
+      // Leaflet on a display:none element at 0×0 produces broken tile grids.
+      if(!mapInitialized && window.innerWidth >= 640){
         initMap();
-        // Map is hidden — invalidateSize so Leaflet knows its real dimensions when shown
         setTimeout(function(){ map && map.invalidateSize({animate:false}); }, 300);
       }
     }, 1500);
@@ -1891,6 +1703,171 @@ if (!window._cpPrewarmBound) {
 
 })();
 /* ── /Night Builder ────────────────────────────────────────── */
+
+/* ── Inline event card expansion ───────────────────────────── */
+(function(){
+  if (window.cpInlineExpandInitialized) return;
+  window.cpInlineExpandInitialized = true;
+
+  var CAT_COLORS = {
+    music:'#cc88ff',arts:'#66bbff',bike:'#55dd55',
+    fund:'#6699ff',food:'#ddaa33',hybrid:'#ff9944'
+  };
+
+  function closeAll() {
+    document.querySelectorAll('.event-expand.open').forEach(function(el){
+      el.classList.remove('open');
+      // remove after transition
+      setTimeout(function(){ if (!el.classList.contains('open')) el.remove(); }, 400);
+    });
+    document.querySelectorAll('a.event.ee-active').forEach(function(el){
+      el.classList.remove('ee-active');
+    });
+  }
+
+  function buildExpand(d) {
+    var wrap = document.createElement('div');
+    wrap.className = 'event-expand';
+    wrap.dataset.slug = d.slug;
+
+    var inner = document.createElement('div');
+    inner.className = 'event-expand-inner';
+
+    if (d.photo_url) {
+      var img = document.createElement('img');
+      img.className = 'ee-photo';
+      img.src = d.photo_url;
+      img.alt = d.title;
+      inner.appendChild(img);
+    }
+
+    // Meta
+    var meta = document.createElement('div');
+    meta.className = 'ee-meta';
+    var dateS = document.createElement('span');
+    dateS.textContent = '📅 ' + d.start_date;
+    meta.appendChild(dateS);
+    if (d.neighborhood) {
+      var hoodS = document.createElement('span');
+      hoodS.textContent = '📍 ' + d.neighborhood;
+      meta.appendChild(hoodS);
+    }
+    var locS = document.createElement('span');
+    locS.textContent = d.location;
+    meta.appendChild(locS);
+    if (d.price_info || d.is_free) {
+      var priceS = document.createElement('span');
+      priceS.textContent = d.is_free && !d.price_info ? 'FREE' : d.price_info;
+      priceS.style.color = d.is_free ? '#55dd55' : '#ddd';
+      meta.appendChild(priceS);
+    }
+    inner.appendChild(meta);
+
+    // Genres
+    if (d.genres && d.genres.length) {
+      var gWrap = document.createElement('div');
+      gWrap.className = 'ee-genres';
+      d.genres.forEach(function(g){
+        var s = document.createElement('span');
+        s.className = 'ee-genre'; s.textContent = g;
+        gWrap.appendChild(s);
+      });
+      inner.appendChild(gWrap);
+    }
+
+    // Full description
+    var desc = document.createElement('p');
+    desc.className = 'ee-desc';
+    desc.textContent = d.description || '';
+    inner.appendChild(desc);
+
+    // Links
+    var links = document.createElement('div');
+    links.className = 'ee-links';
+    if (d.website) {
+      var a = document.createElement('a');
+      a.className = 'ee-link'; a.href = d.website;
+      a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.textContent = '🎟 Tickets / Info';
+      links.appendChild(a);
+    }
+    (d.extra_links || []).forEach(function(lnk){
+      var url = typeof lnk === 'string' ? lnk : (lnk.url || '');
+      var label = typeof lnk === 'string' ? lnk : (lnk.label || lnk.url || '');
+      if (!url) return;
+      var a = document.createElement('a');
+      a.className = 'ee-link'; a.href = url;
+      a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.textContent = label;
+      links.appendChild(a);
+    });
+    if (links.children.length) inner.appendChild(links);
+
+    var fp = document.createElement('a');
+    fp.className = 'ee-fullpage';
+    fp.href = '/events/' + d.slug + '/';
+    fp.target = '_blank';
+    fp.textContent = 'open full event page →';
+    inner.appendChild(fp);
+
+    wrap.appendChild(inner);
+    return wrap;
+  }
+
+  document.addEventListener('click', function(e) {
+    var card = e.target.closest('a.event[data-slug]');
+    if (!card) return;
+    // Allow inner links (genre filter badge, hood tag) to work normally
+    if (e.target.closest('.cat-badge') || e.target.closest('.hood-tag')) return;
+
+    e.preventDefault();
+    var slug = card.dataset.slug;
+
+    // Clicking the already-open card collapses it
+    if (card.classList.contains('ee-active')) {
+      closeAll();
+      return;
+    }
+
+    closeAll();
+    card.classList.add('ee-active', 'ee-loading');
+
+    fetch('/api/events/' + slug + '/')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        card.classList.remove('ee-loading');
+        var expand = buildExpand(d);
+        card.insertAdjacentElement('afterend', expand);
+        // Trigger open after paint
+        requestAnimationFrame(function(){
+          requestAnimationFrame(function(){
+            expand.classList.add('open');
+            // Scroll the card itself to the top of whichever container is scrolling
+            // so the expanded content reads naturally below it.
+            var listEl = document.getElementById('events-list');
+            if (listEl && getComputedStyle(listEl).overflowY === 'auto') {
+              // Hybrid view — scroll within the fixed-height left panel
+              listEl.scrollTo({ top: card.offsetTop - listEl.offsetTop - 8, behavior: 'smooth' });
+            } else {
+              card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          });
+        });
+      })
+      .catch(function(){ card.classList.remove('ee-loading', 'ee-active'); });
+  });
+
+  // Close expansion on outside click
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('a.event[data-slug]') && !e.target.closest('.event-expand')) {
+      closeAll();
+    }
+  });
+
+  // Clean up expansions on Turbo navigation
+  document.addEventListener('turbo:before-visit', closeAll);
+})();
+/* ── /Inline expansion ─────────────────────────────────────── */
 </script>
 
 {% endblock %}

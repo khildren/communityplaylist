@@ -2921,3 +2921,36 @@ def promoter_edit(request, slug):
 
     messages.success(request, 'Profile updated.')
     return redirect('promoter_detail', slug=promoter.slug)
+
+
+def api_event_detail(request, slug):
+    """Lightweight JSON for the fixed event panel — no page navigation needed."""
+    event = get_object_or_404(Event, slug=slug, status='approved')
+
+    photo_url = ''
+    approved = event.photos.filter(approved=True).first()
+    if approved:
+        photo_url = approved.image.url
+    elif event.photo:
+        photo_url = event.photo.url
+
+    data = {
+        'title':            event.title,
+        'slug':             event.slug,
+        'description':      event.description,
+        'start_date':       localtime(event.start_date).strftime('%a, %b %-d @ %-I:%M %p'),
+        'end_date':         localtime(event.end_date).strftime('%a, %b %-d @ %-I:%M %p') if event.end_date else '',
+        'location':         event.location,
+        'neighborhood':     event.neighborhood,
+        'category':         event.category,
+        'category_display': event.get_category_display() if event.category else '',
+        'is_free':          event.is_free,
+        'price_info':       event.price_info,
+        'website':          event.website,
+        'extra_links':      event.extra_links or [],
+        'photo_url':        photo_url,
+        'genres':           [g.name for g in event.genres.all()],
+        'lat':              event.latitude,
+        'lng':              event.longitude,
+    }
+    return JsonResponse(data)

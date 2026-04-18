@@ -1,15 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Edit Event - Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}Edit Event - Community Playlist{% endblock %}
+{% block head_extra %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:700px;margin:0 auto}
-.header{text-align:center;padding:16px 0 20px}
-.header img{max-width:150px;width:100%}
+body{background:#111;color:#eee;font-family:sans-serif}
+.page-wrap{padding:20px;max-width:700px;margin:0 auto}
 .back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:20px}
 .back:hover{text-decoration:underline}
 h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
@@ -41,12 +39,9 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
 .status-rejected{background:#2a1010;color:#ff6666}
 @media(max-width:500px){.form-row{grid-template-columns:1fr}}
 </style>
-</head>
-<body>
-<div class="header">
-  <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
-</div>
-{% include 'events/_nav_strip.html' %}
+{% endblock %}
+{% block body %}
+<div class="page-wrap">
 <a href="/dashboard/" class="back">← My Events</a>
 <h1>Edit Event <span class="status-badge status-{{ event.status }}">{{ event.get_status_display }}</span></h1>
 <p class="subtitle">Changes will be reviewed before going live if your event is pending.</p>
@@ -112,7 +107,6 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// Pre-load existing genres
 const existingGenres = [{% for g in event.genres.all %}{"id":{{ g.id }},"name":"{{ g.name }}"},{% endfor %}];
 let selected = [...existingGenres];
 
@@ -126,7 +120,6 @@ function updateHidden() {
 }
 updateHidden();
 
-// Wire existing tag pills
 document.querySelectorAll('.genre-tag-pill').forEach(pill => {
   const id = parseInt(pill.dataset.id);
   pill.onclick = () => { selected = selected.filter(s => s.id !== id); pill.remove(); updateHidden(); };
@@ -174,7 +167,6 @@ document.addEventListener('click', e => {
     suggestions.style.display = 'none';
 });
 
-// Category → genre visibility
 const catSelect = document.getElementById('id_category');
 const genreSection = document.getElementById('genre-section');
 const genreGroup = document.getElementById('genre-group');
@@ -184,7 +176,6 @@ catSelect.addEventListener('change', () => {
   genreGroup.style.display   = show ? '' : 'none';
 });
 
-// Multi-link
 const linkList = document.getElementById('link-list');
 const addLinkBtn = document.getElementById('add-link-btn');
 const MAX_LINKS = 10;
@@ -205,7 +196,6 @@ addLinkBtn.addEventListener('click', () => {
 });
 updateAddBtn();
 
-// Address preview
 let previewMap=null, previewMarker=null, geocodeTimer=null;
 const locationField = document.getElementById('id_location');
 const neighborhoodField = document.getElementById('id_neighborhood');
@@ -251,5 +241,5 @@ if(locationField){
   });
 }
 </script>
-</body>
-</html>
+</div>
+{% endblock %}

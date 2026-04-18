@@ -4,10 +4,6 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif}
-.topbar{padding:6px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;gap:12px}
-.topbar a{color:#ff6b35;text-decoration:none;font-size:.82em}
-.topbar a:hover{text-decoration:underline}
-.logo-link img{height:34px;width:auto;display:block}
 .page{max-width:860px;margin:0 auto;padding:24px 16px}
 h1{color:#ff6b35;font-size:1.3em;margin-bottom:4px}
 .page-desc{color:#666;font-size:.85em;margin-bottom:24px}
@@ -26,13 +22,6 @@ h1{color:#ff6b35;font-size:1.3em;margin-bottom:4px}
 </style>
 {% endblock %}
 {% block body %}
-
-<div class="topbar">
-  <a href="/" class="logo-link"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="CP"></a>
-  <a href="/">← Events</a>
-  <a href="/artists/">Artists</a>
-</div>
-{% include 'events/_nav_strip.html' %}
 
 <div class="page">
   <h1>Promoters &amp; Crews</h1>

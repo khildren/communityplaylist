@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Add Your Crew — Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}Add Your Crew — Community Playlist{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif;padding:24px 16px}
@@ -25,8 +22,8 @@ h1{color:#ff6b35;font-size:1.2em;margin-bottom:6px}
 .btn{background:#ff6b35;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:.88em}
 .btn:hover{background:#e55a25}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <div class="wrap">
 <a href="/promoters/" class="back">← Promoters</a>
 <h1>Add your crew / collective</h1>
@@ -68,5 +65,4 @@ h1{color:#ff6b35;font-size:1.2em;margin-bottom:6px}
 <button type="submit" class="btn">Create profile</button>
 </form>
 </div>
-</body>
-</html>
+{% endblock %}

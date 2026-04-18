@@ -1,0 +1,20 @@
+{
+  "name": "Community Playlist",
+  "short_name": "CP · PDX",
+  "description": "Portland events, artists, venues, and community — all in one place.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "icons": [
+    {
+      "src": "https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "music", "lifestyle"],
+  "lang": "en-US",
+  "orientation": "any"
+}

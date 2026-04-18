@@ -739,6 +739,12 @@ CRON_JOBS = [
         'log':      '/var/log/cp_discover_feeds.log',
         'schedule': '1st of month  8:05 AM',
     },
+    {
+        'name':     'Check live streams (YouTube + Twitch)',
+        'command':  'check_live_streams',
+        'log':      '/var/log/cp_live_streams.log',
+        'schedule': 'Every 10 min',
+    },
 ]
 
 
@@ -888,6 +894,7 @@ _COMMAND_APP = {
     'daily_digest':              'events',
     'recheck_venue_feeds':       'events',
     'discover_pdx_feeds':        'events',
+    'check_live_streams':        'events',
     'sweep_spam_topics':         'board',
 }
 

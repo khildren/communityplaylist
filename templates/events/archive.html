@@ -4,8 +4,6 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif}
-.header{text-align:center;padding:30px 20px 20px}
-.header img{max-width:220px;width:100%;margin-bottom:12px}
 .back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin:0 auto 10px}
 .filters{background:#1a1a1a;border-bottom:1px solid #222;padding:12px 20px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center}
 .filters select{background:#222;border:1px solid #333;border-radius:6px;padding:7px 12px;color:#eee;font-size:.85em}
@@ -24,12 +22,6 @@ body{background:#111;color:#eee;font-family:sans-serif}
 </style>
 {% endblock %}
 {% block body %}
-<div class="header">
-<img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist">
-<br>
-<a href="/" class="back">← Upcoming events</a>
-</div>
-{% include 'events/_nav_strip.html' %}
 <div class="page-title">📼 Past Events Archive</div>
 <form method="get" action="/archive/">
 <div class="filters">

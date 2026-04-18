@@ -1,14 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Profile Settings — Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}Profile Settings — Community Playlist{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:680px;margin:0 auto}
-.header{text-align:center;padding:16px 0 20px}
-.header img{max-width:130px;width:100%}
+body{background:#111;color:#eee;font-family:sans-serif}
+.page-wrap{padding:20px;max-width:680px;margin:0 auto}
 .back{color:#ff6b35;text-decoration:none;font-size:.85em;display:inline-block;margin-bottom:20px}
 .back:hover{text-decoration:underline}
 h1{color:#ff6b35;font-size:1.3em;margin-bottom:24px}
@@ -44,14 +40,11 @@ h1{color:#ff6b35;font-size:1.3em;margin-bottom:24px}
 .verify-bar{background:#1a1a10;border:1px solid #3a3010;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:.84em;color:#ddaa33;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .verify-bar a{color:#ff6b35;text-decoration:none}
 .verify-bar a:hover{text-decoration:underline}
-@media(max-width:600px){body{padding:14px}.form-row{flex-direction:column}}
+@media(max-width:600px){.page-wrap{padding:14px}.form-row{flex-direction:column}}
 </style>
-</head>
-<body>
-<div class="header">
-  <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
-</div>
-{% include 'events/_nav_strip.html' %}
+{% endblock %}
+{% block body %}
+<div class="page-wrap">
 <a href="/dashboard/" class="back">← Dashboard</a>
 <h1>Profile Settings</h1>
 
@@ -147,7 +140,6 @@ h1{color:#ff6b35;font-size:1.3em;margin-bottom:24px}
 </div>
 
 <script>
-// Avatar preview
 document.getElementById('avatar-input').addEventListener('change', function() {
   var file = this.files[0];
   if (!file) return;
@@ -158,7 +150,6 @@ document.getElementById('avatar-input').addEventListener('change', function() {
   };
   reader.readAsDataURL(file);
 });
-// Add link row
 var linkList = document.getElementById('link-list');
 document.getElementById('add-link-btn').addEventListener('click', function() {
   if (linkList.children.length >= 5) return;
@@ -171,5 +162,5 @@ document.getElementById('add-link-btn').addEventListener('click', function() {
   row.querySelector('input').focus();
 });
 </script>
-</body>
-</html>
+</div>
+{% endblock %}

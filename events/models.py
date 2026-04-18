@@ -153,6 +153,8 @@ class Artist(models.Model):
         related_name='claimed_artists',
     )
     is_verified = models.BooleanField(default=False, help_text='Admin-verified artist')
+    is_live     = models.BooleanField(default=False, help_text='Currently streaming live (updated by check_live_streams)')
+    youtube_channel_id = models.CharField(max_length=50, blank=True, help_text='Cached YouTube channel ID (UCxxx…)')
     view_count  = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -236,6 +238,8 @@ class PromoterProfile(models.Model):
     )
     is_verified = models.BooleanField(default=False)
     is_public   = models.BooleanField(default=True)
+    is_live     = models.BooleanField(default=False, help_text='Currently streaming live (updated by check_live_streams)')
+    youtube_channel_id = models.CharField(max_length=50, blank=True, help_text='Cached YouTube channel ID (UCxxx…)')
     created_at  = models.DateTimeField(auto_now_add=True)
     view_count  = models.PositiveIntegerField(default=0)
 
@@ -674,6 +678,8 @@ class Venue(models.Model):
     verified     = models.BooleanField(default=False, help_text='Admin-verified venue')
     active       = models.BooleanField(default=True, help_text='Uncheck to mark venue as permanently closed')
     closed_date  = models.DateField(null=True, blank=True, help_text='Date venue closed (for display)')
+    is_live      = models.BooleanField(default=False, help_text='Currently streaming live (updated by check_live_streams)')
+    youtube_channel_id = models.CharField(max_length=50, blank=True, help_text='Cached YouTube channel ID (UCxxx…)')
     view_count   = models.PositiveIntegerField(default=0)
     created_at   = models.DateTimeField(auto_now_add=True)
 

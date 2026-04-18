@@ -1,12 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>New Topic — Community Board</title>
+{% extends 'base.html' %}
+{% block title %}New Topic — Community Board{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:680px;margin:0 auto}
+body{background:#111;color:#eee;font-family:sans-serif}
+.page-wrap{padding:20px;max-width:680px;margin:0 auto}
 .back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:20px}
 .back:hover{text-decoration:underline}
 h1{color:#ff6b35;font-size:1.5em;margin-bottom:6px}
@@ -18,10 +16,11 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:6px}
 .btn{background:#2563eb;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:.9em}
 .btn:hover{background:#1d4ed8}
 .banner{background:#0f1f0f;border:1px solid #1a3a1a;border-radius:6px;padding:8px 14px;margin-bottom:18px;color:#4caf50;font-size:.82em}
-@media(max-width:600px){body{padding:14px}h1{font-size:1.2em}}
+@media(max-width:600px){.page-wrap{padding:14px}h1{font-size:1.2em}}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
+<div class="page-wrap">
 <a href="/board/" class="back">← Board</a>
 {% if banner %}
 <div class="banner">🌹 {{ banner.text }}</div>
@@ -50,5 +49,5 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:6px}
   </div>
   <button type="submit" class="btn">Post Topic</button>
 </form>
-</body>
-</html>
+</div>
+{% endblock %}

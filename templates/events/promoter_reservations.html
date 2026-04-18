@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reservations — {{ promoter.name }} — Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}Reservations — {{ promoter.name }} — Community Playlist{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif;padding:24px 16px}
@@ -34,8 +31,8 @@ h1{color:#ff6b35;font-size:1.2em;margin-bottom:6px}
 .section-label{font-size:.7em;color:#333;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;border-bottom:1px solid #1e1e1e;padding-bottom:6px}
 .listing-price{font-size:.78em;color:#ff6b35;margin-top:2px}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <div class="wrap">
 <a href="{% url 'promoter_detail' promoter.slug %}" class="back">← {{ promoter.name }}</a>
 <h1>📋 Reservations</h1>
@@ -93,5 +90,4 @@ h1{color:#ff6b35;font-size:1.2em;margin-bottom:6px}
 
 {% endif %}
 </div>
-</body>
-</html>
+{% endblock %}

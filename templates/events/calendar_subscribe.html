@@ -3,9 +3,8 @@
 {% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:640px;margin:0 auto}
-.header{text-align:center;padding:16px 0 20px}
-.header img{max-width:150px;width:100%}
+body{background:#111;color:#eee;font-family:sans-serif}
+.page-wrap{max-width:640px;margin:0 auto;padding:16px}
 .back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:20px}
 .back:hover{text-decoration:underline}
 h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
@@ -32,10 +31,7 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
 </style>
 {% endblock %}
 {% block body %}
-<div class="header">
-  <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
-</div>
-{% include 'events/_nav_strip.html' %}
+<div class="page-wrap">
 <a href="/" class="back">← Back to events</a>
 <h1>Subscribe to PDX Events</h1>
 <p class="sub">Add Community Playlist events to your calendar app — they update automatically as new events are approved.</p>
@@ -116,4 +112,5 @@ function buildFeed() {
   document.getElementById('custom-feed-wrap').style.display = 'flex';
 }
 </script>
+</div>{# /page-wrap #}
 {% endblock %}

@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Edit — {{ promoter.name }} — Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}Edit — {{ promoter.name }} — Community Playlist{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif;padding:24px 16px}
@@ -35,8 +32,8 @@ h1{color:#ff6b35;font-size:1.2em;margin-bottom:22px}
 .members-note a:hover{text-decoration:underline}
 @media(max-width:500px){.social-grid{grid-template-columns:1fr}}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <div class="wrap">
 <a href="{% url 'promoter_detail' promoter.slug %}" class="back">← {{ promoter.name }}</a>
 <h1>Edit profile</h1>
@@ -243,7 +240,6 @@ function cpToggle(header) {
   var card = header.closest('.card');
   card.classList.toggle('open');
 }
-// Persist collapse state in sessionStorage
 document.querySelectorAll('.card-header').forEach(function(h) {
   var card = h.closest('.card');
   var key = 'cp-card-' + h.querySelector('.card-title').textContent.trim();
@@ -255,5 +251,4 @@ document.querySelectorAll('.card-header').forEach(function(h) {
   });
 });
 </script>
-</body>
-</html>
+{% endblock %}

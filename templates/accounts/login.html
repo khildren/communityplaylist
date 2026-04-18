@@ -1,14 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sign In - Community Playlist</title>
+{% extends 'base.html' %}
+{% block title %}Sign In - Community Playlist{% endblock %}
+{% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:440px;margin:0 auto}
-.header{text-align:center;padding:20px 0 24px}
-.header img{max-width:160px;width:100%}
+body{background:#111;color:#eee;font-family:sans-serif}
+.page-wrap{padding:20px;max-width:440px;margin:0 auto}
 h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
 .sub{color:#666;font-size:.85em;margin-bottom:28px;text-align:center}
 .form-group{margin-bottom:16px}
@@ -21,12 +17,9 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
 .link{text-align:center;margin-top:18px;font-size:.85em;color:#666}
 .link a{color:#ff6b35;text-decoration:none}
 </style>
-</head>
-<body>
-<div class="header">
-  <a href="/"><img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist"></a>
-</div>
-{% include 'events/_nav_strip.html' %}
+{% endblock %}
+{% block body %}
+<div class="page-wrap">
 <h1>Sign in</h1>
 <p class="sub">Manage your submitted events.</p>
 {% if form.errors %}
@@ -39,5 +32,5 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
 <button type="submit" class="btn">Sign in</button>
 </form>
 <p class="link">No account yet? <a href="/register/">Create one</a></p>
-</body>
-</html>
+</div>
+{% endblock %}
