@@ -6,6 +6,9 @@ services:
     volumes:
       - ./db.sqlite3:/app/db.sqlite3
       - ./media:/app/media
+      - ./templates:/app/templates
+      - ./static:/app/static
+      - ./events/migrations:/app/events/migrations
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.cp-local.rule=Host(`local.communityplaylist.com`)"
