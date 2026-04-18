@@ -211,7 +211,7 @@ details[open] .sum-chevron{transform:rotate(180deg)}
   <summary>
     <span class="sum-icon">🎭</span>
     <span class="sum-title">My Profiles</span>
-    <span class="sum-badge orange">{{ claimed_artists|length|add:claimed_promoters|length|add:claimed_venues|length }} active</span>
+    <span class="sum-badge orange">{{ active_profiles }} active</span>
     <span class="sum-chevron">▼</span>
   </summary>
   <div class="section-body">
@@ -225,10 +225,16 @@ details[open] .sum-chevron{transform:rotate(180deg)}
         <div class="ptype-name">Artist / DJ</div>
         {% if claimed_artists %}
           {% for a in claimed_artists %}
-          <div class="ptype-meta">{{ a.name }} · <span style="color:#ff6b35">{{ a.view_count }} views</span></div>
+          <div class="ptype-meta" style="margin-top:8px">{{ a.name }} · <span style="color:#ff6b35">{{ a.view_count }} views</span></div>
           <div class="ptype-actions">
             <a href="/artists/{{ a.slug }}/" class="btn-sm">View page</a>
             <a href="/artists/{{ a.slug }}/edit/" class="btn-sm">Edit</a>
+            <form method="post" style="display:inline" onsubmit="return confirm('Release your claim on {{ a.name }}? The profile stays but becomes unclaimed.')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="release_artist">
+              <input type="hidden" name="pk" value="{{ a.pk }}">
+              <button class="btn-sm" type="submit" style="color:#555;border-color:#222">Release</button>
+            </form>
           </div>
           {% endfor %}
         {% else %}
@@ -257,10 +263,16 @@ details[open] .sum-chevron{transform:rotate(180deg)}
         <div class="ptype-name">Crew / Promoter</div>
         {% if claimed_promoters %}
           {% for p in claimed_promoters %}
-          <div class="ptype-meta">{{ p.name }} · <span style="color:#ff6b35">{{ p.view_count }} views</span></div>
+          <div class="ptype-meta" style="margin-top:8px">{{ p.name }} · <span style="color:#ff6b35">{{ p.view_count }} views</span></div>
           <div class="ptype-actions">
             <a href="/promoters/{{ p.slug }}/" class="btn-sm">View page</a>
             <a href="/promoters/{{ p.slug }}/edit/" class="btn-sm">Edit</a>
+            <form method="post" style="display:inline" onsubmit="return confirm('Release your claim on {{ p.name }}?')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="release_promoter">
+              <input type="hidden" name="pk" value="{{ p.pk }}">
+              <button class="btn-sm" type="submit" style="color:#555;border-color:#222">Release</button>
+            </form>
           </div>
           {% endfor %}
         {% else %}
@@ -289,10 +301,16 @@ details[open] .sum-chevron{transform:rotate(180deg)}
         <div class="ptype-name">Venue</div>
         {% if claimed_venues %}
           {% for v in claimed_venues %}
-          <div class="ptype-meta">{{ v.name }} · <span style="color:#ff6b35">{{ v.view_count }} views</span></div>
+          <div class="ptype-meta" style="margin-top:8px">{{ v.name }} · <span style="color:#ff6b35">{{ v.view_count }} views</span></div>
           <div class="ptype-actions">
             <a href="/venues/{{ v.slug }}/" class="btn-sm">View page</a>
             <a href="/venues/{{ v.slug }}/edit/" class="btn-sm">Edit</a>
+            <form method="post" style="display:inline" onsubmit="return confirm('Release your claim on {{ v.name }}?')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="release_venue">
+              <input type="hidden" name="pk" value="{{ v.pk }}">
+              <button class="btn-sm" type="submit" style="color:#555;border-color:#222">Release</button>
+            </form>
           </div>
           {% endfor %}
         {% else %}

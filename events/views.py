@@ -870,6 +870,18 @@ def dashboard(request):
             if field in ('wants_artist', 'wants_promoter', 'wants_venue'):
                 setattr(profile, field, not getattr(profile, field))
                 profile.save(update_fields=[field])
+        elif action == 'release_artist':
+            pk = request.POST.get('pk')
+            Artist.objects.filter(pk=pk, claimed_by=request.user).update(claimed_by=None)
+            messages.success(request, 'Artist claim released.')
+        elif action == 'release_promoter':
+            pk = request.POST.get('pk')
+            PromoterProfile.objects.filter(pk=pk, claimed_by=request.user).update(claimed_by=None)
+            messages.success(request, 'Crew claim released.')
+        elif action == 'release_venue':
+            pk = request.POST.get('pk')
+            Venue.objects.filter(pk=pk, claimed_by=request.user).update(claimed_by=None)
+            messages.success(request, 'Venue claim released.')
         return redirect('dashboard')
 
     # Claimed profiles
@@ -917,6 +929,8 @@ def dashboard(request):
                        .select_related('listing__promoter')
                        .order_by('-created_at')) if my_promoter_pks else []
 
+    active_profiles = len(claimed_artists) + len(claimed_promoters) + len(claimed_venues)
+
     return render(request, 'accounts/dashboard.html', {
         'profile': profile,
         'events': events,
@@ -934,6 +948,7 @@ def dashboard(request):
         'total_views': artist_views + promoter_views + venue_views,
         'events_pending': events.filter(status='pending').count(),
         'events_approved': events.filter(status='approved').count(),
+        'active_profiles': active_profiles,
     })
 
 
