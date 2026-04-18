@@ -839,9 +839,17 @@ class UserProfile(models.Model):
     wants_venue    = models.BooleanField(default=False, help_text='User has or wants a venue profile')
 
     # Contact / web3
-    messenger_url = models.URLField(
-        blank=True,
-        help_text='Link to preferred messenger — Telegram, Discord, Signal, etc.',
+    messenger_telegram = models.CharField(
+        max_length=100, blank=True,
+        help_text='Telegram handle without @ — links to t.me/handle',
+    )
+    messenger_discord = models.CharField(
+        max_length=30, blank=True,
+        help_text='Discord user ID (numeric) — links to discord.com/users/ID. Find it: Settings → Advanced → Developer Mode, then right-click your name.',
+    )
+    messenger_signal = models.CharField(
+        max_length=100, blank=True,
+        help_text='Signal username (without +) — links to signal.me',
     )
     sol_wallet = models.CharField(
         max_length=120, blank=True,

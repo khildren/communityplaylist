@@ -531,39 +531,87 @@ details[open] .sum-chevron{transform:rotate(180deg)}
   <summary>
     <span class="sum-icon">🔗</span>
     <span class="sum-title">Contact &amp; Web3</span>
-    {% if profile.messenger_url or profile.sol_wallet %}<span class="sum-badge green">linked</span>{% endif %}
+    {% if profile.messenger_telegram or profile.messenger_discord or profile.messenger_signal or profile.sol_wallet %}<span class="sum-badge green">linked</span>{% endif %}
     <span class="sum-chevron">▼</span>
   </summary>
   <div class="section-body">
-    <p style="font-size:.78em;color:#555;margin-bottom:14px">Show buyers and collaborators how to reach you, and link your Solana wallet for record shop payouts.</p>
+    <p style="font-size:.78em;color:#555;margin-bottom:16px">Let buyers and collaborators reach you directly. Just your handle or ID — no URLs needed.</p>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="save_contact">
-      <div class="contact-grid">
+
+      {# Messenger trio #}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:16px">
+
         <div class="fg">
-          <label>Preferred messenger link</label>
-          <input type="url" name="messenger_url" value="{{ profile.messenger_url }}" placeholder="https://t.me/yourhandle  or discord.gg/…">
-          <div class="sol-note">Telegram, Discord, Signal, WhatsApp — paste any invite or profile link</div>
+          <label style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:1.1em">✈️</span> Telegram
+          </label>
+          <input type="text" name="messenger_telegram" value="{{ profile.messenger_telegram }}"
+                 placeholder="handle  (no @)"
+                 style="font-family:monospace;letter-spacing:.03em">
+          {% if profile.messenger_telegram %}
+          <div style="margin-top:5px">
+            <a href="https://t.me/{{ profile.messenger_telegram }}" target="_blank" rel="noopener"
+               style="font-size:.72em;color:#ff6b35;text-decoration:none">t.me/{{ profile.messenger_telegram }} ↗</a>
+          </div>
+          {% endif %}
         </div>
+
         <div class="fg">
-          <label>Solana wallet <span style="color:#9945ff">◎</span></label>
-          <input type="text" name="sol_wallet" value="{{ profile.sol_wallet }}" placeholder="Phantom public key…">
-          <div class="sol-note">Your public key only — never share your seed phrase. Used for record shop SOL payments.</div>
+          <label style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:1.1em">💬</span> Discord
+          </label>
+          <input type="text" name="messenger_discord" value="{{ profile.messenger_discord }}"
+                 placeholder="user ID  e.g. 6166…"
+                 inputmode="numeric"
+                 style="font-family:monospace;letter-spacing:.03em">
+          <div class="sol-note">Settings → Advanced → enable Developer Mode → right-click your name → Copy User ID</div>
+          {% if profile.messenger_discord %}
+          <div style="margin-top:5px">
+            <a href="https://discord.com/users/{{ profile.messenger_discord }}" target="_blank" rel="noopener"
+               style="font-size:.72em;color:#5865f2;text-decoration:none">discord.com/users/{{ profile.messenger_discord }} ↗</a>
+          </div>
+          {% endif %}
         </div>
+
+        <div class="fg">
+          <label style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:1.1em">🔵</span> Signal
+          </label>
+          <input type="text" name="messenger_signal" value="{{ profile.messenger_signal }}"
+                 placeholder="username  (no +)"
+                 style="font-family:monospace;letter-spacing:.03em">
+          {% if profile.messenger_signal %}
+          <div style="margin-top:5px">
+            <a href="https://signal.me/#eu/{{ profile.messenger_signal }}" target="_blank" rel="noopener"
+               style="font-size:.72em;color:#3a76f0;text-decoration:none">signal.me ↗</a>
+          </div>
+          {% endif %}
+        </div>
+
       </div>
+
+      {# SOL wallet #}
+      <div class="fg" style="max-width:420px">
+        <label style="display:flex;align-items:center;gap:6px">
+          <span style="color:#9945ff;font-size:1em">◎</span> Solana wallet
+        </label>
+        <input type="text" name="sol_wallet" value="{{ profile.sol_wallet }}"
+               placeholder="Phantom public key…"
+               style="font-family:monospace;font-size:.8em;letter-spacing:.02em">
+        <div class="sol-note">Public key only — never share your seed phrase. Used for record shop SOL payments.</div>
+        {% if profile.sol_wallet %}
+        <div style="margin-top:5px">
+          <a href="https://solscan.io/account/{{ profile.sol_wallet }}" target="_blank" rel="noopener"
+             style="font-size:.72em;color:#9945ff;text-decoration:none">solscan ↗</a>
+          <span style="font-size:.72em;color:#444;margin-left:6px;font-family:monospace">{{ profile.sol_wallet|truncatechars:20 }}…</span>
+        </div>
+        {% endif %}
+      </div>
+
       <button type="submit" class="sec-save">Save</button>
     </form>
-    {% if profile.messenger_url %}
-    <div style="margin-top:10px;font-size:.78em;color:#555">
-      Messenger: <a href="{{ profile.messenger_url }}" target="_blank" rel="noopener" style="color:#ff6b35;text-decoration:none">{{ profile.messenger_url|truncatechars:50 }} ↗</a>
-    </div>
-    {% endif %}
-    {% if profile.sol_wallet %}
-    <div style="margin-top:6px;font-size:.78em;color:#555">
-      Wallet: <span style="color:#9945ff;font-family:monospace;font-size:.95em">{{ profile.sol_wallet|truncatechars:20 }}…</span>
-      <a href="https://solscan.io/account/{{ profile.sol_wallet }}" target="_blank" rel="noopener" style="color:#555;text-decoration:none;margin-left:6px">solscan ↗</a>
-    </div>
-    {% endif %}
   </div>
 </details>
 

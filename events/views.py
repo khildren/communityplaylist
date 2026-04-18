@@ -859,9 +859,11 @@ def dashboard(request):
             feed_id = request.POST.get('feed_id')
             CalendarFeed.objects.filter(pk=feed_id, user=request.user).delete()
         elif action == 'save_contact':
-            profile.messenger_url = request.POST.get('messenger_url', '').strip()[:500]
-            profile.sol_wallet    = request.POST.get('sol_wallet', '').strip()[:120]
-            profile.save(update_fields=['messenger_url', 'sol_wallet'])
+            profile.messenger_telegram = request.POST.get('messenger_telegram', '').strip().lstrip('@')[:100]
+            profile.messenger_discord  = request.POST.get('messenger_discord', '').strip()[:30]
+            profile.messenger_signal   = request.POST.get('messenger_signal', '').strip().lstrip('+')[:100]
+            profile.sol_wallet         = request.POST.get('sol_wallet', '').strip()[:120]
+            profile.save(update_fields=['messenger_telegram', 'messenger_discord', 'messenger_signal', 'sol_wallet'])
             messages.success(request, 'Contact info saved.')
         elif action == 'toggle_profile_type':
             field = request.POST.get('field', '')
