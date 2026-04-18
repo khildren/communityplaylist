@@ -1,353 +1,461 @@
 {% extends 'base.html' %}
-{% block title %}Features - Community Playlist{% endblock %}
+{% block title %}Features — Community Playlist{% endblock %}
 {% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif}
-.page-wrap{max-width:680px;margin:0 auto;padding:20px 16px}
-.back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:24px}
-.back:hover{text-decoration:underline}
-h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
-.sub{color:#666;font-size:.85em;margin-bottom:30px}
-.version{display:inline-block;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:4px;padding:2px 8px;font-size:.72em;color:#555;letter-spacing:.05em;margin-bottom:30px}
-.section{color:#ff6b35;font-size:.72em;text-transform:uppercase;letter-spacing:.1em;margin:28px 0 12px;border-bottom:1px solid #1a1a1a;padding-bottom:6px}
-.feature{display:flex;gap:14px;align-items:flex-start;padding:12px 0;border-bottom:1px solid #1a1a1a}
+.page-wrap{max-width:720px;margin:0 auto;padding:20px 16px 48px}
+
+/* Hero */
+.hero{padding:28px 0 20px}
+.hero h1{color:#ff6b35;font-size:1.5em;font-weight:700;margin-bottom:6px;letter-spacing:-.01em}
+.hero p{color:#666;font-size:.88em;line-height:1.6;max-width:500px}
+.version-row{display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap}
+.v-pill{display:inline-flex;align-items:center;gap:5px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:3px 11px;font-size:.72em;color:#888;letter-spacing:.04em}
+.v-pill.current{background:#1a0c06;border-color:#ff6b35;color:#ff6b35;font-weight:600}
+
+/* Section labels */
+.section{color:#ff6b35;font-size:.7em;text-transform:uppercase;letter-spacing:.12em;font-weight:700;
+  margin:36px 0 14px;padding-bottom:7px;border-bottom:1px solid #1e1e1e;
+  display:flex;align-items:center;gap:8px}
+.section-badge{background:#1a0c06;border:1px solid #ff6b35;color:#ff6b35;font-size:.75em;
+  padding:1px 7px;border-radius:3px;letter-spacing:.04em;font-weight:700;text-transform:uppercase}
+.section-badge.v4{background:#161620;border-color:#6644aa;color:#9966dd}
+.section-badge.v3{background:#101820;border-color:#336688;color:#6699bb}
+
+/* Feature rows */
+.feature{display:flex;gap:14px;align-items:flex-start;padding:11px 0;border-bottom:1px solid #191919}
 .feature:last-child{border-bottom:none}
-.icon{font-size:1.3em;flex-shrink:0;width:28px;text-align:center;padding-top:1px}
-.feature-text h3{font-size:.9em;color:#ddd;margin-bottom:3px;font-weight:600}
-.feature-text p{font-size:.8em;color:#666;line-height:1.6}
-.feature-text a{color:#ff6b35;text-decoration:none}
-.feature-text a:hover{text-decoration:underline}
-.badge{display:inline-block;font-size:.65em;padding:1px 6px;border-radius:3px;vertical-align:middle;margin-left:6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
-.new{background:#1a2a1a;color:#4caf50}
-.coming{background:#2a2a1a;color:#aaa857}
-.profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
-.profile-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:14px;text-align:center;text-decoration:none;transition:border-color .2s}
-.profile-card:hover{border-color:#ff6b35}
-.profile-card .picon{font-size:1.8em;display:block;margin-bottom:6px}
-.profile-card .ptitle{color:#ff6b35;font-size:.85em;font-weight:600;display:block}
-.profile-card .pdesc{color:#555;font-size:.75em;margin-top:4px;line-height:1.5}
-.footer{text-align:center;margin-top:36px;padding-top:16px;border-top:1px solid #1a1a1a;font-size:.78em;color:#444}
-.footer a{color:#555;text-decoration:none}
-.footer a:hover{color:#ff6b35}
+.f-icon{font-size:1.25em;flex-shrink:0;width:30px;text-align:center;margin-top:1px}
+.f-body h3{font-size:.88em;color:#ddd;font-weight:600;margin-bottom:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.f-body p{font-size:.8em;color:#666;line-height:1.65}
+.f-body a{color:#ff6b35;text-decoration:none}
+.f-body a:hover{text-decoration:underline}
+code{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:3px;padding:1px 6px;font-size:.9em;color:#aaa}
+
+/* Inline badges */
+.badge{display:inline-block;font-size:.62em;padding:2px 6px;border-radius:3px;
+  font-weight:700;text-transform:uppercase;letter-spacing:.05em;vertical-align:middle}
+.badge-new{background:#1a2a1a;color:#4caf50;border:1px solid #2a4a2a}
+.badge-v5{background:#1a0c06;color:#ff6b35;border:1px solid #ff6b35}
+.badge-v4{background:#161620;color:#9966dd;border:1px solid #442266}
+.badge-pwa{background:#101828;color:#4488cc;border:1px solid #224466}
+
+/* Profile grid */
+.profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 4px}
+.profile-card{background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:16px 14px;
+  text-align:center;text-decoration:none;transition:border-color .2s,background .2s;display:block}
+.profile-card:hover{border-color:#ff6b35;background:#1a1010}
+.p-icon{font-size:1.8em;display:block;margin-bottom:8px}
+.p-title{color:#ff6b35;font-size:.85em;font-weight:600;display:block;margin-bottom:4px}
+.p-desc{color:#555;font-size:.75em;line-height:1.5}
+.live-dot{display:inline-block;width:6px;height:6px;background:#4caf50;border-radius:50%;
+  margin-right:3px;vertical-align:middle}
+
+/* Call-to-action strip */
+.cta-strip{background:#161616;border:1px solid #2a2a2a;border-radius:10px;
+  padding:18px 20px;margin-top:36px;display:flex;align-items:center;
+  justify-content:space-between;gap:14px;flex-wrap:wrap}
+.cta-strip p{font-size:.82em;color:#666;line-height:1.5;flex:1;min-width:180px}
+.cta-strip a{display:inline-flex;align-items:center;gap:6px;background:#ff6b35;color:#111;
+  padding:8px 18px;border-radius:6px;text-decoration:none;font-size:.82em;font-weight:600;
+  white-space:nowrap;transition:background .15s;flex-shrink:0}
+.cta-strip a:hover{background:#e55a25}
+
+/* Footer */
+.page-footer{margin-top:28px;padding-top:16px;border-top:1px solid #1a1a1a;
+  font-size:.75em;color:#444;text-align:center}
+.page-footer a{color:#555;text-decoration:none}
+.page-footer a:hover{color:#ff6b35}
+.page-footer .sep{margin:0 8px;color:#2a2a2a}
+
+@media(max-width:500px){
+  .profile-grid{grid-template-columns:1fr}
+  .cta-strip{flex-direction:column;align-items:flex-start}
+}
 </style>
 {% endblock %}
 {% block body %}
 <div class="page-wrap">
-<a href="/" class="back">← Back to events</a>
-<h1>Features</h1>
-<p class="sub">Everything built into Community Playlist — submitted by the community, for the community.</p>
-<div class="version">v0.4 — Portland, OR</div>
 
-<div class="section">Video Channel <span class="badge new">v0.4 New</span></div>
-<p style="font-size:.8em;color:#555;margin-bottom:14px;line-height:1.6">Portland artists, venues, and crews now have a live video channel — PDXTV — local-only. Past sets, VODs, and live streams all in one place.</p>
+<div class="hero">
+  <h1>Community Playlist</h1>
+  <p>Portland events, artists, venues, and community — open source, no ads, no tracking, built by the people for the people.</p>
+  <div class="version-row">
+    <span class="v-pill current">v0.5 — Apr 2026</span>
+    <span class="v-pill">v0.4 — PDXTV</span>
+    <span class="v-pill">v0.3 — Profiles &amp; follows</span>
+    <span class="v-pill">v0.2 — Map &amp; filters</span>
+  </div>
+</div>
+
+<!-- ── v0.5 ── -->
+<div class="section">v0.5 — Mobile &amp; chrome <span class="section-badge">Latest</span></div>
 
 <div class="feature">
-  <div class="icon">📺</div>
-  <div class="feature-text">
-    <h3>PDXTV Archive Channel <span class="badge new">New</span></h3>
-    <p>Tap <strong>📺 VIDEO</strong> in the bottom player bar to open PDXTV. YouTube videos from connected artist, venue, and promoter channels shuffle into the queue — weighted toward artists with upcoming shows.</p>
+  <div class="f-icon">📌</div>
+  <div class="f-body">
+    <h3>Sticky header &amp; nav <span class="badge badge-v5">New</span></h3>
+    <p>The site header, nav strip, and filter bar now stay pinned to the top of the screen as you scroll — no more chasing the menu back up the page on mobile.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🔴</div>
-  <div class="feature-text">
-    <h3>Live Twitch Streams <span class="badge new">New</span></h3>
-    <p>Artists, venues, and promoters can connect a Twitch channel. When they go live, their stream surfaces at the top of the video queue automatically — live badge, viewer count included.</p>
+  <div class="f-icon">🔍</div>
+  <div class="f-body">
+    <h3>Collapsible filter bar <span class="badge badge-v5">New</span></h3>
+    <p>The search box is always visible. Tap <strong>⊕</strong> to slide out genre, category, neighborhood, date, and distance filters. Collapses cleanly when you're done — no wasted screen real estate.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🎬</div>
-  <div class="feature-text">
+  <div class="f-icon">📱</div>
+  <div class="f-body">
+    <h3>Installable web app (PWA) <span class="badge badge-pwa">PWA</span></h3>
+    <p>Add Community Playlist to your home screen from any mobile browser. Opens full-screen, no browser chrome, with a custom icon and splash screen — feels like a native app.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="f-icon">🗺</div>
+  <div class="f-body">
+    <h3>Smarter mobile map defaults <span class="badge badge-v5">New</span></h3>
+    <p>Phones always start in list view, even if you'd previously used map or hybrid on desktop. The view selector stays accessible in the sticky filter bar. Switching to map view snaps cleanly to the correct height.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="f-icon">🎵</div>
+  <div class="f-body">
+    <h3>Player stays pinned on mobile <span class="badge badge-v5">New</span></h3>
+    <p>The music and video player bar is fixed to the bottom of the screen on all devices. Artist names in the player are now clickable links to their full profile.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="f-icon">📺</div>
+  <div class="f-body">
+    <h3>Video position save &amp; restore <span class="badge badge-v5">New</span></h3>
+    <p>Navigate to another page while watching PDXTV and the video resumes at the exact same timestamp when you return — no starting over.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="f-icon">🌐</div>
+  <div class="f-body">
+    <h3>Universal site header <span class="badge badge-v5">New</span></h3>
+    <p>Every page on the site now shares the same header — logo, live weather, Discord count, submit link, and mobile burger menu — consistent across events, profiles, venues, artists, and more.</p>
+  </div>
+</div>
+
+<!-- ── v0.4 ── -->
+<div class="section">v0.4 — PDXTV video channel <span class="section-badge v4">v0.4</span></div>
+<p style="font-size:.8em;color:#555;margin-bottom:16px;line-height:1.65">Portland artists, venues, and crews now have a live local video channel — past sets, VODs, and Twitch streams in one place, weighted toward artists playing shows soon.</p>
+
+<div class="feature">
+  <div class="f-icon">📺</div>
+  <div class="f-body">
+    <h3>PDXTV archive channel</h3>
+    <p>Tap <strong>📺 VIDEO</strong> in the bottom player bar to open PDXTV. YouTube videos from connected PDX channels shuffle into the queue automatically.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="f-icon">🔴</div>
+  <div class="f-body">
+    <h3>Live Twitch streams</h3>
+    <p>Artists, venues, and promoters can connect a Twitch channel. When they go live, their stream surfaces at the top of the queue — live badge and viewer count included.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="f-icon">🎬</div>
+  <div class="f-body">
     <h3>Twitch VODs</h3>
-    <p>Past Twitch broadcasts (VODs) join the archive channel alongside YouTube content. Everything stays local — only connected PDX artists, venues, and crews.</p>
+    <p>Past broadcasts join the archive alongside YouTube content — local-only, no algorithm, no ads.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">⚡</div>
-  <div class="feature-text">
+  <div class="f-icon">⚡</div>
+  <div class="f-body">
     <h3>Auto-advance &amp; shuffle</h3>
-    <p>The channel plays continuously — YouTube auto-advances on track end, live streams surface first, and the queue is weighted toward artists playing shows soon. Channel-change TV static effect included.</p>
+    <p>The channel plays continuously, weighted toward artists with upcoming shows. Channel-change TV static effect on every switch.</p>
   </div>
 </div>
 
-<div class="section">Profiles &amp; follows <span class="badge new">v0.3</span></div>
-<p style="font-size:.8em;color:#555;margin-bottom:14px;line-height:1.6">Community Playlist now has accounts, profiles, and a follow system — all free, no tracking, no ads.</p>
+<!-- ── v0.3 ── -->
+<div class="section">v0.3 — Profiles &amp; follows <span class="section-badge v3">v0.3</span></div>
 
 <div class="profile-grid">
-  <a href="/register/" class="profile-card" style="border-color:#ff6b35">
-    <span class="picon">👤</span>
-    <span class="ptitle">Your profile <span style="font-size:.65em;background:#1a3a1a;color:#4caf50;padding:1px 5px;border-radius:3px;font-weight:600;letter-spacing:.04em;vertical-align:middle">LIVE</span></span>
-    <span class="pdesc">@handle, pronouns, bio, links. Public profile at /u/@handle/. Email-verified accounts.</span>
+  <a href="/register/" class="profile-card">
+    <span class="p-icon">👤</span>
+    <span class="p-title"><span class="live-dot"></span>Your profile</span>
+    <span class="p-desc">@handle, pronouns, bio, links. Public page at /u/@handle/.</span>
   </a>
-  <a href="/venues/" class="profile-card" style="border-color:#ff6b35">
-    <span class="picon">🏛</span>
-    <span class="ptitle">Venue <span style="font-size:.65em;background:#1a3a1a;color:#4caf50;padding:1px 5px;border-radius:3px;font-weight:600;letter-spacing:.04em;vertical-align:middle">LIVE</span></span>
-    <span class="pdesc">Verify your space, manage your calendar feed, and surface every event you host — automatically.</span>
+  <a href="/venues/" class="profile-card">
+    <span class="p-icon">🏛</span>
+    <span class="p-title"><span class="live-dot"></span>Venue</span>
+    <span class="p-desc">Verify your space, manage your calendar feed, surface every event you host.</span>
   </a>
-  <a href="/artists/" class="profile-card" style="border-color:#ff6b35">
-    <span class="picon">🎤</span>
-    <span class="ptitle">Artist <span style="font-size:.65em;background:#1a3a1a;color:#4caf50;padding:1px 5px;border-radius:3px;font-weight:600;letter-spacing:.04em;vertical-align:middle">LIVE</span></span>
-    <span class="pdesc">Claim your events, list your genres, link your socials. Share tracks via Google Drive. Connect YouTube or Twitch for the video channel.</span>
+  <a href="/artists/" class="profile-card">
+    <span class="p-icon">🎤</span>
+    <span class="p-title"><span class="live-dot"></span>Artist</span>
+    <span class="p-desc">Claim events, list genres, link socials. Share tracks. Connect YouTube or Twitch.</span>
   </a>
-  <a href="/promoters/" class="profile-card" style="border-color:#ff6b35">
-    <span class="picon">📣</span>
-    <span class="ptitle">Promoter / Crew <span style="font-size:.65em;background:#1a3a1a;color:#4caf50;padding:1px 5px;border-radius:3px;font-weight:600;letter-spacing:.04em;vertical-align:middle">LIVE</span></span>
-    <span class="pdesc">Collectives, sound systems, labels — showcase your events and connect YouTube or Twitch for the live video channel.</span>
+  <a href="/promoters/" class="profile-card">
+    <span class="p-icon">📣</span>
+    <span class="p-title"><span class="live-dot"></span>Promoter / Crew</span>
+    <span class="p-desc">Collectives, sound systems, labels — showcase events and connect to the video channel.</span>
   </a>
 </div>
 
 <div class="feature">
-  <div class="icon">⭐</div>
-  <div class="feature-text">
-    <h3>Follow artists, venues &amp; neighborhoods <span class="badge new">New</span></h3>
-    <p>Follow anything on the site with one click. Your dashboard shows everything you're following. A personal RSS feed at <code style="background:#1a1a1a;padding:1px 5px;border-radius:3px;color:#aaa">/u/@handle/feed/</code> streams upcoming events from your follows — works in any feed reader.</p>
+  <div class="f-icon">⭐</div>
+  <div class="f-body">
+    <h3>Follow artists, venues &amp; neighborhoods</h3>
+    <p>Follow anything with one click. Your dashboard shows everything you follow. Personal RSS feed at <code>/u/@handle/feed/</code> — works in any feed reader.</p>
   </div>
 </div>
 
+<!-- ── Discover ── -->
 <div class="section">Discover events</div>
 
 <div class="feature">
-  <div class="icon">≡</div>
-  <div class="feature-text">
+  <div class="f-icon">≡</div>
+  <div class="f-body">
     <h3>List, Map &amp; Hybrid views</h3>
-    <p>Browse upcoming events as a calm scrollable list, explore by map for discovery, or use hybrid mode for side-by-side research. View preference is saved between sessions.</p>
+    <p>Scrollable list for calm browsing, map for discovery, hybrid for side-by-side research. View preference saved between sessions.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🔍</div>
-  <div class="feature-text">
-    <h3>Search &amp; smart filters <span class="badge new">Updated</span></h3>
-    <p>Full-text search across title, description, and location. Filter by genre, category, neighborhood, date range, free-only, and now — <strong>distance</strong> (within 15 / 30 / 60 miles of Portland). Fully mobile-friendly with a collapsible filter panel.</p>
+  <div class="f-icon">🔍</div>
+  <div class="f-body">
+    <h3>Search &amp; smart filters</h3>
+    <p>Full-text search across title, description, and location. Filter by genre, category, neighborhood, date range, free-only, and distance (within 15 / 30 / 60 miles of Portland).</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">📍</div>
-  <div class="feature-text">
-    <h3>Neighborhood pages <span class="badge new">New</span></h3>
-    <p>Every major Portland neighborhood has its own page at <a href="/neighborhoods/">/neighborhoods/</a> — a wiki history blurb, upcoming events, and a community board scoped to that area. Post potholes, neighborhood watch notes, mutual aid, or just say hi. No account needed to post.</p>
+  <div class="f-icon">📍</div>
+  <div class="f-body">
+    <h3>Neighborhood pages</h3>
+    <p>Every major Portland neighborhood has its own page — wiki history blurb, upcoming events, and a community board scoped to that area. <a href="/neighborhoods/">Browse →</a></p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🗺</div>
-  <div class="feature-text">
-    <h3>Interactive map <span class="badge new">Updated</span></h3>
-    <p>Hover a list card to highlight its marker. Click a marker to scroll to that event. Category-colored dots — music purple, bike green, food gold, and more. Flyer thumbnails in popups. All powered by OpenStreetMap — no Google, no tracking.</p>
+  <div class="f-icon">🗺</div>
+  <div class="f-body">
+    <h3>Interactive map</h3>
+    <p>Hover a card to highlight its marker. Click a marker to scroll to that event. Category-colored dots, flyer thumbnails in popups. Powered by OpenStreetMap — no Google, no tracking.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🚗</div>
-  <div class="feature-text">
-    <h3>Idle map autopilot <span class="badge new">New</span></h3>
-    <p>Leave the page idle and the map comes alive — it cycles through events one by one, animating a real driving route between each stop along Portland streets, zooming into each venue, opening an info card, and updating the weather to that event's forecast. Touch anything to take back control; autopilot resumes after 2 minutes.</p>
+  <div class="f-icon">🚗</div>
+  <div class="f-body">
+    <h3>Idle map autopilot</h3>
+    <p>Leave the page idle and the map drives itself — animating real routes between venues, zooming into each one, opening an info card, and showing the weather forecast for each stop. Touch anything to take back control.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">⚡</div>
-  <div class="feature-text">
-    <h3>Happening Now <span class="badge new">New</span></h3>
+  <div class="f-icon">⚡</div>
+  <div class="f-body">
+    <h3>Happening Now</h3>
     <p>Events currently in progress are pinned in a collapsible strip at the top of the list. They disappear automatically when they end — no refresh needed.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🌤</div>
-  <div class="feature-text">
-    <h3>Live weather <span class="badge new">New</span></h3>
-    <p>Current Portland weather is shown in the header — temperature, condition, wind speed, and feels-like. During autopilot, the pill updates to show the forecast for each event's location and time.</p>
+  <div class="f-icon">🌤</div>
+  <div class="f-body">
+    <h3>Live weather</h3>
+    <p>Current Portland weather in the sticky header — temperature, condition, wind, feels-like. During autopilot, updates to each event's location and forecast time.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">📅</div>
-  <div class="feature-text">
+  <div class="f-icon">📅</div>
+  <div class="f-body">
     <h3>Calendar subscribe</h3>
-    <p>Subscribe to a live iCal feed in Google Calendar, Apple Calendar, or any calendar app. <a href="/subscribe/">Build a custom filtered feed →</a></p>
+    <p>Live iCal feed for Google Calendar, Apple Calendar, or any app. <a href="/subscribe/">Build a custom filtered feed →</a></p>
   </div>
 </div>
 
+<!-- ── Submit ── -->
 <div class="section">Submit &amp; manage</div>
 
 <div class="feature">
-  <div class="icon">✦</div>
-  <div class="feature-text">
+  <div class="f-icon">✦</div>
+  <div class="f-body">
     <h3>Submit an event</h3>
-    <p>Address auto-geocodes with a live map preview. Neighborhood is auto-detected. Genre tags, artist tags (auto-detected from the event title), multiple links, flyer photo — all supported.</p>
+    <p>Address auto-geocodes with a live map preview. Neighborhood auto-detected. Genre tags, artist tags, multiple links, flyer photo — all supported. <a href="/submit/">Submit →</a></p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🎤</div>
-  <div class="feature-text">
-    <h3>Artist tagging <span class="badge new">New</span></h3>
-    <p>Tag performing artists on any event. Type a name and it searches our database, then MusicBrainz if not found. Artists are auto-detected from event titles (e.g. "ft.", "w/", "presents").</p>
+  <div class="f-icon">🎤</div>
+  <div class="f-body">
+    <h3>Artist tagging</h3>
+    <p>Tag performing artists on any event. Auto-detected from titles ("ft.", "w/", "presents"). Searches our database then MusicBrainz if not found.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🔁</div>
-  <div class="feature-text">
-    <h3>Recurring events <span class="badge new">New</span></h3>
-    <p>Mark an event as recurring — weekly, monthly, every 3rd Thursday, annually, and more. Future instances generate automatically. Resident artists are tagged on every instance.</p>
+  <div class="f-icon">🔁</div>
+  <div class="f-body">
+    <h3>Recurring events</h3>
+    <p>Weekly, monthly, every 3rd Thursday, annually, and more. Future instances generate automatically. Resident artists tagged on every occurrence.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🔑</div>
-  <div class="feature-text">
+  <div class="f-icon">🔑</div>
+  <div class="f-body">
     <h3>Claim your event</h3>
-    <p>Register with the email you used to submit and your events are automatically claimed. Edit details and track approval from your dashboard.</p>
+    <p>Register with the email you submitted with and your events are auto-claimed. Edit details and track approval from your dashboard.</p>
   </div>
 </div>
 
+<!-- ── Event pages ── -->
 <div class="section">Event pages</div>
 
 <div class="feature">
-  <div class="icon">🔁</div>
-  <div class="feature-text">
-    <h3>Recurring series browser <span class="badge new">New</span></h3>
-    <p>Every event page shows all dates in its series — past and upcoming — so you can jump to any instance at a glance. Works for both submitted recurring events and auto-imported iCal series.</p>
+  <div class="f-icon">🔁</div>
+  <div class="f-body">
+    <h3>Recurring series browser</h3>
+    <p>Every event page shows all dates in its series — past and upcoming — so you can jump to any instance at a glance.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🌹</div>
-  <div class="feature-text">
+  <div class="f-icon">🌹</div>
+  <div class="f-body">
     <h3>The Flyer</h3>
-    <p>The first photo uploaded is featured as the flyer — full-width, orange-bordered. Additional photos form a gallery.</p>
+    <p>First photo uploaded is featured as the flyer — full-width, orange-bordered. Additional photos form a gallery.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">📍</div>
-  <div class="feature-text">
-    <h3>Smart location links</h3>
-    <p>Addresses link to OpenStreetMap directions. Calendar icon adds the event to Google Calendar with one tap.</p>
-  </div>
-</div>
-
-<div class="feature">
-  <div class="icon">📸</div>
-  <div class="feature-text">
+  <div class="f-icon">📸</div>
+  <div class="f-body">
     <h3>Community photo uploads</h3>
     <p>Anyone can add recap photos after an event happens. Captions and submitter credit supported.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">👁</div>
-  <div class="feature-text">
-    <h3>View counts <span class="badge new">New</span></h3>
-    <p>Event and venue pages quietly track how many times they've been viewed — one count per session, no cookies, no tracking. Helps surface what's resonating.</p>
+  <div class="f-icon">📍</div>
+  <div class="f-body">
+    <h3>Smart location links</h3>
+    <p>Addresses link to OpenStreetMap directions. Calendar icon adds the event to Google Calendar in one tap.</p>
   </div>
 </div>
 
+<!-- ── PDX event net ── -->
 <div class="section">The PDX event net</div>
-<p style="font-size:.78em;color:#555;margin-bottom:16px;line-height:1.7">Community Playlist automatically pulls events from across Portland so nothing slips through the cracks. All imports are geocoded, categorized, and genre-tagged automatically.</p>
+<p style="font-size:.8em;color:#555;margin-bottom:16px;line-height:1.65">Community Playlist automatically pulls events from across Portland. All imports are geocoded, categorized, and genre-tagged.</p>
 
 <div class="feature">
-  <div class="icon">📡</div>
-  <div class="feature-text">
+  <div class="f-icon">📡</div>
+  <div class="f-body">
     <h3>Venue iCal feeds</h3>
-    <p>Dozens of PDX venues, collectives, and promoters publish iCal feeds. We import them twice a week and auto-detect new ones monthly.</p>
+    <p>Dozens of PDX venues, collectives, and promoters publish iCal feeds. Imported twice a week, new ones auto-detected monthly.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🌿</div>
-  <div class="feature-text">
-    <h3>Food &amp; mutual aid events <span class="badge new">New</span></h3>
-    <p>Free breakfasts, community fridges, farmers markets, and food banks are now in the feed — Blanchet House, Rosehip Medic Collective, PSU Farmers Market, and more. Filter by the Food category to find them.</p>
+  <div class="f-icon">🌿</div>
+  <div class="f-body">
+    <h3>Food &amp; mutual aid events</h3>
+    <p>Free breakfasts, community fridges, farmers markets, and food banks — Blanchet House, Rosehip Medic Collective, PSU Farmers Market, and more. Filter by Food to find them.</p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🎛</div>
-  <div class="feature-text">
-    <h3>19hz.info — PNW electronic music <span class="badge new">New</span></h3>
-    <p>The OG Pacific Northwest electronic music calendar, run by the community since 1997. We pull Oregon shows automatically — raves, warehouse parties, club nights, and ambient sets that never make it to Ticketmaster. <a href="https://19hz.info" target="_blank" rel="noopener">19hz.info →</a></p>
+  <div class="f-icon">🎛</div>
+  <div class="f-body">
+    <h3>19hz.info — PNW electronic music</h3>
+    <p>The OG Pacific Northwest electronic music calendar since 1997. We pull Oregon shows automatically — raves, warehouse parties, club nights that never make Ticketmaster. <a href="https://19hz.info" target="_blank" rel="noopener">19hz.info →</a></p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🎸</div>
-  <div class="feature-text">
+  <div class="f-icon">🎸</div>
+  <div class="f-body">
     <h3>MusicBrainz</h3>
-    <p>The open, community-maintained music encyclopedia. We pull Portland concert data and use it for artist search and tagging. Free, nonprofit. <a href="https://metabrainz.org/donate" target="_blank" rel="noopener">Donate to MetaBrainz →</a></p>
+    <p>Open, community-maintained music encyclopedia. We pull Portland concert data and use it for artist search and tagging. <a href="https://metabrainz.org/donate" target="_blank" rel="noopener">Donate to MetaBrainz →</a></p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">📅</div>
-  <div class="feature-text">
+  <div class="f-icon">📅</div>
+  <div class="f-body">
     <h3>Calagator</h3>
-    <p>Portland's own open-source community calendar, covering tech meetups, civic events, and workshops since 2008. We import their events automatically. <a href="https://calagator.org" target="_blank" rel="noopener">calagator.org →</a></p>
+    <p>Portland's open-source community calendar — tech meetups, civic events, workshops since 2008. <a href="https://calagator.org" target="_blank" rel="noopener">calagator.org →</a></p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🗺</div>
-  <div class="feature-text">
+  <div class="f-icon">🗺</div>
+  <div class="f-body">
     <h3>OpenStreetMap &amp; Nominatim</h3>
     <p>All maps and geocoding run on OpenStreetMap — community-built, freely editable, no tracking. <a href="https://www.openstreetmap.org/about" target="_blank" rel="noopener">About OSM →</a></p>
   </div>
 </div>
 
+<!-- ── Community ── -->
 <div class="section">Community</div>
 
 <div class="feature">
-  <div class="icon">📋</div>
-  <div class="feature-text">
-    <h3>Community Board <span class="badge new">New</span></h3>
-    <p>A lightweight message board at <a href="/board/">/board/</a> — no account needed, just a name. Post topics, reply to threads, and find Aid &amp; Mutual Aid resources. Recurring events get their own auto-created thread. Pinned topics stay at the top.</p>
+  <div class="f-icon">📋</div>
+  <div class="f-body">
+    <h3>Community Board</h3>
+    <p>Lightweight message board — no account needed, just a name. Post topics, reply to threads, find Aid &amp; Mutual Aid resources. Recurring events get their own auto-created thread. <a href="/board/">/board/ →</a></p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🌿</div>
-  <div class="feature-text">
-    <h3>Aid &amp; Mutual Aid ticker <span class="badge new">New</span></h3>
-    <p>A scrolling banner at the top of the page surfaces active mutual aid messages — free breakfasts, community fridges, resource links. Text is managed in the admin and links to the <a href="/board/aid/">Aid board</a>.</p>
+  <div class="f-icon">🌿</div>
+  <div class="f-body">
+    <h3>Aid &amp; Mutual Aid ticker</h3>
+    <p>A scrolling banner surfaces active mutual aid messages — free breakfasts, community fridges, resource links — at the top of every page. <a href="/board/aid/">Aid board →</a></p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">💬</div>
-  <div class="feature-text">
+  <div class="f-icon">💬</div>
+  <div class="f-body">
     <h3>Discord community</h3>
-    <p>Event chatter and community hangout in <a href="https://discord.gg/WHhxRPDdFV" target="_blank" rel="noopener">#website-communications</a>. New events ping the server for real-time visibility.</p>
+    <p>Event chatter and community hangout. New events ping the server for real-time visibility. <a href="https://discord.gg/WHhxRPDdFV" target="_blank" rel="noopener">Join #website-communications →</a></p>
   </div>
 </div>
 
 <div class="feature">
-  <div class="icon">🐛</div>
-  <div class="feature-text">
-    <h3>Bug reports &amp; feature requests</h3>
-    <p>Found something broken? Have an idea? Use the <b>🐛</b> and <b>💡</b> buttons in the nav bar — they go straight to <a href="https://github.com/khildren/communityplaylist/issues" target="_blank" rel="noopener">GitHub Issues</a>. Public, tracked, and versioned. Community Playlist is open source.</p>
+  <div class="f-icon">🐛</div>
+  <div class="f-body">
+    <h3>Open source &amp; bug reports</h3>
+    <p>Community Playlist is open source. Use the <strong>🐛</strong> and <strong>💡</strong> buttons in the nav strip — they go straight to <a href="https://github.com/khildren/communityplaylist/issues" target="_blank" rel="noopener">GitHub Issues</a>. Public, tracked, versioned.</p>
   </div>
 </div>
 
-<div class="feature">
-  <div class="icon">🌹</div>
-  <div class="feature-text">
-    <h3>Visitor counter</h3>
-    <p>A quiet count of unique visitors — one per session, no tracking, no ads, no data sold.</p>
-  </div>
+<div class="cta-strip">
+  <p>Got an event? Add it. Got an idea? Open an issue. This is your calendar.</p>
+  <a href="/submit/">+ Submit an event</a>
 </div>
 
-<div class="footer">
-  Built in Portland, OR &nbsp;·&nbsp;
-  <a href="/submit/">Submit an event</a> &nbsp;·&nbsp;
-  <a href="https://discord.gg/WHhxRPDdFV" target="_blank" rel="noopener">Join Discord</a> &nbsp;·&nbsp;
+<div class="page-footer">
+  Built in Portland, OR
+  <span class="sep">·</span>
+  <a href="https://discord.gg/WHhxRPDdFV" target="_blank" rel="noopener">Discord</a>
+  <span class="sep">·</span>
   <a href="/subscribe/">Subscribe</a>
+  <span class="sep">·</span>
+  <a href="https://github.com/khildren/communityplaylist" target="_blank" rel="noopener">GitHub</a>
 </div>
+
 </div>{# /page-wrap #}
 {% endblock %}
