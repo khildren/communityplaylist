@@ -72,6 +72,16 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
       {% if promoter.is_verified %}<span class="verified-badge">✓ verified</span>{% endif %}
       {% if promoter.is_live %}<span class="live-badge">● PDXTV Live</span>{% endif %}
     </h1>
+    <div style="margin-bottom:6px">
+      <span style="font-size:.75em;color:#555;background:#161616;border:1px solid #222;border-radius:4px;padding:2px 8px;display:inline-block">
+        {% if promoter.promoter_type == 'sound_system' %}🔊
+        {% elif promoter.promoter_type == 'collective' %}🤝
+        {% elif promoter.promoter_type == 'label' %}💿
+        {% elif promoter.promoter_type == 'record_swap' %}🎵
+        {% else %}📣{% endif %}
+        {{ promoter.get_promoter_type_display }}
+      </span>
+    </div>
 
     {% if promoter.genres.all %}
     <div class="genres">{% for g in promoter.genres.all %}<span class="genre-tag">{{ g.name }}</span>{% endfor %}</div>

@@ -4,16 +4,23 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif}
-.page{max-width:860px;margin:0 auto;padding:24px 16px}
+.page{max-width:900px;margin:0 auto;padding:24px 16px}
 h1{color:#ff6b35;font-size:1.3em;margin-bottom:4px}
-.page-desc{color:#666;font-size:.85em;margin-bottom:24px}
+.page-desc{color:#666;font-size:.85em;margin-bottom:18px}
+/* Type filter tabs */
+.type-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
+.type-tab{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:20px;border:1px solid #2a2a2a;background:#111;color:#666;font-size:.78em;cursor:pointer;text-decoration:none;transition:all .15s;white-space:nowrap}
+.type-tab:hover{border-color:#ff6b35;color:#ff6b35}
+.type-tab.active{border-color:#ff6b35;color:#ff6b35;background:#1a0d08}
+/* Grid */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
-.card{background:#161616;border:1px solid #222;border-radius:10px;padding:16px;text-decoration:none;display:block;transition:border-color .15s}
+.card{background:#161616;border:1px solid #222;border-radius:10px;padding:16px;text-decoration:none;display:block;transition:border-color .15s;position:relative}
 .card:hover{border-color:#ff6b35}
 .card-photo{width:52px;height:52px;border-radius:8px;object-fit:cover;background:#222;margin-bottom:10px}
 .card-placeholder{width:52px;height:52px;border-radius:8px;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:1.5em;color:#333;margin-bottom:10px}
 .card-name{color:#ddd;font-weight:600;font-size:.92em;margin-bottom:4px}
 .card-bio{color:#555;font-size:.78em;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card-type{position:absolute;top:12px;right:12px;font-size:.72em;color:#555;background:#111;border:1px solid #222;border-radius:4px;padding:2px 6px;white-space:nowrap}
 .card-genres{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
 .genre-tag{background:#1e1228;color:#cc88ff;font-size:.68em;padding:2px 6px;border-radius:3px;font-weight:600}
 .cta{display:inline-flex;align-items:center;background:#ff6b35;color:#fff;padding:8px 18px;border-radius:6px;text-decoration:none;font-size:.85em;margin-top:20px}
@@ -27,6 +34,16 @@ h1{color:#ff6b35;font-size:1.3em;margin-bottom:4px}
   <h1>Promoters &amp; Crews</h1>
   <p class="page-desc">Sound systems, collectives, labels, and event crews building PDX culture.</p>
 
+  {# Type filter tabs #}
+  <div class="type-tabs">
+    <a href="?" class="type-tab {% if not active_type %}active{% endif %}">All</a>
+    <a href="?type=crew"        class="type-tab {% if active_type == 'crew' %}active{% endif %}">📣 Crews</a>
+    <a href="?type=sound_system" class="type-tab {% if active_type == 'sound_system' %}active{% endif %}">🔊 Sound Systems</a>
+    <a href="?type=collective"  class="type-tab {% if active_type == 'collective' %}active{% endif %}">🤝 Collectives</a>
+    <a href="?type=label"       class="type-tab {% if active_type == 'label' %}active{% endif %}">💿 Labels</a>
+    <a href="?type=record_swap" class="type-tab {% if active_type == 'record_swap' %}active{% endif %}">🎵 Record Swaps</a>
+  </div>
+
   {% if promoters %}
   <div class="grid">
     {% for p in promoters %}
@@ -34,8 +51,15 @@ h1{color:#ff6b35;font-size:1.3em;margin-bottom:4px}
       {% if p.photo %}
         <img src="{{ p.photo.url }}" alt="{{ p.name }}" class="card-photo">
       {% else %}
-        <div class="card-placeholder">📣</div>
+        <div class="card-placeholder">
+          {% if p.promoter_type == 'sound_system' %}🔊
+          {% elif p.promoter_type == 'collective' %}🤝
+          {% elif p.promoter_type == 'label' %}💿
+          {% elif p.promoter_type == 'record_swap' %}🎵
+          {% else %}📣{% endif %}
+        </div>
       {% endif %}
+      <span class="card-type">{{ p.get_promoter_type_display }}</span>
       <div class="card-name">{{ p.name }}</div>
       {% if p.bio %}<div class="card-bio">{{ p.bio }}</div>{% endif %}
       {% if p.genres.all %}
@@ -47,7 +71,7 @@ h1{color:#ff6b35;font-size:1.3em;margin-bottom:4px}
     {% endfor %}
   </div>
   {% else %}
-  <p class="empty">No promoter profiles yet — be the first to add yours.</p>
+  <p class="empty">No promoter profiles yet{% if active_type %} of this type{% endif %} — be the first to add yours.</p>
   {% endif %}
 
   {% if request.user.is_authenticated %}

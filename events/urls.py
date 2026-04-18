@@ -26,6 +26,7 @@ urlpatterns = [
     path('genres/', views.genre_autocomplete, name='genre_autocomplete'),
     path('artists/', views.artist_autocomplete, name='artist_autocomplete'),
     path('artists/add/', views.artist_add, name='artist_add'),
+    path('artists/register/', views.artist_register, name='artist_register'),
     path('artists/<int:pk>/', views.artist_by_pk, name='artist_by_pk'),       # legacy redirect
     path('artists/<slug:slug>/', views.artist_profile, name='artist_profile'),
     path('artists/<slug:slug>/edit/', views.artist_edit, name='artist_edit'),

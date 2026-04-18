@@ -179,8 +179,34 @@ class Artist(models.Model):
 
 class PromoterProfile(models.Model):
     """A promoter, sound system, crew, label, or collective with a public profile."""
-    name   = models.CharField(max_length=200, unique=True)
-    slug   = models.SlugField(max_length=220, unique=True, blank=True)
+
+    TYPE_CREW        = 'crew'
+    TYPE_SOUND       = 'sound_system'
+    TYPE_COLLECTIVE  = 'collective'
+    TYPE_LABEL       = 'label'
+    TYPE_RECORD_SWAP = 'record_swap'
+    TYPE_CHOICES = [
+        (TYPE_CREW,        'Crew'),
+        (TYPE_SOUND,       'Sound System'),
+        (TYPE_COLLECTIVE,  'Collective'),
+        (TYPE_LABEL,       'Record Label'),
+        (TYPE_RECORD_SWAP, 'Record Swap'),
+    ]
+    # Icon glyphs matched to each type (used in templates via a mapping filter)
+    TYPE_ICONS = {
+        TYPE_CREW:        '📣',
+        TYPE_SOUND:       '🔊',
+        TYPE_COLLECTIVE:  '🤝',
+        TYPE_LABEL:       '💿',
+        TYPE_RECORD_SWAP: '🎵',
+    }
+
+    name          = models.CharField(max_length=200, unique=True)
+    slug          = models.SlugField(max_length=220, unique=True, blank=True)
+    promoter_type = models.CharField(
+        max_length=20, choices=TYPE_CHOICES, default=TYPE_CREW,
+        help_text='What kind of entity is this?',
+    )
     bio    = models.TextField(blank=True)
     photo  = models.ImageField(upload_to='promoters/', blank=True, null=True)
     website = models.URLField(blank=True)

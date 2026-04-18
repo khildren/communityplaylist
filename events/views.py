@@ -1872,6 +1872,60 @@ def artist_edit(request, slug):
     return redirect('artist_profile', slug=artist.slug)
 
 
+@login_required
+def artist_register(request):
+    """Direct artist profile creation — no event claim required."""
+    SOCIAL_FIELDS = ['instagram', 'soundcloud', 'bandcamp', 'mixcloud', 'youtube',
+                     'spotify', 'mastodon', 'bluesky', 'tiktok', 'twitch']
+
+    if request.method == 'GET':
+        return render(request, 'events/artist_register.html', {})
+
+    name             = request.POST.get('name', '').strip()[:200]
+    bio              = request.POST.get('bio', '').strip()
+    website          = request.POST.get('website', '').strip()
+    drive_folder_url = request.POST.get('drive_folder_url', '').strip()
+    photo            = request.FILES.get('photo')
+
+    errors = {}
+    if not name:
+        errors['name'] = 'Artist name is required.'
+    elif Artist.objects.filter(name__iexact=name).exists():
+        existing = Artist.objects.get(name__iexact=name)
+        if existing.claimed_by:
+            errors['name'] = f'"{name}" already has an owner. Contact us if you think this is your profile.'
+        else:
+            # Unclaimed stub — let them claim it and fill in the details
+            existing.claimed_by = request.user
+            existing.bio = bio or existing.bio
+            existing.website = website or existing.website
+            existing.drive_folder_url = drive_folder_url or existing.drive_folder_url
+            for f in SOCIAL_FIELDS:
+                val = request.POST.get(f, '').strip()
+                if val:
+                    setattr(existing, f, val)
+            if photo:
+                existing.photo = photo
+            existing.save()
+            messages.success(request, f'Claimed existing profile for {existing.name}.')
+            return redirect('artist_profile', slug=existing.slug)
+
+    if errors:
+        return render(request, 'events/artist_register.html', {'errors': errors, 'prev': request.POST})
+
+    artist = Artist(name=name, bio=bio, website=website,
+                    drive_folder_url=drive_folder_url, claimed_by=request.user)
+    for f in SOCIAL_FIELDS:
+        val = request.POST.get(f, '').strip()
+        if val:
+            setattr(artist, f, val)
+    if photo:
+        artist.photo = photo
+    artist.save()
+    messages.success(request, f'Artist profile created for {artist.name}.')
+    return redirect('artist_profile', slug=artist.slug)
+
+
 import re as _re
 
 _DRIVE_FOLDER_RE = _re.compile(r'/folders/([A-Za-z0-9_-]+)')
@@ -2385,12 +2439,20 @@ def api_video_queue(request):
 
 def promoter_list(request):
     q = request.GET.get('q', '').strip()
+    active_type = request.GET.get('type', '').strip()
     qs = PromoterProfile.objects.filter(is_public=True)
     if q:
         qs = qs.filter(name__icontains=q)
         if request.headers.get('Accept', '').startswith('application/json') or request.GET.get('format') == 'json':
             return JsonResponse({'promoters': [{'id': p.pk, 'name': p.name} for p in qs[:10]]})
-    return render(request, 'events/promoter_list.html', {'promoters': qs.order_by('name')})
+    if active_type:
+        valid = [k for k, _ in PromoterProfile.TYPE_CHOICES]
+        if active_type in valid:
+            qs = qs.filter(promoter_type=active_type)
+    return render(request, 'events/promoter_list.html', {
+        'promoters': qs.order_by('name'),
+        'active_type': active_type,
+    })
 
 
 def _discogs_fetch_by_url(discogs_url):
@@ -2861,11 +2923,17 @@ def promoter_register(request):
     if request.method == 'GET':
         return render(request, 'events/promoter_register.html', {})
 
-    name  = request.POST.get('name', '').strip()
-    bio   = request.POST.get('bio', '').strip()
-    website = request.POST.get('website', '').strip()
+    name             = request.POST.get('name', '').strip()
+    bio              = request.POST.get('bio', '').strip()
+    website          = request.POST.get('website', '').strip()
     drive_folder_url = request.POST.get('drive_folder_url', '').strip()
-    photo = request.FILES.get('photo')
+    promoter_type    = request.POST.get('promoter_type', PromoterProfile.TYPE_CREW).strip()
+    photo            = request.FILES.get('photo')
+
+    # Validate type
+    valid_types = [k for k, _ in PromoterProfile.TYPE_CHOICES]
+    if promoter_type not in valid_types:
+        promoter_type = PromoterProfile.TYPE_CREW
 
     errors = {}
     if not name:
@@ -2879,6 +2947,7 @@ def promoter_register(request):
     p = PromoterProfile.objects.create(
         name=name, bio=bio, website=website,
         drive_folder_url=drive_folder_url,
+        promoter_type=promoter_type,
         claimed_by=request.user,
     )
     if photo:
@@ -2898,11 +2967,13 @@ def promoter_edit(request, slug):
                      'spotify', 'mastodon', 'bluesky', 'tiktok', 'discord', 'telegram', 'twitch']
 
     all_artists = Artist.objects.order_by('name')
+    type_choices = PromoterProfile.TYPE_CHOICES
     if request.method == 'GET':
         return render(request, 'events/promoter_edit.html', {
             'promoter': promoter,
             'all_artists': all_artists,
             'member_pks': set(promoter.members.values_list('pk', flat=True)),
+            'type_choices': type_choices,
         })
 
     promoter.shop_pay_in_person = 'shop_pay_in_person' in request.POST
@@ -2911,6 +2982,11 @@ def promoter_edit(request, slug):
                   'shop_sheet_url', 'sol_wallet'] + SOCIAL_FIELDS:
         val = request.POST.get(field, '').strip()
         setattr(promoter, field, val)
+    # Promoter type
+    pt = request.POST.get('promoter_type', '').strip()
+    valid_types = [k for k, _ in PromoterProfile.TYPE_CHOICES]
+    if pt in valid_types:
+        promoter.promoter_type = pt
     if request.FILES.get('photo'):
         promoter.photo = request.FILES['photo']
     promoter.save()

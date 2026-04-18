@@ -32,10 +32,31 @@ h1{color:#ff6b35;font-size:1.2em;margin-bottom:6px}
 <form method="post" enctype="multipart/form-data" data-turbo="false">
 {% csrf_token %}
 
+<style>
+.type-selector{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
+.type-opt{display:none}
+.type-opt + label{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;border:1px solid #2a2a2a;background:#111;color:#666;font-size:.82em;cursor:pointer;transition:all .15s;white-space:nowrap}
+.type-opt:checked + label{border-color:#ff6b35;color:#ff6b35;background:#1a0d08}
+</style>
 <div class="card">
   <div class="card-title">Basics</div>
   <div class="fg">
-    <label>Crew / Collective Name *</label>
+    <label>Type *</label>
+    <div class="type-selector">
+      <input type="radio" name="promoter_type" id="pt_crew" value="crew" class="type-opt" {% if prev.promoter_type != 'sound_system' and prev.promoter_type != 'collective' and prev.promoter_type != 'label' and prev.promoter_type != 'record_swap' %}checked{% endif %}>
+      <label for="pt_crew">📣 Crew</label>
+      <input type="radio" name="promoter_type" id="pt_sound" value="sound_system" class="type-opt" {% if prev.promoter_type == 'sound_system' %}checked{% endif %}>
+      <label for="pt_sound">🔊 Sound System</label>
+      <input type="radio" name="promoter_type" id="pt_coll" value="collective" class="type-opt" {% if prev.promoter_type == 'collective' %}checked{% endif %}>
+      <label for="pt_coll">🤝 Collective</label>
+      <input type="radio" name="promoter_type" id="pt_label" value="label" class="type-opt" {% if prev.promoter_type == 'label' %}checked{% endif %}>
+      <label for="pt_label">💿 Label</label>
+      <input type="radio" name="promoter_type" id="pt_swap" value="record_swap" class="type-opt" {% if prev.promoter_type == 'record_swap' %}checked{% endif %}>
+      <label for="pt_swap">🎵 Record Swap</label>
+    </div>
+  </div>
+  <div class="fg">
+    <label>Name *</label>
     <input type="text" name="name" value="{{ prev.name|default:'' }}" class="{% if errors.name %}error-field{% endif %}">
     {% if errors.name %}<div class="field-error">{{ errors.name }}</div>{% endif %}
   </div>

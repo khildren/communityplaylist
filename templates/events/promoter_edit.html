@@ -48,6 +48,16 @@ h1{color:#ff6b35;font-size:1.2em;margin-bottom:22px}
   </div>
   <div class="card-body">
     <div class="fg">
+      <label>Type</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:2px">
+        {% for val, label in type_choices %}
+        <input type="radio" name="promoter_type" id="pt_{{ val }}" value="{{ val }}" style="display:none" {% if promoter.promoter_type == val %}checked{% endif %}>
+        <label for="pt_{{ val }}" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;border:1px solid #2a2a2a;background:#111;color:#666;font-size:.82em;cursor:pointer;transition:all .15s;white-space:nowrap">{{ label }}</label>
+        {% endfor %}
+      </div>
+      <style>input[name=promoter_type]:checked+label{border-color:#ff6b35;color:#ff6b35;background:#1a0d08}</style>
+    </div>
+    <div class="fg">
       <label>Name</label>
       <input type="text" name="name" value="{{ promoter.name }}">
     </div>
