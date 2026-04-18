@@ -833,6 +833,27 @@ class UserProfile(models.Model):
     verify_token    = models.CharField(max_length=64, blank=True)
     created_at   = models.DateTimeField(auto_now_add=True)
 
+    # Profile type flags — each unlocks the matching dashboard section
+    wants_artist   = models.BooleanField(default=False, help_text='User has or wants an artist profile')
+    wants_promoter = models.BooleanField(default=False, help_text='User has or wants a crew/promoter profile')
+    wants_venue    = models.BooleanField(default=False, help_text='User has or wants a venue profile')
+
+    # Contact / web3
+    messenger_url = models.URLField(
+        blank=True,
+        help_text='Link to preferred messenger — Telegram, Discord, Signal, etc.',
+    )
+    sol_wallet = models.CharField(
+        max_length=120, blank=True,
+        help_text='Solana wallet address (Phantom public key, etc.)',
+    )
+
+    # Onboarding state
+    onboarded = models.BooleanField(
+        default=False,
+        help_text='Completed post-signup profile type picker',
+    )
+
     class Meta:
         verbose_name = 'User Profile'
 

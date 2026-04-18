@@ -792,7 +792,7 @@ def register_view(request):
         claimed.update(submitted_user=user)
         login(request, user)
         messages.success(request, f'Welcome! Check your email to verify your account.')
-        return redirect('dashboard')
+        return redirect('onboarding')
     return render(request, 'accounts/register.html', {'form': form})
 
 
@@ -812,8 +812,39 @@ def logout_view(request):
 
 
 @login_required(login_url='/login/')
+def onboarding_view(request):
+    """Post-signup: pick what kind of profiles you want."""
+    profile, _ = UserProfile.objects.get_or_create(
+        user=request.user,
+        defaults={'handle': UserProfile.handle_from_email(request.user.email)},
+    )
+    if request.method == 'POST':
+        profile.wants_artist   = 'wants_artist'   in request.POST
+        profile.wants_promoter = 'wants_promoter' in request.POST
+        profile.wants_venue    = 'wants_venue'    in request.POST
+        profile.onboarded      = True
+        profile.save(update_fields=['wants_artist', 'wants_promoter', 'wants_venue', 'onboarded'])
+        messages.success(request, "You're all set. Add your profiles from the dashboard.")
+        return redirect('dashboard')
+    return render(request, 'accounts/onboarding.html', {'profile': profile})
+
+
+@login_required(login_url='/login/')
 def dashboard(request):
-    # Handle calendar feed add/remove
+    profile, _ = UserProfile.objects.get_or_create(
+        user=request.user,
+        defaults={'handle': UserProfile.handle_from_email(request.user.email)},
+    )
+
+    # Redirect new users to onboarding (skip param bypasses it)
+    if not profile.onboarded:
+        if request.GET.get('skip'):
+            profile.onboarded = True
+            profile.save(update_fields=['onboarded'])
+        else:
+            return redirect('onboarding')
+
+    # Handle POST actions
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'add_feed':
@@ -827,31 +858,80 @@ def dashboard(request):
         elif action == 'remove_feed':
             feed_id = request.POST.get('feed_id')
             CalendarFeed.objects.filter(pk=feed_id, user=request.user).delete()
+        elif action == 'save_contact':
+            profile.messenger_url = request.POST.get('messenger_url', '').strip()[:500]
+            profile.sol_wallet    = request.POST.get('sol_wallet', '').strip()[:120]
+            profile.save(update_fields=['messenger_url', 'sol_wallet'])
+            messages.success(request, 'Contact info saved.')
+        elif action == 'toggle_profile_type':
+            field = request.POST.get('field', '')
+            if field in ('wants_artist', 'wants_promoter', 'wants_venue'):
+                setattr(profile, field, not getattr(profile, field))
+                profile.save(update_fields=[field])
         return redirect('dashboard')
+
+    # Claimed profiles
+    claimed_artists   = list(request.user.claimed_artists.all())
+    claimed_promoters = list(request.user.claimed_promoters.all())
+    claimed_venues    = list(request.user.claimed_venues.all())
+
+    # If user has claimed profiles, auto-activate the matching flag
+    if claimed_artists and not profile.wants_artist:
+        profile.wants_artist = True
+        profile.save(update_fields=['wants_artist'])
+    if claimed_promoters and not profile.wants_promoter:
+        profile.wants_promoter = True
+        profile.save(update_fields=['wants_promoter'])
+    if claimed_venues and not profile.wants_venue:
+        profile.wants_venue = True
+        profile.save(update_fields=['wants_venue'])
+
+    # Stats
+    artist_views   = sum(a.view_count for a in claimed_artists)
+    promoter_views = sum(p.view_count for p in claimed_promoters)
+    venue_views    = sum(v.view_count for v in claimed_venues)
 
     events  = Event.objects.filter(submitted_user=request.user).order_by('-created_at')
     feeds   = CalendarFeed.objects.filter(user=request.user)
-    profile, _ = UserProfile.objects.get_or_create(
-        user=request.user,
-        defaults={'handle': UserProfile.handle_from_email(request.user.email)},
-    )
-    follows = Follow.objects.filter(user=request.user).select_related()
+
+    follows = Follow.objects.filter(user=request.user)
     follow_data = [{'follow': f, 'target': f.get_target()} for f in follows]
     follow_data = [x for x in follow_data if x['target'] is not None]
+
     saved_tracks = SavedTrack.objects.filter(user=request.user).select_related(
         'track__genre', 'track__artist', 'track__promoter', 'track__venue'
     ).order_by('-created_at')
-    my_reservations = (RecordReservation.objects
+
+    # Outgoing: reservations I made as a buyer
+    outgoing_orders = (RecordReservation.objects
                        .filter(buyer=request.user)
                        .select_related('listing__promoter')
                        .order_by('-created_at'))
+
+    # Incoming: reservations on shops I own (promoter claimed by me)
+    my_promoter_pks = [p.pk for p in claimed_promoters]
+    incoming_orders = (RecordReservation.objects
+                       .filter(listing__promoter__pk__in=my_promoter_pks)
+                       .select_related('listing__promoter')
+                       .order_by('-created_at')) if my_promoter_pks else []
+
     return render(request, 'accounts/dashboard.html', {
+        'profile': profile,
         'events': events,
         'feeds': feeds,
-        'profile': profile,
         'follow_data': follow_data,
         'saved_tracks': saved_tracks,
-        'my_reservations': my_reservations,
+        'outgoing_orders': outgoing_orders,
+        'incoming_orders': incoming_orders,
+        'claimed_artists': claimed_artists,
+        'claimed_promoters': claimed_promoters,
+        'claimed_venues': claimed_venues,
+        'artist_views': artist_views,
+        'promoter_views': promoter_views,
+        'venue_views': venue_views,
+        'total_views': artist_views + promoter_views + venue_views,
+        'events_pending': events.filter(status='pending').count(),
+        'events_approved': events.filter(status='approved').count(),
     })
 
 
