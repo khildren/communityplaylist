@@ -12,7 +12,19 @@
     {% for b in banners %}<a href="/board/aid/">🌹 {{ b.text }}</a><span class="aid-marquee-sep">✦</span>{% endfor %}
   </div>
 </div>
-
+<script>
+// Set marquee speed based on content width so all pages feel consistent (~30px/s)
+(function(){
+  var inner = document.querySelector('.aid-marquee-inner');
+  if (!inner) return;
+  requestAnimationFrame(function(){
+    var w = inner.scrollWidth;
+    if (!w) return;
+    var dur = Math.min(90, Math.max(20, Math.round(w / 30)));
+    inner.style.animationDuration = dur + 's';
+  });
+})();
+</script>
 <style>
 /* Tour overlay — was in nav strip, stays here */
 #cp-tour-overlay{position:fixed;bottom:66px;left:50%;transform:translateX(-50%);z-index:9500;width:min(460px,92vw);background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:18px 18px 14px;box-shadow:0 6px 28px rgba(0,0,0,.8);display:none;font-family:sans-serif}

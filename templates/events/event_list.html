@@ -570,8 +570,14 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
       color: '#4caf50', weight: 3.5, opacity: 0, dashArray: '9 12'
     }).addTo(map);
 
-    // Phase 1: zoom out to show full route, wait for map to fully settle
-    map.fitBounds(routeLayer.getBounds(), { padding: [65, 65], animate: true, duration: FIT_DURATION });
+    // Phase 1: zoom out to show full route — extra bottom pad for player bar on mobile
+    const _pl = document.getElementById('cp-player');
+    const _playerPad = (_pl && _pl.style.display !== 'none') ? _pl.offsetHeight : 0;
+    map.fitBounds(routeLayer.getBounds(), {
+      paddingTopLeft:     [65, 65],
+      paddingBottomRight: [65 + _playerPad, 65],
+      animate: true, duration: FIT_DURATION
+    });
 
     map.once('moveend', function() {
       if (!cycling) { clearRoute(); return; }

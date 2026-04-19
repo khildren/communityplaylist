@@ -21,6 +21,15 @@ h1{color:#ff6b35;font-size:1.3em;margin-bottom:4px}
 .all-link{color:#555;font-size:.78em;margin-top:16px;display:block}
 .all-link a{color:#ff6b35;text-decoration:none}
 .all-link a:hover{text-decoration:underline}
+/* Feature callout */
+.feat-box{background:linear-gradient(135deg,#1a0d08 0%,#160b06 100%);border:1px solid #3a1f10;border-radius:10px;padding:18px 20px;margin-bottom:22px;display:grid;grid-template-columns:1fr 1fr;gap:6px 24px}
+.feat-box-head{grid-column:1/-1;color:#ff6b35;font-size:.82em;font-weight:700;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.feat-box-head::after{content:'';flex:1;height:1px;background:#2a1408}
+.feat-item{display:flex;align-items:flex-start;gap:8px;padding:4px 0}
+.feat-icon{font-size:1em;line-height:1.4;flex-shrink:0}
+.feat-text{font-size:.78em;color:#888;line-height:1.5}
+.feat-text b{color:#cc7044;font-weight:600}
+@media(max-width:540px){.feat-box{grid-template-columns:1fr}}
 </style>
 {% endblock %}
 {% block body %}
@@ -28,6 +37,16 @@ h1{color:#ff6b35;font-size:1.3em;margin-bottom:4px}
 <div class="page">
   <h1>Artists</h1>
   <p class="page-desc">PDX artists with profiles on Community Playlist — live sets, mixes, socials, and more.</p>
+
+  <div class="feat-box">
+    <div class="feat-box-head">🎤 What your artist page includes</div>
+    <div class="feat-item"><span class="feat-icon">📅</span><span class="feat-text"><b>Upcoming &amp; past shows</b> — auto-pulled from the calendar whenever your name is on an event</span></div>
+    <div class="feat-item"><span class="feat-icon">🎵</span><span class="feat-text"><b>Music player</b> — link a public Google Drive folder of sets, mixes, and sessions</span></div>
+    <div class="feat-item"><span class="feat-icon">📺</span><span class="feat-text"><b>Video channel</b> — connect YouTube or Twitch; past sets and live streams join the PDXTV feed</span></div>
+    <div class="feat-item"><span class="feat-icon">🔗</span><span class="feat-text"><b>All your socials</b> — Instagram, SoundCloud, Bandcamp, Spotify, Mixcloud, Bluesky, and more</span></div>
+    <div class="feat-item"><span class="feat-icon">🔴</span><span class="feat-text"><b>Live indicator</b> — your card shows a live badge automatically when you go live on Twitch</span></div>
+    <div class="feat-item"><span class="feat-icon">👥</span><span class="feat-text"><b>Crew links</b> — appear on the profiles of every crew or collective you're a member of</span></div>
+  </div>
 
   {% if artists %}
   <div class="grid">
