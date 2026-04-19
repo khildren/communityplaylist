@@ -1083,6 +1083,125 @@ class VideoTrack(models.Model):
         return ''
 
 
+class Shelter(models.Model):
+    """A PDX-area shelter, resource center, or emergency service."""
+
+    TYPE_EMERGENCY    = 'emergency'
+    TYPE_WARMING      = 'warming'
+    TYPE_COOLING      = 'cooling'
+    TYPE_OVERNIGHT    = 'overnight'
+    TYPE_DAY          = 'day'
+    TYPE_HYGIENE      = 'hygiene'
+    TYPE_TINY_HOME    = 'tiny_home'
+    TYPE_TRANSITIONAL = 'transitional'
+    TYPE_YOUTH        = 'youth'
+    TYPE_FAMILY       = 'family'
+    TYPE_WOMENS       = 'womens'
+    TYPE_VETERAN      = 'veteran'
+    TYPE_SOBERING     = 'sobering'
+    TYPE_HOTLINE      = 'hotline'
+
+    TYPE_CHOICES = [
+        (TYPE_EMERGENCY,    'Emergency Shelter'),
+        (TYPE_WARMING,      'Warming Center'),
+        (TYPE_COOLING,      'Cooling Center'),
+        (TYPE_OVERNIGHT,    'Overnight Shelter'),
+        (TYPE_DAY,          'Day Shelter / Drop-in'),
+        (TYPE_HYGIENE,      'Hygiene Services'),
+        (TYPE_TINY_HOME,    'Tiny Home Village'),
+        (TYPE_TRANSITIONAL, 'Transitional Housing'),
+        (TYPE_YOUTH,        'Youth Shelter'),
+        (TYPE_FAMILY,       'Family Shelter'),
+        (TYPE_WOMENS,       "Women's Shelter"),
+        (TYPE_VETERAN,      'Veterans Services'),
+        (TYPE_SOBERING,     'Sobering / Detox Center'),
+        (TYPE_HOTLINE,      'Hotline / Phone Resource'),
+    ]
+
+    ACCEPTS_ALL      = 'all'
+    ACCEPTS_WOMEN    = 'women'
+    ACCEPTS_MEN      = 'men'
+    ACCEPTS_YOUTH    = 'youth'
+    ACCEPTS_FAMILIES = 'families'
+    ACCEPTS_LGBTQ    = 'lgbtq'
+    ACCEPTS_VETERAN  = 'veteran'
+    ACCEPTS_CHOICES = [
+        (ACCEPTS_ALL,      'Everyone'),
+        (ACCEPTS_WOMEN,    'Women / Non-binary'),
+        (ACCEPTS_MEN,      'Men'),
+        (ACCEPTS_YOUTH,    'Youth (under 25)'),
+        (ACCEPTS_FAMILIES, 'Families with children'),
+        (ACCEPTS_LGBTQ,    'LGBTQ+ affirming'),
+        (ACCEPTS_VETERAN,  'Veterans'),
+    ]
+
+    name          = models.CharField(max_length=200)
+    slug          = models.SlugField(max_length=220, unique=True, blank=True)
+    shelter_type  = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_EMERGENCY)
+    accepts       = models.CharField(max_length=20, choices=ACCEPTS_CHOICES, default=ACCEPTS_ALL,
+                                     help_text='Primary population served')
+    pets_ok       = models.BooleanField(default=False, help_text='Pets accepted')
+    address       = models.CharField(max_length=300, blank=True)
+    neighborhood  = models.CharField(max_length=100, blank=True)
+    latitude      = models.FloatField(null=True, blank=True)
+    longitude     = models.FloatField(null=True, blank=True)
+    phone         = models.CharField(max_length=30, blank=True)
+    website       = models.URLField(blank=True)
+    hours         = models.CharField(max_length=300, blank=True,
+                                     help_text='e.g. "Mon–Fri 7am–9pm" or "24/7"')
+    capacity      = models.PositiveIntegerField(null=True, blank=True,
+                                                help_text='Bed/mat capacity if known')
+    notes         = models.TextField(blank=True,
+                                     help_text='Intake requirements, IDs needed, languages, etc.')
+    # Weather flags — when true this shelter is promoted during those alert conditions
+    available_hot  = models.BooleanField(default=False,
+                                         help_text='Cooling center — promote on hot-weather days (>90°F)')
+    available_cold = models.BooleanField(default=True,
+                                         help_text='Warming center — promote on cold days (<35°F)')
+    available_smoke = models.BooleanField(default=False,
+                                          help_text='Indoor/filtered air — promote on high-particulate days')
+    active        = models.BooleanField(default=True)
+    created_at    = models.DateTimeField(auto_now_add=True)
+    updated_at    = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['shelter_type', 'name']
+        verbose_name = 'Shelter / Resource'
+        verbose_name_plural = 'Shelters & Resources'
+
+    def __str__(self):
+        return f'{self.name} ({self.get_shelter_type_display()})'
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.name)
+            slug, n = base, 1
+            while Shelter.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f'{base}-{n}'; n += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def as_map_dict(self):
+        return {
+            'id':           self.pk,
+            'name':         self.name,
+            'type':         self.shelter_type,
+            'type_display': self.get_shelter_type_display(),
+            'accepts':      self.get_accepts_display(),
+            'pets_ok':      self.pets_ok,
+            'address':      self.address,
+            'phone':        self.phone,
+            'website':      self.website,
+            'hours':        self.hours,
+            'notes':        self.notes,
+            'latitude':     self.latitude,
+            'longitude':    self.longitude,
+            'available_hot':   self.available_hot,
+            'available_cold':  self.available_cold,
+            'available_smoke': self.available_smoke,
+        }
+
+
 class CronStatus(models.Model):
     """Proxy model — no DB table. Used only to hang a custom admin page off."""
     class Meta:

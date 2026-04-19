@@ -28,14 +28,6 @@ body{background:#111;color:#eee;font-family:sans-serif}
 .now-meta{color:#666;font-size:.75em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .now-arr{color:#555;font-size:.9em;flex-shrink:0;transition:color .15s}
 .now-event:hover .now-arr{color:#ff6b35}
-/* Aid marquee */
-.aid-marquee-wrap{background:#0f1f0f;border-bottom:1px solid #1a3a1a;overflow:hidden;white-space:nowrap;padding:5px 0;width:100%}
-.aid-marquee-inner{display:inline-block;animation:marquee 55s linear infinite}
-.aid-marquee-inner:hover{animation-play-state:paused}
-.aid-marquee-inner a{color:#4caf50;text-decoration:none;font-size:.75em;font-weight:600;letter-spacing:.03em}
-.aid-marquee-inner a:hover{text-decoration:underline}
-.aid-marquee-sep{color:#1a4a1a;margin:0 20px;font-size:.75em;user-select:none}
-@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 /* Category badges */
 .cat-music {background:#1e1228;color:#cc88ff}
 .cat-arts  {background:#1a1a2a;color:#66bbff}
@@ -72,7 +64,7 @@ body{background:#111;color:#eee;font-family:sans-serif}
 .empty{text-align:center;padding:60px;color:#555}
 
 /* ── Filter bar ── */
-.filter-bar{background:#151515;border-bottom:1px solid #1c1c1c;position:sticky;top:94px;z-index:900;font-family:sans-serif}
+.filter-bar{background:#151515;border-bottom:1px solid #1c1c1c;position:sticky;top:50px;z-index:900;font-family:sans-serif}
 .filter-search-row{display:flex;align-items:center;gap:7px;padding:7px 10px}
 .filter-q{flex:1;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;padding:8px 12px;color:#eee;font-size:.85em;min-width:0;transition:border-color .15s}
 .filter-q:focus{outline:none;border-color:#ff6b35}
@@ -84,7 +76,7 @@ body{background:#111;color:#eee;font-family:sans-serif}
 .filter-view-burger{display:none;position:relative;flex-shrink:0}
 .view-burger{background:#1a1a1a;border:1px solid #2a2a2a;color:#aaa;padding:6px 9px;border-radius:6px;cursor:pointer;font-size:.78em;display:flex;align-items:center;gap:3px;white-space:nowrap;transition:all .15s}
 .view-burger.has-active{color:#ff6b35;border-color:#ff6b35}
-.view-dropdown{display:none;position:absolute;right:0;top:calc(100% + 5px);background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:4px;z-index:1100;min-width:110px;box-shadow:0 4px 20px rgba(0,0,0,.7)}
+.view-dropdown{display:none;position:fixed;background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:4px;z-index:9200;min-width:110px;box-shadow:0 4px 20px rgba(0,0,0,.7)}
 .view-dropdown.open{display:flex;flex-direction:column;gap:2px}
 .view-dropdown .view-btn{width:100%;text-align:left;border-color:transparent;border-radius:5px}
 /* Expandable filters */
@@ -141,8 +133,8 @@ html.is-hybrid #events-list::-webkit-scrollbar-thumb:hover{background:#ff6b35}
 html.is-hybrid .events-grid{max-width:none;margin:0;padding:14px}
 /* Pad bottom of scrollable lists so last card isn't hidden behind player corner */
 body.has-player #events-list,
-body.has-player .events-grid{padding-bottom:130px}
-html.is-hybrid body.has-player #events-list{padding-bottom:130px}
+body.has-player .events-grid{padding-bottom:220px}
+html.is-hybrid body.has-player #events-list{padding-bottom:220px}
 html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
 
 /* Smooth route line fade-in/out */
@@ -237,14 +229,6 @@ a.event.ee-loading{opacity:.6;pointer-events:none}
 </style>
 {% endblock %}
 {% block body %}
-
-{% if banners %}
-<div class="aid-marquee-wrap">
-  <div class="aid-marquee-inner">
-    {% for b in banners %}<a href="/board/aid/">🌹 {{ b.text }}</a><span class="aid-marquee-sep">✦</span>{% endfor %}{% for b in banners %}<a href="/board/aid/">🌹 {{ b.text }}</a><span class="aid-marquee-sep">✦</span>{% endfor %}
-  </div>
-</div>
-{% endif %}
 
 <form method="get" action="/" id="filter-form">
 <div class="filter-bar" id="filter-body">
@@ -404,6 +388,7 @@ a.event.ee-loading{opacity:.6;pointer-events:none}
 <script src="/static/leaflet/leaflet.js" data-turbo-eval="false"></script>
 <script>
 var mapEvents = {{ map_events|safe }};
+window.cpEventsList = mapEvents;
 var mapInitialized = false;
 var map;
 var tileLayer;
@@ -787,6 +772,7 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
 
     const slug   = cards[cycleIdx].dataset.slug;
     const evData = mapEvents.find(function(e){ return e.slug === slug; });
+    if (window.cpRotatorShowSlug) window.cpRotatorShowSlug(slug);
 
     function arrive(skipFly) {
       if (!cycling) return;
@@ -845,13 +831,13 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
 
   function startCycle() {
     if (cycling) return;
-    cycling = true;
+    cycling = true; window._cpCycling = true;
     cycleStep(null);
   }
 
   function stopCycle() {
     if (!cycling) return;
-    cycling = false;
+    cycling = false; window._cpCycling = false;
     clearTimeout(cycleTimer);
     clearRoute();
     if (map) map.closePopup();
@@ -879,7 +865,7 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
 
   // Clean up before Turbo navigates away — prevents listener accumulation
   function cleanupAutopilot() {
-    cycling = false;
+    cycling = false; window._cpCycling = false;
     clearTimeout(idleTimer);
     clearTimeout(cycleTimer);
     clearRoute();
@@ -1009,8 +995,9 @@ function toggleViewMenu(e) {
   var btn = document.getElementById('view-burger');
   if (!dd.classList.contains('open')) {
     var r = btn.getBoundingClientRect();
-    dd.style.top = (r.bottom + 6) + 'px';
-    dd.style.zIndex = 9999;
+    dd.style.top   = (r.bottom + 6) + 'px';
+    dd.style.right = (window.innerWidth - r.right) + 'px';
+    dd.style.left  = 'auto';
   }
   dd.classList.toggle('open');
 }
@@ -1211,37 +1198,13 @@ setView(getDefaultView(), false);  // auto-default: don't overwrite user's saved
     .then(d => {
       if (d && d.presence_count) {
         const el = document.getElementById('discord-count');
-        el.textContent = d.presence_count + ' online';
+        el.textContent = d.presence_count;
         el.style.display = 'inline';
       }
     }).catch(() => {});
 })();
 </script>
 <script>
-// ── Header weather (Portland, OR) — save to window._portlandWx for restore ──
-(function(){
-  var wmoCodes={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',77:'🌨️',80:'🌦️',81:'🌦️',82:'⛈️',85:'🌨️',86:'❄️',95:'⛈️',96:'⛈️',99:'⛈️'};
-  var wmoLabels={0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',48:'Foggy',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',80:'Showers',81:'Showers',82:'Heavy showers',85:'Snow showers',86:'Heavy snow',95:'Thunderstorm',96:'Thunderstorm',99:'Thunderstorm'};
-  fetch('https://api.open-meteo.com/v1/forecast?latitude=45.5051&longitude=-122.6750&current=temperature_2m,apparent_temperature,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FLos_Angeles')
-    .then(function(r){return r.json()})
-    .then(function(d){
-      var c=d.current; if(!c)return;
-      var code=c.weather_code;
-      var icon=wmoCodes[code]||'🌡️';
-      var temp=Math.round(c.temperature_2m)+'°F';
-      var cond=wmoLabels[code]||'';
-      var wind='💨 '+Math.round(c.wind_speed_10m)+' mph';
-      var feel='feels '+Math.round(c.apparent_temperature)+'°';
-      window._portlandWx={icon:icon,temp:temp,cond:cond,wind:wind,feel:feel};
-      document.getElementById('hw-icon').textContent=icon;
-      document.getElementById('hw-temp').textContent=temp;
-      document.getElementById('hw-cond').textContent=cond;
-      document.getElementById('hw-wind').textContent=wind;
-      document.getElementById('hw-feel').textContent=feel;
-      document.getElementById('header-weather').style.display='flex';
-    }).catch(function(){});
-})();
-
 // ── Pre-warm map tiles to reduce tearing on first switch ──
 // Guard with a window flag so repeated Turbo navigations don't stack load handlers
 if (!window._cpPrewarmBound) {

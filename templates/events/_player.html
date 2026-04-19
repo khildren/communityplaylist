@@ -1,6 +1,32 @@
 {% comment %}CP Music Player — bottom-left corner widget; styles in base.html{% endcomment %}
 <div id="cp-player" class="cp-player" style="display:none" role="region" aria-label="Community Playlist music player" data-turbo-permanent>
 
+  {% comment %}Collapse handle — always visible, drag pill + current track name{% endcomment %}
+  <button id="cp-collapser" class="cp-collapser" aria-label="Collapse player">
+    <span class="cp-drag-pill"></span>
+    <span id="cp-collapse-track" class="cp-collapse-track"></span>
+    <span class="cp-collapse-chevron">▾</span>
+  </button>
+
+  {% comment %}Event rotator card — hidden until cpEventsList is available{% endcomment %}
+  <div id="cp-event-rotator" style="display:none">
+    <div id="cp-er-card" class="cp-er-card">
+      <div id="cp-er-dot" class="cp-er-dot"></div>
+      <div id="cp-er-body">
+        <div id="cp-er-title" class="cp-er-title"></div>
+        <div id="cp-er-when" class="cp-er-when"></div>
+      </div>
+      <div class="cp-er-nav">
+        <button id="cp-er-prev" class="cp-er-navbtn">‹</button>
+        <button id="cp-er-next" class="cp-er-navbtn">›</button>
+      </div>
+    </div>
+    <div id="cp-er-detail" class="cp-er-detail">
+      <div id="cp-er-loc" class="cp-er-loc"></div>
+      <div id="cp-er-links" class="cp-er-links"></div>
+    </div>
+  </div>
+
   {% comment %}PDXTV video section — embedded at top of corner panel{% endcomment %}
   <div id="cp-video-panel">
     <button id="cp-video-exit" aria-label="Exit video">✕ exit</button>
@@ -775,5 +801,146 @@
 
   // Expose for debugging
   window.cpVideo = { enter: enterVideoMode, leave: leaveVideoMode, next: nextVideo, prev: prevVideo };
+})();
+
+// ── Player collapse ──────────────────────────────────────────────────────────
+(function(){
+  if (window.cpCollapserInit) return;
+  window.cpCollapserInit = true;
+  var btn      = document.getElementById('cp-collapser');
+  var player   = document.getElementById('cp-player');
+  var trackSpan= document.getElementById('cp-collapse-track');
+  if (!btn || !player) return;
+  var collapsed = false;
+  try { collapsed = sessionStorage.getItem('cp_collapsed') === '1'; } catch(e){}
+  if (collapsed) player.classList.add('collapsed');
+  btn.addEventListener('click', function(){
+    collapsed = !collapsed;
+    player.classList.toggle('collapsed', collapsed);
+    try { sessionStorage.setItem('cp_collapsed', collapsed ? '1' : '0'); } catch(e){}
+    if (window.cpUpdateEventPanelOffset) window.cpUpdateEventPanelOffset();
+    // Snap map back to Portland overview on collapse — only when autopilot is not routing
+    if (collapsed && !window._cpCycling && window.map) {
+      try { window.map.setView([45.5051, -122.6750], 12, {animate:true, duration:0.8}); } catch(e){}
+    }
+  });
+  function syncTitle() {
+    var el = document.getElementById('cp-title');
+    if (el && trackSpan) trackSpan.textContent = el.textContent || '';
+  }
+  var ti = document.getElementById('cp-track-inner');
+  if (ti && window.MutationObserver) {
+    new MutationObserver(syncTitle).observe(ti, {childList:true, subtree:true, characterData:true});
+  }
+  window.cpSyncCollapseTitle = syncTitle;
+  syncTitle();
+})();
+
+// ── Event rotator ────────────────────────────────────────────────────────────
+(function(){
+  if (window.cpRotatorInit) return;
+  window.cpRotatorInit = true;
+  var rotator  = document.getElementById('cp-event-rotator');
+  var erCard   = document.getElementById('cp-er-card');
+  var erDetail = document.getElementById('cp-er-detail');
+  var erDot    = document.getElementById('cp-er-dot');
+  var erTitle  = document.getElementById('cp-er-title');
+  var erWhen   = document.getElementById('cp-er-when');
+  var erLoc    = document.getElementById('cp-er-loc');
+  var erLinks  = document.getElementById('cp-er-links');
+  var erPrev   = document.getElementById('cp-er-prev');
+  var erNext   = document.getElementById('cp-er-next');
+  var events   = [];
+  var idx      = 0;
+  var timer    = null;
+  var expanded = false;
+  var CAT_COLORS = {music:'#cc88ff',arts:'#66bbff',bike:'#55dd55',fund:'#6699ff',food:'#ddaa33',hybrid:'#ff9944'};
+
+  function showCard(i, flash) {
+    if (!events.length) return;
+    idx = ((i % events.length) + events.length) % events.length;
+    var ev = events[idx];
+    erTitle.textContent = ev.title || '';
+    erWhen.textContent  = ev.start_date || '';
+    erDot.style.background = CAT_COLORS[ev.category] || '#444';
+    erLoc.textContent = ev.location || '';
+    erLinks.innerHTML = '';
+    if (ev.slug) {
+      var a = document.createElement('a');
+      a.href = '/events/' + ev.slug + '/';
+      a.textContent = '→ Details';
+      a.target = '_blank'; a.rel = 'noopener noreferrer';
+      erLinks.appendChild(a);
+    }
+    if (flash) {
+      erCard.classList.remove('artist-show');
+      void erCard.offsetWidth;
+      erCard.classList.add('artist-show');
+      setTimeout(function(){ erCard.classList.remove('artist-show'); }, 2200);
+    }
+    // Pan map to event location — only when autopilot routing is not active
+    if (!window._cpCycling && window.map && ev.latitude && ev.longitude) {
+      try { window.map.setView([ev.latitude, ev.longitude], 14, {animate:true, duration:1.0}); } catch(e){}
+    }
+    clearTimeout(timer);
+    timer = setTimeout(function(){ showCard(idx + 1); }, 10000);
+  }
+
+  function load(evList, artistName) {
+    if (!evList || !evList.length) return;
+    events = evList.slice();
+    var flashFirst = false;
+    if (artistName) {
+      var norm  = artistName.trim().toLowerCase();
+      var words = norm.split(/\s+/).filter(function(w){ return w.length > 3; });
+      for (var i = 0; i < events.length; i++) {
+        var t = (events[i].title || '').toLowerCase();
+        var match = t.includes(norm) || words.some(function(w){ return t.includes(w); });
+        if (match) {
+          var m = events.splice(i, 1)[0];
+          events.unshift(m);
+          flashFirst = true;
+          break;
+        }
+      }
+    }
+    rotator.style.display = '';
+    showCard(0, flashFirst);
+  }
+
+  function tryLoad() {
+    var evs = window.cpEventsList;
+    if (!evs || !evs.length) return;
+    var artist = '';
+    var vArtist = document.getElementById('cp-video-artist-card');
+    var aArtist = document.getElementById('cp-artist');
+    if (vArtist && vArtist.textContent.trim()) artist = vArtist.textContent.trim();
+    else if (aArtist) artist = aArtist.textContent.trim();
+    load(evs, artist || null);
+  }
+
+  document.addEventListener('turbo:load', tryLoad);
+  setTimeout(tryLoad, 900);
+  window.cpRotatorLoad = load;
+  window.cpRotatorTryLoad = tryLoad;
+  window.cpRotatorShowSlug = function(slug) {
+    for (var i = 0; i < events.length; i++) {
+      if (events[i].slug === slug) { showCard(i, false); return; }
+    }
+  };
+
+  // Re-check artist when track changes
+  var aArtistEl = document.getElementById('cp-artist');
+  if (aArtistEl && window.MutationObserver) {
+    new MutationObserver(function(){ if (window.cpEventsList && window.cpEventsList.length) tryLoad(); })
+      .observe(aArtistEl, {childList:true, characterData:true, subtree:true});
+  }
+
+  if (erPrev) erPrev.addEventListener('click', function(e){ e.stopPropagation(); showCard(idx - 1); });
+  if (erNext) erNext.addEventListener('click', function(e){ e.stopPropagation(); showCard(idx + 1); });
+  if (erCard) erCard.addEventListener('click', function(){
+    expanded = !expanded;
+    erDetail.classList.toggle('open', expanded);
+  });
 })();
 </script>

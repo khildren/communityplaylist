@@ -1,10 +1,14 @@
-{% comment %}Universal site header — included from base.html on every page{% endcomment %}
-<nav class="site-header">
+{% comment %}Universal site header — sticky bar + slide-down icon drawer on mobile{% endcomment %}
+<nav class="site-header" id="site-header">
   <div class="sh-inner">
+
     <a href="/" class="sh-logo">
       <img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist">
     </a>
-    <div class="sh-weather" id="header-weather" style="display:none">
+
+    <div class="sh-weather" id="header-weather" style="display:none" role="button" tabindex="0" data-turbo-permanent
+         onclick="window.cpOpenResourceHub && window.cpOpenResourceHub()"
+         title="Click for shelter &amp; resource info">
       <span class="wicon" id="hw-icon"></span>
       <span class="wtemp" id="hw-temp"></span>
       <span class="wcond" id="hw-cond"></span>
@@ -12,22 +16,124 @@
       <span class="wextra" id="hw-wind"></span>
       <span class="wsep">·</span>
       <span class="wextra" id="hw-feel"></span>
+      <span class="hw-alert" id="hw-alert" style="display:none"></span>
     </div>
-    <button class="sh-burger" id="sh-burger" aria-label="Menu" aria-expanded="false"
-      onclick="var n=document.getElementById('sh-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded',n.classList.contains('open'))">☰</button>
-    <div class="sh-nav" id="sh-nav">
-      <a href="/submit/" class="sh-btn sh-primary">+ Submit</a>
-      <a href="https://discord.gg/WHhxRPDdFV" class="sh-btn sh-secondary" id="discord-btn" target="_blank" rel="noopener">
-        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;flex-shrink:0"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.033.056a19.908 19.908 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
-        Discord<span class="sh-badge" id="discord-count" style="display:none"></span>
+
+    <!-- Desktop: scrollable icon strip -->
+    <div class="sh-icons" id="sh-icons">
+      <a href="/artists/"    class="sh-icon" title="Artists">🎤</a>
+      <a href="/promoters/"  class="sh-icon" title="Crews &amp; Promoters">📣</a>
+      <a href="/subscribe/"  class="sh-icon" title="Subscribe to calendar">📅</a>
+      <a href="/features/"   class="sh-icon" title="Features">✨</a>
+      <a href="/board/"      class="sh-icon" title="Community Board">📋</a>
+      <a href="/neighborhoods/" class="sh-icon" title="Neighborhoods">📍</a>
+      <a href="https://discord.gg/WHhxRPDdFV" class="sh-icon" id="discord-btn" target="_blank" rel="noopener" title="Discord">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:1em;height:1em"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.033.056a19.908 19.908 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.030z"/></svg>
+        <span class="sh-badge" id="discord-count" style="display:none"></span>
       </a>
-      <a href="/board/" class="sh-btn sh-secondary">📋 Board</a>
-      <a href="/neighborhoods/" class="sh-btn sh-secondary">📍 Hoods</a>
+      <button class="sh-icon" id="sh-resource-btn"
+              onclick="window.cpOpenResourceHub && window.cpOpenResourceHub()"
+              title="Shelter &amp; Resource Guide" aria-label="Open shelter and resource guide">🌹</button>
+      <a href="https://github.com/khildren/communityplaylist/issues/new?labels=bug&template=bug_report.md"
+         target="_blank" rel="noopener" class="sh-icon" title="Report a bug">🐛</a>
+      <a href="https://github.com/khildren/communityplaylist/issues/new?labels=enhancement&template=feature_request.md"
+         target="_blank" rel="noopener" class="sh-icon" title="Request a feature">💡</a>
+      <button class="sh-icon cp-help-btn" id="cpHelpBtn" title="Page guide" aria-label="How to use this page">?</button>
       {% if user.is_authenticated %}
-      <a href="/dashboard/" class="sh-btn sh-accent">👤 Profile</a>
+      <a href="/dashboard/" class="sh-icon" title="Profile">👤</a>
       {% else %}
-      <a href="/login/" class="sh-btn sh-accent">👤 Sign In</a>
+      <a href="/login/" class="sh-icon sh-icon-signin" title="Sign In">👤</a>
+      {% endif %}
+    </div>
+
+    <!-- Mobile: icon drawer toggle -->
+    <button id="sh-menu-toggle" class="sh-menu-toggle" aria-label="Open menu" aria-expanded="false">+</button>
+
+    <a href="/submit/" class="sh-btn sh-primary">+ Submit</a>
+
+  </div>
+
+  <!-- Icon drawer — slides down inside the sticky nav on mobile -->
+  <div id="sh-icon-drawer" class="sh-icon-drawer" aria-hidden="true">
+    <div class="sh-icon-drawer-inner">
+      <a href="/artists/"    class="sh-icon" title="Artists">🎤</a>
+      <a href="/promoters/"  class="sh-icon" title="Crews &amp; Promoters">📣</a>
+      <a href="/subscribe/"  class="sh-icon" title="Subscribe to calendar">📅</a>
+      <a href="/features/"   class="sh-icon" title="Features">✨</a>
+      <a href="/board/"      class="sh-icon" title="Community Board">📋</a>
+      <a href="/neighborhoods/" class="sh-icon" title="Neighborhoods">📍</a>
+      <a href="https://discord.gg/WHhxRPDdFV" class="sh-icon" target="_blank" rel="noopener" title="Discord">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:1em;height:1em"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.033.056a19.908 19.908 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.030z"/></svg>
+      </a>
+      <button class="sh-icon" onclick="window.cpOpenResourceHub && window.cpOpenResourceHub()"
+              title="Shelter &amp; Resource Guide">🌹</button>
+      <a href="https://github.com/khildren/communityplaylist/issues/new?labels=bug&template=bug_report.md"
+         target="_blank" rel="noopener" class="sh-icon" title="Report a bug">🐛</a>
+      <a href="https://github.com/khildren/communityplaylist/issues/new?labels=enhancement&template=feature_request.md"
+         target="_blank" rel="noopener" class="sh-icon" title="Request a feature">💡</a>
+      <button class="sh-icon" id="cpHelpBtnDrawer" title="Page guide">?</button>
+      {% if user.is_authenticated %}
+      <a href="/dashboard/" class="sh-icon" title="Profile">👤</a>
+      {% else %}
+      <a href="/login/" class="sh-icon sh-icon-signin" title="Sign In">👤</a>
       {% endif %}
     </div>
   </div>
 </nav>
+
+<script>
+(function(){
+  if (window._cpMenuInit) return;
+  window._cpMenuInit = true;
+  var toggle = document.getElementById('sh-menu-toggle');
+  var drawer = document.getElementById('sh-icon-drawer');
+  var nav    = document.getElementById('site-header');
+  if (!toggle || !drawer) return;
+
+  function updateFilterSticky() {
+    var fb = document.getElementById('filter-body');
+    if (fb && nav) fb.style.top = nav.offsetHeight + 'px';
+  }
+
+  function openDrawer() {
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+    toggle.textContent = '×';
+    toggle.setAttribute('aria-expanded', 'true');
+    updateFilterSticky();
+  }
+  function closeDrawer() {
+    drawer.classList.remove('open');
+    drawer.setAttribute('aria-hidden', 'true');
+    toggle.textContent = '+';
+    toggle.setAttribute('aria-expanded', 'false');
+    updateFilterSticky();
+  }
+
+  toggle.addEventListener('click', function(e) {
+    e.stopPropagation();
+    drawer.classList.contains('open') ? closeDrawer() : openDrawer();
+  });
+  document.addEventListener('click', function(e) {
+    if (drawer.classList.contains('open') && !drawer.contains(e.target) && e.target !== toggle)
+      closeDrawer();
+  });
+  document.addEventListener('turbo:before-visit', closeDrawer);
+
+  // Wire drawer help button to the same tour as the main one
+  var drawerHelp = document.getElementById('cpHelpBtnDrawer');
+  if (drawerHelp) {
+    drawerHelp.addEventListener('click', function() {
+      var main = document.getElementById('cpHelpBtn');
+      if (main) main.click();
+      closeDrawer();
+    });
+  }
+
+  window.cpMenuClose = closeDrawer;
+  window.cpUpdateFilterSticky = updateFilterSticky;
+  // Sync on load and Turbo navigation
+  document.addEventListener('turbo:load', updateFilterSticky);
+  updateFilterSticky();
+})();
+</script>

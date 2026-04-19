@@ -26,6 +26,38 @@
   overflow:hidden;
 }
 
+/* Collapse handle */
+.cp-collapser{width:100%;display:flex;align-items:center;gap:8px;padding:6px 10px 5px;background:transparent;border:none;border-bottom:1px solid #1c1c1c;cursor:pointer;flex-shrink:0;user-select:none}
+.cp-drag-pill{width:32px;height:3px;background:#2a2a2a;border-radius:2px;flex-shrink:0}
+.cp-collapse-track{flex:1;font-size:.72em;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.cp-collapse-chevron{font-size:.65em;color:#3a3a3a;transition:transform .2s;flex-shrink:0}
+.cp-player.collapsed .cp-collapse-chevron{transform:rotate(180deg)}
+.cp-player.collapsed #cp-event-rotator,
+.cp-player.collapsed .cp-seek,
+.cp-player.collapsed .cp-track,
+.cp-player.collapsed .cp-controls-row,
+.cp-player.collapsed #cp-video-panel{display:none!important}
+
+/* Event rotator */
+#cp-event-rotator{border-bottom:1px solid #1c1c1c;flex-shrink:0;background:#0d0d0d}
+.cp-er-card{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;transition:background .15s}
+.cp-er-card:hover{background:#141414}
+.cp-er-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#444;transition:background .3s}
+.cp-er-body{flex:1;min-width:0}
+.cp-er-title{font-size:.78em;color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.cp-er-when{font-size:.68em;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.cp-er-nav{display:flex;align-items:center;flex-shrink:0}
+.cp-er-navbtn{background:transparent;border:none;color:#444;cursor:pointer;font-size:1.15em;padding:2px 6px;transition:color .12s;line-height:1}
+.cp-er-navbtn:hover{color:#ff6b35}
+.cp-er-detail{overflow:hidden;max-height:0;transition:max-height .22s ease,padding .22s ease;padding:0 10px}
+.cp-er-detail.open{max-height:100px;padding:0 10px 8px}
+.cp-er-loc{font-size:.75em;color:#666;margin:6px 0 5px}
+.cp-er-links{display:flex;gap:6px;flex-wrap:wrap}
+.cp-er-links a{font-size:.72em;color:#ff6b35;text-decoration:none;border:1px solid #ff6b3566;border-radius:3px;padding:2px 8px}
+.cp-er-links a:hover{background:#ff6b3522}
+@keyframes cp-er-flash{0%,100%{background:#0d0d0d}50%{background:#1a1200}}
+.cp-er-card.artist-show{animation:cp-er-flash .75s ease-in-out 3}
+
 /* Seek bar — full width strip at very top of panel */
 .cp-seek{
   width:100%;height:4px;background:#1c1c1c;cursor:pointer;flex-shrink:0;
@@ -268,13 +300,58 @@
 .site-header{background:#111;border-bottom:1px solid #1a1a1a;font-family:sans-serif;position:sticky;top:0;z-index:850}
 .sh-inner{display:flex;align-items:center;gap:8px;padding:6px 14px;min-height:50px}
 .sh-logo img{height:34px;width:auto;display:block;flex-shrink:0}
-.sh-weather{display:flex;align-items:center;gap:5px;font-size:.8em;color:#666;white-space:nowrap;flex:1;justify-content:center;padding:5px 12px;background:#1a1a1a;border:1px solid #222;border-radius:6px;margin:0 6px}
+.sh-weather{display:flex;align-items:center;gap:5px;font-size:.8em;color:#666;white-space:nowrap;flex:1;justify-content:center;padding:5px 12px;background:#1a1a1a;border:1px solid #222;border-radius:6px;margin:0 6px;cursor:pointer;transition:border-color .2s}
+.sh-weather:hover{border-color:#ff6b35}
+.sh-weather.wx-alert{border-color:#ff8c00;animation:wx-pulse 2.5s ease-in-out infinite}
+@keyframes wx-pulse{0%,100%{border-color:#ff8c00;box-shadow:0 0 0 0 rgba(255,140,0,.4)}50%{border-color:#ffb347;box-shadow:0 0 0 5px rgba(255,140,0,0)}}
 .sh-weather .wtemp{color:#ddd;font-weight:700}
 .sh-weather .wcond{color:#888}
 .sh-weather .wsep{color:#2a2a2a;margin:0 1px}
 .sh-weather .wextra{color:#555;font-size:.92em}
-@media(max-width:960px){.sh-weather .wextra,.sh-weather .wsep{display:none}}
-.sh-nav{display:flex;gap:5px;align-items:center;margin-left:auto}
+.hw-alert{font-size:1.1em;margin-left:4px;animation:bounce-in .4s ease}
+@keyframes bounce-in{0%{transform:scale(0)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
+@media(max-width:860px){.sh-weather .wcond,.sh-weather .wextra,.sh-weather .wsep{display:none}}
+/* Rose resource button — always visible, sits left of burger */
+.sh-resource-btn{background:transparent;border:1px solid #333;color:#aaa;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:1em;line-height:1;flex-shrink:0;transition:all .15s}
+.sh-resource-btn:hover,.sh-resource-btn.active{border-color:#ff6b35;background:#ff6b351a}
+.sh-resource-btn.wx-alert{border-color:#ff8c00;animation:wx-pulse 2.5s ease-in-out infinite}
+/* Resource hub panel */
+#cp-resource-hub{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:2px solid #ff6b35;z-index:1050;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);max-height:85vh;display:flex;flex-direction:column}
+#cp-resource-hub.open{transform:translateY(0)}
+#cp-rh-header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #1a1a1a;flex-shrink:0}
+#cp-rh-header h2{margin:0;font-size:1em;color:#eee;flex:1}
+#cp-rh-alert-banner{display:none;background:#ff8c0022;border:1px solid #ff8c00;border-radius:6px;padding:8px 12px;margin:10px 16px 0;font-size:.85em;color:#ffb347;flex-shrink:0}
+#cp-rh-alert-banner.visible{display:block}
+#cp-rh-tabs{display:flex;gap:4px;padding:10px 16px 0;flex-shrink:0;overflow-x:auto;position:relative;z-index:2}
+#cp-rh-map .leaflet-top,#cp-rh-map .leaflet-bottom{z-index:1}
+#map .leaflet-control-container{z-index:800}
+.cp-rh-tab{background:#1a1a1a;border:1px solid #2a2a2a;border-bottom:none;color:#888;padding:6px 14px;border-radius:6px 6px 0 0;cursor:pointer;font-size:.8em;white-space:nowrap;transition:all .15s}
+.cp-rh-tab.active{background:#181818;border-color:#ff6b35;color:#ff6b35}
+#cp-rh-body{flex:1;overflow:hidden;padding:12px 16px;display:flex;gap:12px;min-height:0}
+#cp-rh-list{flex:1;min-width:0;overflow-y:auto}
+#cp-rh-map{width:320px;flex-shrink:0;border-radius:8px;overflow:hidden;background:#1a1a1a;position:relative}
+#cp-rh-map-el{position:absolute;inset:0}
+.cp-rh-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:12px 14px;margin-bottom:10px;transition:border-color .15s;cursor:default}
+.cp-rh-card:hover{border-color:#444}
+.cp-rh-card.highlighted{border-color:#ff6b35}
+.cp-rh-card h3{margin:0 0 4px;font-size:.92em;color:#eee;display:flex;align-items:center;gap:8px}
+.cp-rh-tag{font-size:.7em;padding:2px 7px;border-radius:10px;background:#333;color:#aaa;font-weight:500;white-space:nowrap}
+.cp-rh-tag.emergency{background:#8b0000;color:#ffaaaa}
+.cp-rh-tag.warming{background:#003366;color:#aaddff}
+.cp-rh-tag.cooling{background:#004d00;color:#aaffaa}
+.cp-rh-tag.hotline{background:#4a0060;color:#ddaaff}
+.cp-rh-meta{font-size:.78em;color:#666;margin:4px 0}
+.cp-rh-meta span+span::before{content:' · '}
+.cp-rh-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.cp-rh-actions a{font-size:.75em;color:#ff6b35;text-decoration:none;padding:3px 8px;border:1px solid #ff6b3566;border-radius:4px}
+.cp-rh-actions a:hover{background:#ff6b3522}
+.cp-rh-dist{font-size:.7em;color:#555;margin-left:auto;white-space:nowrap}
+#cp-rh-findme{background:#1a1a1a;border:1px solid #ff6b35;color:#ff6b35;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:.8em;transition:all .15s}
+#cp-rh-findme:hover{background:#ff6b3522}
+#cp-rh-close{background:transparent;border:none;color:#666;font-size:1.3em;cursor:pointer;line-height:1;padding:2px 6px;transition:color .15s}
+#cp-rh-close:hover{color:#ff6b35}
+.cp-rh-empty{color:#555;font-size:.85em;padding:20px 0;text-align:center}
+@media(max-width:640px){#cp-rh-map{display:none}#cp-rh-body{padding:10px}}
 .sh-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:6px;text-decoration:none;font-size:.8em;font-weight:500;white-space:nowrap;border:1px solid transparent;transition:all .15s;line-height:1;flex-shrink:0}
 .sh-primary{background:#ff6b35;color:#111;border-color:#ff6b35}
 .sh-primary:hover{background:#e55a25;border-color:#e55a25}
@@ -282,16 +359,37 @@
 .sh-secondary:hover{border-color:#ff6b35;color:#ff6b35}
 .sh-accent{background:#1a1a1a;color:#ff6b35;border-color:#ff6b35}
 .sh-accent:hover{background:#ff6b35;color:#111}
-.sh-badge{background:rgba(255,255,255,.16);border-radius:10px;padding:1px 6px;font-size:.8em;margin-left:2px}
-.sh-burger{display:none;background:transparent;border:1px solid #333;color:#aaa;padding:6px 11px;border-radius:6px;cursor:pointer;font-size:1.1em;line-height:1;margin-left:auto;flex-shrink:0;transition:all .15s}
-.sh-burger.open,.sh-burger:hover{color:#ff6b35;border-color:#ff6b35}
-@media(max-width:860px){
-  .sh-weather{display:none!important}
-  .sh-burger{display:inline-flex;align-items:center}
-  .sh-nav{display:none;flex-wrap:wrap;gap:6px;position:absolute;top:100%;left:0;right:0;background:#111;border-bottom:1px solid #1a1a1a;padding:8px 12px;z-index:799}
-  .sh-nav.open{display:flex}
-  .sh-nav .sh-btn{flex:1;min-width:120px;justify-content:center}
+/* Unified icon strip */
+.sh-icons{display:flex;align-items:center;gap:1px;margin-left:auto;overflow-x:auto;scrollbar-width:none;flex-shrink:1}
+.sh-icons::-webkit-scrollbar{display:none}
+.sh-icon{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;color:#888;text-decoration:none;font-size:1.05em;flex-shrink:0;position:relative;background:transparent;border:none;cursor:pointer;transition:color .12s,background .12s;padding:0;line-height:1}
+.sh-icon:hover,.sh-icon.active{color:#ff6b35;background:#ff6b3515}
+.sh-icon svg{width:1em;height:1em;flex-shrink:0}
+.sh-badge{position:absolute;top:3px;right:2px;background:#5865F2;color:#fff;border-radius:8px;padding:0 4px;font-size:.55em;font-weight:700;line-height:1.6;min-width:14px;text-align:center;pointer-events:none}
+.sh-icon-signin{color:#666}
+/* Mobile icon drawer toggle */
+.sh-menu-toggle{display:none;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;color:#888;font-size:1.3em;line-height:1;background:transparent;border:1px solid #333;cursor:pointer;flex-shrink:0;margin-left:auto;transition:all .15s}
+.sh-menu-toggle:hover{color:#ff6b35;border-color:#ff6b35}
+/* Icon drawer inside sticky nav */
+.sh-icon-drawer{max-height:0;overflow:hidden;transition:max-height .3s cubic-bezier(.4,0,.2,1)}
+.sh-icon-drawer.open{max-height:180px}
+.sh-icon-drawer-inner{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px;padding:12px 20px 14px;border-top:1px solid #1a1a1a}
+.sh-icon-drawer-inner .sh-icon{width:44px;height:44px;border-radius:8px;font-size:1.15em}
+@media(max-width:768px){
+  .sh-icons{display:none!important}
+  .sh-menu-toggle{display:flex}
+  .sh-weather .wcond,.sh-weather .wextra,.sh-weather .wsep{display:none}
 }
+@media(min-width:769px) and (max-width:960px){.sh-weather .wextra,.sh-weather .wsep{display:none}}
+/* Scrolling announcement marquee (nav strip + home page) */
+.aid-marquee-wrap{background:#0f1f0f;border-bottom:1px solid #1a3a1a;overflow:hidden;white-space:nowrap;padding:5px 0;width:100%}
+.aid-marquee-inner{display:inline-block;animation:marquee 55s linear infinite}
+.aid-marquee-inner:hover{animation-play-state:paused}
+.aid-marquee-inner a{color:#4caf50;text-decoration:none;font-size:.75em;font-weight:600;letter-spacing:.03em}
+.aid-marquee-inner a:hover{text-decoration:underline}
+.aid-marquee-soft{color:#3a5a3a;font-size:.75em;font-weight:400}
+.aid-marquee-sep{color:#1a4a1a;margin:0 20px;font-size:.75em;user-select:none}
+@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 </style>
 </head>
 <body>
@@ -300,6 +398,30 @@
 {% block nav_strip %}{% include 'events/_nav_strip.html' %}{% endblock %}
 {% block body %}{% endblock %}
 {% include 'events/_player.html' %}
+
+<!-- ── Resource Hub panel ── -->
+<div id="cp-resource-hub" data-turbo-permanent>
+  <div id="cp-rh-header">
+    <span style="font-size:1.3em">🌹</span>
+    <h2>PDX Shelter &amp; Resource Guide</h2>
+    <button id="cp-rh-findme">📍 Find nearest</button>
+    <button id="cp-rh-close" aria-label="Close">✕</button>
+  </div>
+  <div id="cp-rh-alert-banner"></div>
+  <div id="cp-rh-tabs">
+    <button class="cp-rh-tab active" data-filter="">All resources</button>
+    <button class="cp-rh-tab" data-filter="emergency">Emergency</button>
+    <button class="cp-rh-tab" data-filter="warming">Warming</button>
+    <button class="cp-rh-tab" data-filter="cooling">Cooling</button>
+    <button class="cp-rh-tab" data-filter="overnight">Overnight</button>
+    <button class="cp-rh-tab" data-filter="day">Day shelter</button>
+    <button class="cp-rh-tab" data-filter="hotline">Hotlines</button>
+  </div>
+  <div id="cp-rh-body">
+    <div id="cp-rh-list"><p class="cp-rh-empty">Loading resources…</p></div>
+    <div id="cp-rh-map"><div id="cp-rh-map-el"></div></div>
+  </div>
+</div>
 
 <!-- ── Event info panel (map / artist clicks) ── -->
 <div id="cp-event-panel" data-turbo-permanent>
@@ -428,6 +550,308 @@
 
   // Expose — map markers and artist links trigger this; card clicks use inline expansion
   window.cpEventPanel = { open: openPanel, close: closePanel };
+})();
+</script>
+
+<script>
+// ── Resource Hub — shelter finder + weather alerts ───────────────────────────
+(function() {
+  if (window.cpResourceHubInitialized) return;
+  window.cpResourceHubInitialized = true;
+
+  var hub        = document.getElementById('cp-resource-hub');
+  var closeBtn   = document.getElementById('cp-rh-close');
+  var findMeBtn  = document.getElementById('cp-rh-findme');
+  var listEl     = document.getElementById('cp-rh-list');
+  var alertBanner = document.getElementById('cp-rh-alert-banner');
+  var tabs       = document.querySelectorAll('.cp-rh-tab');
+  var rhMap      = null;
+  var rhMarkers  = [];
+
+  var allShelters   = [];
+  var activeFilter  = '';
+  var userLat       = null;
+  var userLng       = null;
+  var activeAlerts  = []; // ['cold','hot','smoke']
+
+  // ── Tag color helper ────────────────────────────────────────────────────────
+  var TYPE_EMOJI = {
+    emergency:'🚨', warming:'🔥', cooling:'🧊', overnight:'🌙',
+    day:'☀️', hygiene:'🚿', tiny_home:'🏠', transitional:'🏡',
+    youth:'🧒', family:'👨‍👩‍👧', womens:'♀️', veteran:'🎖️',
+    sobering:'💊', hotline:'📞'
+  };
+
+  // ── Open / close ───────────────────────────────────────────────────────────
+  function open() {
+    hub.classList.add('open');
+    var rb = document.getElementById('sh-resource-btn');
+    if (rb) rb.classList.add('active');
+    if (allShelters.length === 0) loadShelters();
+    setTimeout(initRhMap, 200);
+    // Auto-collapse player so hub has full bottom space
+    var pl = document.getElementById('cp-player');
+    if (pl && pl.style.display !== 'none' && !pl.classList.contains('collapsed')) {
+      pl.classList.add('collapsed');
+      pl._hubCollapsed = true;
+    }
+  }
+  function close() {
+    hub.classList.remove('open');
+    var rb = document.getElementById('sh-resource-btn');
+    if (rb) rb.classList.remove('active');
+    // Restore player if we collapsed it
+    var pl = document.getElementById('cp-player');
+    if (pl && pl._hubCollapsed) {
+      pl.classList.remove('collapsed');
+      pl._hubCollapsed = false;
+      try { sessionStorage.setItem('cp_collapsed', '0'); } catch(e){}
+    }
+  }
+  window.cpOpenResourceHub = open;
+
+  closeBtn.addEventListener('click', close);
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') close(); });
+
+  // ── Tabs ───────────────────────────────────────────────────────────────────
+  tabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      tabs.forEach(function(t){ t.classList.remove('active'); });
+      tab.classList.add('active');
+      activeFilter = tab.dataset.filter;
+      renderList();
+    });
+  });
+
+  // ── Load shelters from API ─────────────────────────────────────────────────
+  function loadShelters() {
+    var url = '/api/shelters/';
+    if (userLat !== null) url += '?lat=' + userLat + '&lng=' + userLng;
+    fetch(url).then(function(r){ return r.json(); }).then(function(d) {
+      allShelters = d.shelters || [];
+      renderList();
+      renderRhMarkers();
+    }).catch(function() {
+      listEl.innerHTML = '<p class="cp-rh-empty">Could not load resources. Try calling 211.</p>';
+    });
+  }
+
+  // ── Render list ────────────────────────────────────────────────────────────
+  function renderList() {
+    var items = activeFilter
+      ? allShelters.filter(function(s){ return s.type === activeFilter; })
+      : allShelters;
+
+    // Put weather-relevant shelters first when there's an active alert
+    if (activeAlerts.length > 0) {
+      items = items.slice().sort(function(a, b) {
+        var aRel = (activeAlerts.indexOf('cold') >= 0 && a.available_cold) ||
+                   (activeAlerts.indexOf('hot')  >= 0 && a.available_hot)  ||
+                   (activeAlerts.indexOf('smoke')>= 0 && a.available_smoke);
+        var bRel = (activeAlerts.indexOf('cold') >= 0 && b.available_cold) ||
+                   (activeAlerts.indexOf('hot')  >= 0 && b.available_hot)  ||
+                   (activeAlerts.indexOf('smoke')>= 0 && b.available_smoke);
+        if (aRel && !bRel) return -1;
+        if (!aRel && bRel) return 1;
+        return (a.distance_miles || 999) - (b.distance_miles || 999);
+      });
+    }
+
+    if (items.length === 0) {
+      listEl.innerHTML = '<p class="cp-rh-empty">No resources in this category.</p>';
+      return;
+    }
+
+    listEl.innerHTML = items.map(function(s) {
+      var tagCls = 'cp-rh-tag ' + (s.type || '');
+      var emoji  = TYPE_EMOJI[s.type] || '🏠';
+      var dist   = (s.distance_miles !== undefined && s.distance_miles < 999)
+                   ? '<span class="cp-rh-dist">' + s.distance_miles.toFixed(1) + ' mi</span>' : '';
+      var meta   = [s.hours, s.accepts !== 'Everyone' ? 'Accepts: ' + s.accepts : '', s.pets_ok ? '🐾 pets ok' : ''].filter(Boolean);
+      var actions = [];
+      if (s.phone) actions.push('<a href="tel:' + s.phone + '">📞 ' + s.phone + '</a>');
+      if (s.website) actions.push('<a href="' + s.website + '" target="_blank" rel="noopener">🔗 Website</a>');
+      if (s.latitude) actions.push('<a href="https://maps.google.com/?q=' + s.latitude + ',' + s.longitude + '" target="_blank" rel="noopener">🗺 Directions</a>');
+
+      var weatherFlags = [];
+      if (s.available_cold)  weatherFlags.push('❄️ warming');
+      if (s.available_hot)   weatherFlags.push('🧊 cooling');
+      if (s.available_smoke) weatherFlags.push('😷 smoke/air');
+      var flagHtml = weatherFlags.length ? '<div style="font-size:.72em;color:#666;margin-top:4px">' + weatherFlags.join(' · ') + '</div>' : '';
+
+      return '<div class="cp-rh-card" data-id="' + s.id + '">' +
+        '<h3>' + emoji + ' ' + s.name + dist +
+          '<span class="' + tagCls + '">' + s.type_display + '</span>' +
+        '</h3>' +
+        (s.address ? '<div class="cp-rh-meta"><span>' + s.address + '</span></div>' : '') +
+        (meta.length ? '<div class="cp-rh-meta"><span>' + meta.join('</span><span>') + '</span></div>' : '') +
+        (s.notes ? '<div style="font-size:.78em;color:#777;margin:4px 0">' + s.notes + '</div>' : '') +
+        flagHtml +
+        '<div class="cp-rh-actions">' + actions.join('') + '</div>' +
+      '</div>';
+    }).join('');
+
+    // Highlight map marker on card hover
+    listEl.querySelectorAll('.cp-rh-card[data-id]').forEach(function(card) {
+      card.addEventListener('mouseenter', function() { highlightRhMarker(parseInt(card.dataset.id), true); });
+      card.addEventListener('mouseleave', function() { highlightRhMarker(parseInt(card.dataset.id), false); });
+    });
+  }
+
+  // ── Mini Leaflet map inside resource hub ───────────────────────────────────
+  function initRhMap() {
+    if (rhMap || !window.L) return;
+    var el = document.getElementById('cp-rh-map-el');
+    if (!el || el.offsetWidth === 0) return;
+    try {
+      rhMap = L.map(el, {zoomControl:true}).setView([45.5051, -122.6750], 12);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© CARTO', crossOrigin: true
+      }).addTo(rhMap);
+      renderRhMarkers();
+    } catch(e) {}
+  }
+
+  function renderRhMarkers() {
+    if (!rhMap) return;
+    rhMarkers.forEach(function(m){ try { rhMap.removeLayer(m.marker); } catch(e){} });
+    rhMarkers = [];
+    var items = activeFilter
+      ? allShelters.filter(function(s){ return s.type === s.activeFilter; })
+      : allShelters;
+    allShelters.forEach(function(s) {
+      if (!s.latitude || !s.longitude) return;
+      var color = s.available_cold || s.available_hot || s.available_smoke ? '#ff8c00' : '#5865F2';
+      var icon = L.divIcon({
+        className: '',
+        html: '<div style="width:12px;height:12px;background:' + color + ';border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.6)"></div>',
+        iconSize: [12,12], iconAnchor: [6,6]
+      });
+      var m = L.marker([s.latitude, s.longitude], {icon:icon}).addTo(rhMap);
+      m.bindPopup('<strong style="color:#ff6b35">' + s.name + '</strong><br><span style="font-size:.8em">' + s.phone + '</span>');
+      rhMarkers.push({id: s.id, marker: m});
+    });
+    if (userLat !== null) {
+      L.circleMarker([userLat, userLng], {radius:8,color:'#ff6b35',fillColor:'#ff6b35',fillOpacity:.8}).addTo(rhMap);
+    }
+  }
+
+  function highlightRhMarker(id, on) {
+    rhMarkers.forEach(function(m) {
+      if (m.id === id) {
+        if (on) { m.marker.openPopup(); rhMap && rhMap.setView(m.marker.getLatLng(), 15, {animate:true}); }
+        else     { m.marker.closePopup(); }
+      }
+    });
+  }
+
+  // ── Find me ────────────────────────────────────────────────────────────────
+  findMeBtn.addEventListener('click', function() {
+    if (!navigator.geolocation) return;
+    findMeBtn.textContent = '…locating';
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      findMeBtn.textContent = '📍 Nearest first';
+      loadShelters();
+      if (rhMap) {
+        rhMap.setView([userLat, userLng], 13);
+        L.circleMarker([userLat, userLng], {radius:8,color:'#ff6b35',fillColor:'#ff6b35',fillOpacity:.8})
+          .addTo(rhMap).bindPopup('You are here').openPopup();
+      }
+    }, function() {
+      findMeBtn.textContent = '📍 Find nearest';
+    });
+  });
+
+  // ── Weather alert detection ────────────────────────────────────────────────
+  // Called by the weather script (event_list) and base weather fetch once temp is known
+  window.cpCheckWeatherAlert = function(tempF, pm25, apparentF) {
+    activeAlerts = [];
+    var messages = [];
+
+    if (tempF >= 90 || apparentF >= 95) {
+      activeAlerts.push('hot');
+      messages.push('🧊 Extreme heat (' + Math.round(tempF) + '°F) — cooling centers available');
+    }
+    if (tempF <= 35 || apparentF <= 28) {
+      activeAlerts.push('cold');
+      messages.push('❄️ Freezing temps (' + Math.round(tempF) + '°F) — warming centers open');
+    }
+    if (pm25 && pm25 >= 35.5) {
+      activeAlerts.push('smoke');
+      messages.push('😷 High particulate (PM2.5 ' + Math.round(pm25) + ') — find indoor shelter');
+    }
+
+    var alertEl   = document.getElementById('hw-alert');
+    var weatherEl = document.getElementById('header-weather');
+    var resourceBtn = document.getElementById('sh-resource-btn');
+
+    if (activeAlerts.length > 0) {
+      var icon = activeAlerts.indexOf('cold') >= 0 ? '❄️' : (activeAlerts.indexOf('hot') >= 0 ? '🧊' : '😷');
+      if (alertEl) { alertEl.textContent = icon; alertEl.style.display = ''; }
+      if (weatherEl) weatherEl.classList.add('wx-alert');
+      if (resourceBtn) resourceBtn.classList.add('wx-alert');
+      if (alertBanner) {
+        alertBanner.innerHTML = messages.map(function(m){ return '<div>' + m + '</div>'; }).join('');
+        alertBanner.classList.add('visible');
+      }
+      // Auto-filter the relevant tab when hub is opened
+      var autoFilter = activeAlerts.indexOf('cold') >= 0 ? 'warming' : (activeAlerts.indexOf('hot') >= 0 ? 'cooling' : '');
+      if (autoFilter) {
+        tabs.forEach(function(t){ t.classList.toggle('active', t.dataset.filter === autoFilter); });
+        activeFilter = autoFilter;
+      }
+    } else {
+      if (alertEl) alertEl.style.display = 'none';
+      if (weatherEl) weatherEl.classList.remove('wx-alert');
+      if (resourceBtn) resourceBtn.classList.remove('wx-alert');
+      if (alertBanner) alertBanner.classList.remove('visible');
+    }
+  };
+})();
+</script>
+
+<script>
+// ── Header weather + air quality — runs on every page ────────────────────────
+(function(){
+  function applyWx(wx) {
+    var el = document.getElementById('header-weather'); if (!el) return;
+    document.getElementById('hw-icon').textContent = wx.icon;
+    document.getElementById('hw-temp').textContent = wx.temp;
+    document.getElementById('hw-cond').textContent = wx.cond;
+    document.getElementById('hw-wind').textContent = wx.wind;
+    document.getElementById('hw-feel').textContent = wx.feel;
+    el.style.display = 'flex';
+    if (window.cpCheckWeatherAlert) window.cpCheckWeatherAlert(wx._tempF, wx._pm25, wx._apparentF);
+  }
+  // Re-apply cached data on every Turbo navigation (header is permanent so DOM persists)
+  document.addEventListener('turbo:load', function(){
+    if (window._portlandWx) applyWx(window._portlandWx);
+  });
+  if (window._cpWxLoaded) { if (window._portlandWx) applyWx(window._portlandWx); return; }
+  window._cpWxLoaded = true;
+  var wmoCodes={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',77:'🌨️',80:'🌦️',81:'🌦️',82:'⛈️',85:'🌨️',86:'❄️',95:'⛈️',96:'⛈️',99:'⛈️'};
+  var wmoLabels={0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',48:'Foggy',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',80:'Showers',81:'Showers',82:'Heavy showers',85:'Snow showers',86:'Heavy snow',95:'Thunderstorm',96:'Thunderstorm',99:'Thunderstorm'};
+  var wxUrl = 'https://api.open-meteo.com/v1/forecast?latitude=45.5051&longitude=-122.6750&current=temperature_2m,apparent_temperature,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FLos_Angeles';
+  var aqUrl = 'https://air-quality-api.open-meteo.com/v1/air-quality?latitude=45.5051&longitude=-122.6750&current=pm2_5&timezone=America%2FLos_Angeles';
+  Promise.all([
+    fetch(wxUrl).then(function(r){return r.json();}),
+    fetch(aqUrl).then(function(r){return r.json();}).catch(function(){return {};})
+  ]).then(function(results){
+    var d=results[0]; var aq=results[1];
+    var c=d.current; if(!c)return;
+    var pm25=(aq&&aq.current)?aq.current.pm2_5:null;
+    var code=c.weather_code, tempF=c.temperature_2m, apparentF=c.apparent_temperature;
+    var wx={
+      icon:wmoCodes[code]||'🌡️', temp:Math.round(tempF)+'°F',
+      cond:wmoLabels[code]||'', wind:'💨 '+Math.round(c.wind_speed_10m)+' mph',
+      feel:'feels '+Math.round(apparentF)+'°',
+      _tempF:tempF, _pm25:pm25, _apparentF:apparentF
+    };
+    window._portlandWx = wx;
+    applyWx(wx);
+  }).catch(function(){});
 })();
 </script>
 </body>

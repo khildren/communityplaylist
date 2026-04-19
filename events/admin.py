@@ -6,7 +6,7 @@ from django.urls import path
 from django.http import HttpResponseRedirect
 from django.contrib import messages
 from django import forms
-from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile, PromoterProfile, PlaylistTrack, RecordListing, RecordReservation, VideoTrack
+from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile, PromoterProfile, PlaylistTrack, RecordListing, RecordReservation, VideoTrack, Shelter
 import os
 import datetime
 import subprocess
@@ -973,3 +973,149 @@ class CronStatusAdmin(admin.ModelAdmin):
             'now':   datetime.datetime.now(),
         }
         return TemplateResponse(request, 'admin/cron_status.html', context)
+
+# ── Shelter / Resource Admin ─────────────────────────────────────────────────
+
+PDX_SHELTER_SEED = [
+    # Emergency / Overnight
+    dict(name='JOIN PDX – Street Outreach',shelter_type='emergency',accepts='all',
+         address='4126 NE Sandy Blvd, Portland, OR 97212',phone='503-232-0007',
+         website='https://joinpdx.org',hours='Mon–Fri 9am–5pm (outreach 24/7)',
+         available_cold=True,available_hot=False,available_smoke=False,
+         notes='Street outreach, shelter navigation, transitional housing referrals.'),
+    dict(name="Transition Projects – Jean's Place",shelter_type='day',accepts='all',
+         address='665 NW Hoyt St, Portland, OR 97209',phone='503-280-4712',
+         website='https://www.tprojects.org',hours='Daily 7am–10pm',
+         available_cold=True,available_hot=True,available_smoke=True,
+         notes='Day shelter, showers, laundry, meals. No intake barriers.'),
+    dict(name='Central City Concern – Old Town Recovery Center',shelter_type='sobering',accepts='all',
+         address='444 NW 5th Ave, Portland, OR 97209',phone='503-294-1681',
+         website='https://www.centralcityconcern.org',hours='24/7',
+         available_cold=True,available_hot=False,available_smoke=False,
+         notes='Sobering center and detox. Medical staff on-site. No appointment needed.'),
+    dict(name='Blanchet House',shelter_type='day',accepts='all',
+         address='310 NW Glisan St, Portland, OR 97209',phone='503-241-4340',
+         website='https://www.blanchethouse.org',hours='Daily 6am–7pm',
+         available_cold=True,available_hot=True,available_smoke=True,
+         notes='Free meals three times daily. No ID required. Indoor dining room.'),
+    dict(name="Transition Projects – Clark Center (Men's)",shelter_type='overnight',accepts='men',
+         address='4611 SE Belmont St, Portland, OR 97215',phone='503-294-7400',
+         website='https://www.tprojects.org',hours='Nightly — call for intake hours',
+         available_cold=True,available_hot=False,available_smoke=False,
+         notes="Men's overnight shelter. Call ahead for current bed availability."),
+    dict(name='NAOMI – Safe House',shelter_type='womens',accepts='women',
+         address='Confidential – call for location',phone='503-295-3906',
+         website='https://www.naomipnw.org',hours='24/7',
+         available_cold=True,available_hot=False,available_smoke=False,
+         notes='Domestic violence safe house for women and children. Location confidential — call first.'),
+    dict(name='Outside In – Youth Shelter',shelter_type='youth',accepts='youth',
+         address='1132 SW 13th Ave, Portland, OR 97205',phone='503-223-4121',
+         website='https://outsidein.org',hours='Mon–Fri 9am–5pm drop-in; overnight for enrolled youth',
+         available_cold=True,available_hot=True,available_smoke=True,
+         notes='Youth ages 13–25. LGBTQ+ affirming. Drop-in services, health clinic, meals.'),
+    dict(name='Youth Villages – New Directions',shelter_type='youth',accepts='youth',
+         address='Phone intake only',phone='503-872-0012',
+         website='https://youthvillages.org',hours='24/7 crisis line',
+         available_cold=True,available_hot=False,available_smoke=False,
+         notes='Youth crisis intervention, shelter placement navigation.'),
+    dict(name='Portland Rescue Mission',shelter_type='overnight',accepts='all',
+         address='111 W Burnside St, Portland, OR 97209',phone='503-227-0421',
+         website='https://www.portlandrescuemission.org',hours='Nightly — call for hours',
+         available_cold=True,available_hot=False,available_smoke=False,
+         notes='Meals and overnight shelter. ID not required for emergency services.'),
+    # Warming / Cooling
+    dict(name='Multnomah County – Extreme Heat Emergency Shelter',shelter_type='cooling',accepts='all',
+         address='Varies — check multco.us on heat advisory days',phone='211',
+         website='https://www.multco.us/emergency-management',hours='During heat advisories only',
+         available_cold=False,available_hot=True,available_smoke=False,
+         notes='County opens cooling centers at libraries and community centers during extreme heat. Call 211 for locations.'),
+    dict(name='Multnomah County – Warming Center Network',shelter_type='warming',accepts='all',
+         address='Varies — activated during freeze alerts',phone='211',
+         website='https://www.multco.us/emergency-management',hours='During freeze/cold weather alerts',
+         available_cold=True,available_hot=False,available_smoke=False,
+         notes='County activates network of warming centers when temps drop below freezing. Call 211 for current locations.'),
+    # Hygiene
+    dict(name='JOIN PDX – Resource Navigation',shelter_type='hygiene',accepts='all',
+         address='4126 NE Sandy Blvd, Portland, OR 97212',phone='503-232-0007',
+         website='https://joinpdx.org',hours='Mon–Fri 9am–5pm',
+         available_cold=False,available_hot=False,available_smoke=False,
+         notes='Showers, hygiene kits, laundry referrals, storage lockers, mail service.'),
+    dict(name='SnowCap Community Charities',shelter_type='hygiene',accepts='all',
+         address='12655 NE Glisan St, Portland, OR 97230',phone='503-262-8706',
+         website='https://www.snowcap.org',hours='Mon–Fri 9am–4pm',
+         available_cold=False,available_hot=False,available_smoke=False,
+         notes='Food pantry, hygiene supplies, clothing. East Portland focus.'),
+    # Veterans
+    dict(name='VA Portland – Homeless Veterans Services',shelter_type='veteran',accepts='veteran',
+         address='3710 SW US Veterans Hospital Rd, Portland, OR 97239',phone='503-220-8262',
+         website='https://www.portland.va.gov',hours='Mon–Fri 8am–4:30pm',
+         available_cold=True,available_hot=False,available_smoke=False,
+         notes='HUD-VASH vouchers, transitional housing, SSVF rapid re-housing. DD-214 required.'),
+    # Hotlines
+    dict(name='211info – Oregon/SW Washington',shelter_type='hotline',accepts='all',
+         address='Phone / text only',phone='211',
+         website='https://www.211info.org',hours='24/7',
+         available_cold=True,available_hot=True,available_smoke=True,
+         notes='Call or text 211 for shelter locations, food, utilities, mental health, and any social service need. Free, confidential, multilingual.'),
+    dict(name='Lines for Life – Crisis Line',shelter_type='hotline',accepts='all',
+         address='Phone only',phone='800-273-8255',
+         website='https://www.linesforlife.org',hours='24/7',
+         available_cold=True,available_hot=False,available_smoke=False,
+         notes='Mental health crisis line. Also text HOME to 741741. Suicide prevention and substance use crisis support.'),
+    dict(name='Oregon 211 – Heat/Cold Emergency Locations',shelter_type='hotline',accepts='all',
+         address='Phone only',phone='211',
+         website='https://www.211info.org',hours='24/7 during weather emergencies',
+         available_cold=True,available_hot=True,available_smoke=True,
+         notes='Dedicated line for real-time warming/cooling center locations during declared weather emergencies.'),
+]
+
+def _seed_shelters():
+    from events.models import Shelter
+    from django.utils.text import slugify
+    created = 0
+    for data in PDX_SHELTER_SEED:
+        slug = slugify(data['name'])
+        if not Shelter.objects.filter(slug=slug).exists():
+            s = Shelter(**data)
+            s.save()
+            created += 1
+    return created
+
+
+@admin.register(Shelter)
+class ShelterAdmin(admin.ModelAdmin):
+    list_display  = ['name', 'shelter_type', 'accepts', 'pets_ok', 'phone',
+                     'available_cold', 'available_hot', 'available_smoke', 'active']
+    list_filter   = ['shelter_type', 'accepts', 'available_cold', 'available_hot',
+                     'available_smoke', 'active', 'pets_ok']
+    search_fields = ['name', 'address', 'neighborhood', 'notes']
+    ordering      = ['shelter_type', 'name']
+    readonly_fields = ['created_at', 'updated_at', 'slug']
+    actions       = ['activate', 'deactivate', 'seed_pdx_shelters']
+
+    fieldsets = [
+        ('Identity', {'fields': ['name', 'slug', 'shelter_type', 'accepts', 'pets_ok', 'active']}),
+        ('Location', {'fields': ['address', 'neighborhood', 'latitude', 'longitude']}),
+        ('Contact & Hours', {'fields': ['phone', 'website', 'hours', 'capacity']}),
+        ('Weather Flags', {
+            'description': 'Check the conditions under which this shelter should be surfaced automatically.',
+            'fields': ['available_cold', 'available_hot', 'available_smoke'],
+        }),
+        ('Notes', {'fields': ['notes']}),
+        ('Meta', {'fields': ['created_at', 'updated_at'], 'classes': ['collapse']}),
+    ]
+
+    def activate(self, request, queryset):
+        queryset.update(active=True)
+        self.message_user(request, f'{queryset.count()} shelter(s) activated.')
+    activate.short_description = '✅ Mark selected as active'
+
+    def deactivate(self, request, queryset):
+        queryset.update(active=False)
+        self.message_user(request, f'{queryset.count()} shelter(s) deactivated.')
+    deactivate.short_description = '🚫 Mark selected as inactive'
+
+    def seed_pdx_shelters(self, request, queryset):
+        n = _seed_shelters()
+        self.message_user(request, f'Seeded {n} new PDX shelters (skipped existing).')
+    seed_pdx_shelters.short_description = '🌱 Seed PDX shelter list (skips duplicates)'

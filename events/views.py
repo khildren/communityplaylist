@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import admin, messages
 from django.template.response import TemplateResponse
-from .models import Event, EventPhoto, Genre, Artist, SiteStats, CalendarFeed, Venue, Neighborhood, UserProfile, Follow, EditSuggestion, PromoterProfile, PlaylistTrack, SavedTrack, RecordListing, RecordReservation, VideoTrack
+from .models import Event, EventPhoto, Genre, Artist, SiteStats, CalendarFeed, Venue, Neighborhood, UserProfile, Follow, EditSuggestion, PromoterProfile, PlaylistTrack, SavedTrack, RecordListing, RecordReservation, VideoTrack, Shelter
 from .forms import EventSubmitForm, EventPhotoForm, RegisterForm, StyledAuthForm, VenueForm
 from .geocode import geocode_location
 from urllib.parse import quote
@@ -3127,3 +3127,40 @@ def api_event_detail(request, slug):
         'lng':              event.longitude,
     }
     return JsonResponse(data)
+
+
+def api_shelters(request):
+    """All active shelters as JSON for the resource hub map."""
+    import math
+
+    shelters = Shelter.objects.filter(active=True)
+
+    # Optional weather-filter: ?alert=hot|cold|smoke returns only relevant shelters
+    alert = request.GET.get('alert', '')
+    if alert == 'hot':
+        shelters = shelters.filter(available_hot=True)
+    elif alert == 'cold':
+        shelters = shelters.filter(available_cold=True)
+    elif alert == 'smoke':
+        shelters = shelters.filter(available_smoke=True)
+
+    data = [s.as_map_dict() for s in shelters]
+
+    # Optional proximity sort: ?lat=&lng= sorts by distance
+    try:
+        user_lat = float(request.GET.get('lat', ''))
+        user_lng = float(request.GET.get('lng', ''))
+        def _dist(s):
+            if s['latitude'] is None or s['longitude'] is None:
+                return 9999
+            dlat = math.radians(s['latitude'] - user_lat)
+            dlng = math.radians(s['longitude'] - user_lng)
+            a = math.sin(dlat/2)**2 + math.cos(math.radians(user_lat)) * math.cos(math.radians(s['latitude'])) * math.sin(dlng/2)**2
+            return 3958.8 * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        for s in data:
+            s['distance_miles'] = round(_dist(s), 2)
+        data.sort(key=lambda s: s['distance_miles'])
+    except (TypeError, ValueError):
+        pass
+
+    return JsonResponse({'shelters': data})
