@@ -1959,12 +1959,15 @@ def artist_edit(request, slug):
     if request.method == 'GET':
         return render(request, 'events/artist_edit.html', {'artist': artist})
 
+    old_drive = artist.drive_folder_url or ''
     for field in ['bio', 'website', 'drive_folder_url'] + SOCIAL_FIELDS:
         val = request.POST.get(field, '').strip()
         setattr(artist, field, val)
     if request.FILES.get('photo'):
         artist.photo = request.FILES['photo']
     artist.save()
+    if old_drive and not artist.drive_folder_url:
+        PlaylistTrack.objects.filter(artist=artist).delete()
     messages.success(request, 'Profile updated.')
     return redirect('artist_profile', slug=artist.slug)
 
@@ -3075,6 +3078,7 @@ def promoter_edit(request, slug):
 
     promoter.shop_pay_in_person = 'shop_pay_in_person' in request.POST
     promoter.shop_open_to_trade = 'shop_open_to_trade' in request.POST
+    old_drive_p = promoter.drive_folder_url or ''
     for field in ['name', 'bio', 'website', 'drive_folder_url',
                   'shop_sheet_url', 'sol_wallet'] + SOCIAL_FIELDS:
         val = request.POST.get(field, '').strip()
@@ -3092,6 +3096,8 @@ def promoter_edit(request, slug):
     selected_pks = [int(x) for x in request.POST.getlist('members') if x.isdigit()]
     promoter.members.set(Artist.objects.filter(pk__in=selected_pks))
 
+    if old_drive_p and not promoter.drive_folder_url:
+        PlaylistTrack.objects.filter(promoter=promoter).delete()
     messages.success(request, 'Profile updated.')
     return redirect('promoter_detail', slug=promoter.slug)
 
