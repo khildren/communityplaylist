@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import admin, messages
 from django.template.response import TemplateResponse
-from .models import Event, EventPhoto, Genre, Artist, SiteStats, CalendarFeed, Venue, Neighborhood, UserProfile, Follow, EditSuggestion, PromoterProfile, PlaylistTrack, SavedTrack, RecordListing, RecordReservation, VideoTrack, Shelter
+from .models import Event, EventPhoto, Genre, Artist, SiteStats, CalendarFeed, Venue, Neighborhood, UserProfile, Follow, EditSuggestion, PromoterProfile, PlaylistTrack, SavedTrack, RecordListing, RecordReservation, VideoTrack, Shelter, FlyerBackground
 from .forms import EventSubmitForm, EventPhotoForm, RegisterForm, StyledAuthForm, VenueForm
 from .geocode import geocode_location
 from urllib.parse import quote
@@ -3360,14 +3360,106 @@ def event_flyer(request, slug):
     except ValueError:
         photo_url = None
 
+    user_backgrounds = []
+    if request.user.is_authenticated:
+        for bg in FlyerBackground.objects.filter(owner=request.user):
+            url = bg.bg_url
+            if url:
+                user_backgrounds.append({
+                    'pk':    bg.pk,
+                    'url':   request.build_absolute_uri(url) if url.startswith('/') else url,
+                    'label': bg.label or 'Custom',
+                })
+
     return render(request, 'events/event_flyer.html', {
-        'event':      event,
-        'date_str':   date_str,
-        'time_str':   time_str,
-        'artists':    artists,
-        'genres':     genres,
-        'promoters':  promoters,
-        'price_str':  price_str,
-        'photo_url':  photo_url,
-        'event_url':  f'communityplaylist.com/events/{event.slug}/',
+        'event':            event,
+        'date_str':         date_str,
+        'time_str':         time_str,
+        'artists':          artists,
+        'genres':           genres,
+        'promoters':        promoters,
+        'price_str':        price_str,
+        'photo_url':        photo_url,
+        'event_url':        f'communityplaylist.com/events/{event.slug}/',
+        'user_backgrounds': user_backgrounds,
+        'bg_count':         len(user_backgrounds),
     })
+
+
+@login_required
+def flyer_bg_upload(request):
+    """Upload a new flyer background (max 10 per user). Returns JSON."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    if FlyerBackground.objects.filter(owner=request.user).count() >= 10:
+        return JsonResponse({'error': 'Max 10 backgrounds — delete one first.'}, status=400)
+    image = request.FILES.get('image')
+    if not image:
+        return JsonResponse({'error': 'No image provided.'}, status=400)
+    if not image.content_type.startswith('image/'):
+        return JsonResponse({'error': 'File must be an image.'}, status=400)
+    if image.size > 8 * 1024 * 1024:
+        return JsonResponse({'error': 'Image must be under 8 MB.'}, status=400)
+    label = request.POST.get('label', '')[:60]
+    bg = FlyerBackground.objects.create(owner=request.user, image=image, label=label)
+    return JsonResponse({
+        'ok':    True,
+        'pk':    bg.pk,
+        'url':   request.build_absolute_uri(bg.image.url),
+        'label': bg.label,
+    })
+
+
+@login_required
+def flyer_bg_delete(request, pk):
+    """Delete a saved flyer background."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    bg = get_object_or_404(FlyerBackground, pk=pk, owner=request.user)
+    if bg.image:
+        bg.image.delete(save=False)
+    bg.delete()
+    return JsonResponse({'ok': True})
+
+
+def flyer_bg_drive(request):
+    """List image files from a Google Drive folder or single file URL."""
+    from django.conf import settings
+    import urllib.request as _ur, urllib.parse as _up, json as _json
+    folder_url = request.GET.get('url', '').strip()
+    if not folder_url:
+        return JsonResponse({'error': 'No URL provided.'}, status=400)
+
+    # Single file?
+    m = re.search(r'/d/([a-zA-Z0-9_-]+)', folder_url)
+    if m and '/folders/' not in folder_url:
+        fid = m.group(1)
+        return JsonResponse({'ok': True, 'images': [
+            {'id': fid, 'name': 'Drive image',
+             'url': f'https://drive.google.com/thumbnail?id={fid}&sz=w1200'}
+        ]})
+
+    # Folder?
+    mf = re.search(r'/folders/([a-zA-Z0-9_-]+)', folder_url)
+    if not mf:
+        return JsonResponse({'error': 'Paste a Google Drive folder or file link.'}, status=400)
+
+    api_key = getattr(settings, 'GOOGLE_DRIVE_API_KEY', '')
+    if not api_key:
+        return JsonResponse({'error': 'Drive API key not configured on this server.'}, status=400)
+
+    folder_id = mf.group(1)
+    q = _up.quote(f"'{folder_id}' in parents and mimeType contains 'image/' and trashed=false")
+    api_url = (f'https://www.googleapis.com/drive/v3/files'
+               f'?q={q}&fields=files(id,name)&key={api_key}&pageSize=20')
+    try:
+        with _ur.urlopen(api_url, timeout=10) as resp:
+            data = _json.loads(resp.read())
+        images = [
+            {'id': f['id'], 'name': f['name'],
+             'url': f"https://drive.google.com/thumbnail?id={f['id']}&sz=w1200"}
+            for f in data.get('files', [])
+        ]
+        return JsonResponse({'ok': True, 'images': images})
+    except Exception as e:
+        return JsonResponse({'error': f'Drive API error: {e}'}, status=500)

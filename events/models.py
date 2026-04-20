@@ -1322,6 +1322,41 @@ class InstagramPost(models.Model):
         return f'https://www.instagram.com/p/{self.shortcode}/'
 
 
+class FlyerBackground(models.Model):
+    """Reusable background images for the event flyer generator. Max 10 per user."""
+    owner      = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='flyer_backgrounds')
+    image      = models.ImageField(upload_to='flyer_backgrounds/%Y/', blank=True)
+    source_url = models.URLField(blank=True, max_length=500)  # Drive or remote URL alternative
+    label      = models.CharField(max_length=60, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+        verbose_name = 'Flyer Background'
+        verbose_name_plural = 'Flyer Backgrounds'
+
+    def __str__(self):
+        return self.label or f'Background #{self.pk}'
+
+    @property
+    def bg_url(self):
+        if self.image:
+            try:
+                return self.image.url
+            except ValueError:
+                pass
+        if self.source_url:
+            # Convert Google Drive share links → thumbnail URL
+            m = re.search(r'/d/([a-zA-Z0-9_-]+)', self.source_url)
+            if m:
+                return f'https://drive.google.com/thumbnail?id={m.group(1)}&sz=w1200'
+            m = re.search(r'id=([a-zA-Z0-9_-]+)', self.source_url)
+            if m:
+                return f'https://drive.google.com/thumbnail?id={m.group(1)}&sz=w1200'
+            return self.source_url
+        return ''
+
+
 class CronStatus(models.Model):
     """Proxy model — no DB table. Used only to hang a custom admin page off."""
     class Meta:

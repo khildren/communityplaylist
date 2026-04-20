@@ -141,10 +141,42 @@ html,body{background:#0a0a0a;font-family:sans-serif;min-height:100vh;
 .flyer.sq .fl-title{font-size:16px}
 .flyer.sq .fl-meta{font-size:12.5px}
 
+/* ── Background picker ───────────────────────────────────────────────── */
+.bg-picker{width:min(640px,100%);background:#141414;border:1px solid #222;
+  border-radius:8px;padding:10px 14px}
+.bg-picker-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px}
+.bg-picker-title{font-size:.75em;color:#555;text-transform:uppercase;letter-spacing:.07em;flex:1;white-space:nowrap}
+.bg-count{color:#444}
+.bg-drive-row{display:flex;gap:6px;flex:2;min-width:180px}
+.bg-drive-row input{flex:1;background:#111;border:1px solid #2a2a2a;color:#aaa;
+  padding:5px 8px;border-radius:5px;font-size:.75em;font-family:inherit;outline:none;min-width:0}
+.bg-drive-row input:focus{border-color:#ff6b35}
+.bg-drive-row input::placeholder{color:#333}
+.bg-ctrl{background:#1e1e1e;border:1px solid #2a2a2a;color:#777;padding:4px 10px;
+  border-radius:5px;cursor:pointer;font-size:.73em;font-family:inherit;white-space:nowrap;transition:all .12s}
+.bg-ctrl:hover{border-color:#ff6b35;color:#ff6b35}
+.bg-ctrl.upload-lbl{display:inline-block}
+.bg-thumbs{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin;
+  scrollbar-color:#2a2a2a transparent}
+.bg-thumb{flex-shrink:0;width:64px;cursor:pointer;border-radius:5px;overflow:hidden;
+  border:2px solid transparent;transition:border-color .12s;position:relative}
+.bg-thumb.on{border-color:#ff6b35}
+.bg-thumb img{width:64px;height:64px;object-fit:cover;display:block}
+.bg-thumb-none{width:64px;height:64px;background:#111;display:flex;align-items:center;
+  justify-content:center;font-size:1.4em;color:#333}
+.bg-thumb span{display:block;font-size:.55em;color:#555;padding:2px 3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;background:#0e0e0e}
+.bg-del{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.75);border:none;
+  color:#888;width:16px;height:16px;border-radius:3px;cursor:pointer;font-size:.6em;
+  display:flex;align-items:center;justify-content:center;padding:0;line-height:1;
+  transition:color .1s}
+.bg-del:hover{color:#ff6b35}
+.bg-spinner{font-size:.72em;color:#555;padding:4px 0}
+
 /* ── Print (hides controls, sizes to content) ─────────────────────────── */
 @media print{
   html,body{background:#000;padding:0;gap:0}
-  .ctrl-bar,.back-link{display:none!important}
+  .ctrl-bar,.back-link,.bg-picker{display:none!important}
   .flyer-wrap{box-shadow:none}
   .flyer{border-radius:0}
 }
@@ -162,6 +194,41 @@ html,body{background:#0a0a0a;font-family:sans-serif;min-height:100vh;
   <button class="ctrl-btn" id="dl-btn" onclick="downloadPNG()">⬇ Download PNG</button>
   <div class="ctrl-sep"></div>
   <span class="ctrl-hint">Screenshot or download to save as image</span>
+</div>
+
+<!-- Background picker -->
+<div class="bg-picker">
+  <div class="bg-picker-head">
+    <span class="bg-picker-title">Backgrounds <span class="bg-count">({{ bg_count }}/10)</span></span>
+    <div class="bg-drive-row">
+      <input type="text" id="drive-url" placeholder="Drive folder or image URL…">
+      <button class="bg-ctrl" id="drive-load-btn" onclick="loadDrive()">Load Drive</button>
+    </div>
+    <label class="bg-ctrl upload-lbl" title="Upload image (max 8 MB)">
+      ➕ Upload
+      <input type="file" id="bg-upload-input" accept="image/*" style="display:none" onchange="uploadBg(this)">
+    </label>
+  </div>
+  <div class="bg-thumbs" id="bg-thumbs">
+    <!-- Default / gradient -->
+    <div class="bg-thumb on" id="bg-none" onclick="setBg(null,this)" title="Default gradient">
+      <div class="bg-thumb-none">✦</div>
+      <span>Default</span>
+    </div>
+    {% if photo_url %}
+    <div class="bg-thumb" onclick="setBg('{{ photo_url }}',this)" title="Event photo">
+      <img src="{{ photo_url }}" alt="" crossorigin="anonymous">
+      <span>Event photo</span>
+    </div>
+    {% endif %}
+    {% for bg in user_backgrounds %}
+    <div class="bg-thumb" id="bg-{{ bg.pk }}" data-pk="{{ bg.pk }}" onclick="setBg('{{ bg.url }}',this)" title="{{ bg.label }}">
+      <img src="{{ bg.url }}" alt="{{ bg.label }}" crossorigin="anonymous">
+      <button class="bg-del" onclick="deleteBg(event,{{ bg.pk }},this.closest('.bg-thumb'))" title="Delete">✕</button>
+      <span>{{ bg.label }}</span>
+    </div>
+    {% endfor %}
+  </div>
 </div>
 
 <!-- Flyer -->
@@ -261,6 +328,111 @@ html,body{background:#0a0a0a;font-family:sans-serif;min-height:100vh;
 </div>
 
 <script>
+// ── CSRF helper ────────────────────────────────────────────────────────
+function getCsrf(){return(document.cookie.match('(^|;) ?csrftoken=([^;]*)') || [])[2] || '';}
+
+// ── Background switcher ─────────────────────────────────────────────────
+function setBg(url, thumbEl) {
+  var flBg  = document.querySelector('.fl-bg');
+  var grad  = flBg.querySelector('.fl-grad');
+  var existing = flBg.querySelector('img.custom-bg');
+
+  if (!url) {
+    if (existing) existing.remove();
+    // Restore event photo if present
+    var ep = flBg.querySelector('img.event-photo');
+    if (ep) ep.style.display = '';
+  } else {
+    // Hide event photo, show custom bg
+    var ep2 = flBg.querySelector('img.event-photo');
+    if (ep2) ep2.style.display = 'none';
+    if (!existing) {
+      existing = document.createElement('img');
+      existing.className = 'custom-bg';
+      existing.crossOrigin = 'anonymous';
+      existing.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.55) saturate(1.2)';
+      flBg.insertBefore(existing, grad);
+    }
+    existing.src = url;
+  }
+  document.querySelectorAll('.bg-thumb').forEach(t => t.classList.remove('on'));
+  if (thumbEl) thumbEl.classList.add('on');
+}
+
+function uploadBg(input) {
+  if (!input.files[0]) return;
+  {% if not user.is_authenticated %}alert('Log in to save backgrounds.'); return;{% endif %}
+  var count = document.querySelectorAll('.bg-thumb[data-pk]').length;
+  if (count >= 10) { alert('Max 10 backgrounds reached — delete one first.'); return; }
+  var form = new FormData();
+  form.append('image', input.files[0]);
+  fetch('/flyer/bg/upload/', {
+    method: 'POST',
+    headers: {'X-CSRFToken': getCsrf()},
+    body: form,
+  }).then(r => r.json()).then(d => {
+    if (d.ok) {
+      appendBgThumb(d.pk, d.url, d.label || 'Custom', false);
+      updateBgCount();
+    } else { alert(d.error || 'Upload failed.'); }
+  }).catch(() => alert('Upload failed.'));
+  input.value = '';
+}
+
+function deleteBg(e, pk, thumbEl) {
+  e.stopPropagation();
+  if (!confirm('Delete this background?')) return;
+  fetch('/flyer/bg/' + pk + '/delete/', {
+    method: 'POST',
+    headers: {'X-CSRFToken': getCsrf()},
+  }).then(r => r.json()).then(d => {
+    if (d.ok) {
+      // If it was the active bg, reset to default
+      if (thumbEl.classList.contains('on')) setBg(null, document.getElementById('bg-none'));
+      thumbEl.remove();
+      updateBgCount();
+    }
+  });
+}
+
+function loadDrive() {
+  var url = document.getElementById('drive-url').value.trim();
+  if (!url) return;
+  var btn = document.getElementById('drive-load-btn');
+  btn.textContent = '…';
+  btn.disabled = true;
+  fetch('/flyer/bg/drive/?url=' + encodeURIComponent(url))
+    .then(r => r.json())
+    .then(d => {
+      btn.textContent = 'Load Drive';
+      btn.disabled = false;
+      if (d.ok && d.images.length) {
+        d.images.forEach(img => appendBgThumb(null, img.url, img.name, true));
+      } else {
+        alert(d.error || 'No images found in that Drive folder.');
+      }
+    }).catch(() => { btn.textContent = 'Load Drive'; btn.disabled = false; alert('Drive load failed.'); });
+}
+
+function appendBgThumb(pk, url, label, isDrive) {
+  var div = document.createElement('div');
+  div.className = 'bg-thumb';
+  if (pk) { div.id = 'bg-' + pk; div.dataset.pk = String(pk); }
+  div.title = label;
+  div.onclick = () => setBg(url, div);
+  var del = pk && !isDrive
+    ? `<button class="bg-del" onclick="deleteBg(event,${pk},this.closest('.bg-thumb'))" title="Delete">✕</button>`
+    : '';
+  div.innerHTML = `<img src="${url}" crossorigin="anonymous" alt="">${del}<span>${label}</span>`;
+  document.getElementById('bg-thumbs').appendChild(div);
+}
+
+function updateBgCount() {
+  var n = document.querySelectorAll('#bg-thumbs .bg-thumb[data-pk]').length;
+  var el = document.querySelector('.bg-count');
+  if (el) el.textContent = '(' + n + '/10)';
+}
+
 // ── Format toggle ───────────────────────────────────────────────────────
 function setFmt(fmt) {
   var flyer = document.getElementById('flyer');

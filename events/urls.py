@@ -36,6 +36,9 @@ urlpatterns = [
     path('events/<slug:slug>/lineup/create/', views.event_lineup_create, name='event_lineup_create'),
     path('events/<slug:slug>/claim/', views.claim_event, name='claim_event'),
     path('events/<slug:slug>/flyer/', views.event_flyer, name='event_flyer'),
+    path('flyer/bg/upload/',           views.flyer_bg_upload,  name='flyer_bg_upload'),
+    path('flyer/bg/<int:pk>/delete/',  views.flyer_bg_delete,  name='flyer_bg_delete'),
+    path('flyer/bg/drive/',            views.flyer_bg_drive,   name='flyer_bg_drive'),
     path('events/<slug:slug>/edit/', views.event_edit, name='event_edit'),
     # Venues
     path('venues/', views.venue_list, name='venue_list'),
