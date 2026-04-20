@@ -2,6 +2,33 @@
 {% block title %}{{ venue.name }} — Community Playlist{% endblock %}
 {% block head_extra %}
 <link rel="alternate" type="text/calendar" title="{{ venue.name }} events" href="/venues/{{ venue.slug }}/feed.ics">
+{% with desc=venue.description|default:""|truncatechars:200 %}{% with fallback="PDX music venue on Community Playlist — upcoming events, location, and more." %}{% with final_desc=desc|default:fallback %}
+<meta name="description" content="{{ final_desc }}">
+<link rel="canonical" href="https://communityplaylist.com/venues/{{ venue.slug }}/">
+<meta property="og:type"        content="website">
+<meta property="og:title"       content="{{ venue.name }} — Community Playlist PDX">
+<meta property="og:description" content="{{ final_desc }}">
+<meta property="og:url"         content="https://communityplaylist.com/venues/{{ venue.slug }}/">
+<meta property="og:site_name"   content="Community Playlist PDX">
+{% if venue.logo %}<meta property="og:image" content="https://communityplaylist.com{{ venue.logo.url }}">{% endif %}
+<meta name="twitter:card"        content="{% if venue.logo %}summary_large_image{% else %}summary{% endif %}">
+<meta name="twitter:title"       content="{{ venue.name }}">
+<meta name="twitter:description" content="{{ final_desc }}">
+{% if venue.logo %}<meta name="twitter:image" content="https://communityplaylist.com{{ venue.logo.url }}">{% endif %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "MusicVenue",
+  "name": "{{ venue.name|escapejs }}",
+  "url": "https://communityplaylist.com/venues/{{ venue.slug }}/",
+  {% if venue.address %}"address": {"@type":"PostalAddress","streetAddress":"{{ venue.address|escapejs }}","addressLocality":"Portland","addressRegion":"OR","addressCountry":"US"},{% endif %}
+  {% if venue.latitude and venue.longitude %}"geo": {"@type":"GeoCoordinates","latitude":{{ venue.latitude }},"longitude":{{ venue.longitude }}},{% endif %}
+  {% if venue.logo %}"image": "https://communityplaylist.com{{ venue.logo.url }}",{% endif %}
+  {% if final_desc %}"description": "{{ final_desc|escapejs }}",{% endif %}
+  "sameAs": [{% if venue.website %}"{{ venue.website }}"{% endif %}{% if venue.instagram %}{% if venue.website %},{% endif %}"https://www.instagram.com/{{ venue.instagram }}/"{% endif %}{% if venue.youtube %}{% if venue.website or venue.instagram %},{% endif %}"{{ venue.youtube }}"{% endif %}]
+}
+</script>
+{% endwith %}{% endwith %}{% endwith %}
 {% endblock %}
 {% block styles %}
 <style>

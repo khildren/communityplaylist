@@ -1,179 +1,182 @@
 """
 harvest_instagram — pull recent posts from tracked InstagramAccount records.
 
-Uses Instagram's internal profile API (same approach as enrich_instagram).
-The web_profile_info endpoint returns the ~12 most recent posts in
-edge_owner_to_timeline_media — no auth required, rate-limited to ~1/6s.
+Uses instaloader with a saved session for reliable, rate-limit-aware fetching.
+Without a session it still works but Instagram throttles anonymous requests hard.
 
-Run:
+First-time setup (run once, interactively):
+    python manage.py setup_instagram_session
+
+Then harvest:
     python manage.py harvest_instagram
     python manage.py harvest_instagram --handle rave.pdx
     python manage.py harvest_instagram --dry-run
-    python manage.py harvest_instagram --force   # re-fetch even recently-updated accounts
+    python manage.py harvest_instagram --force       # ignore the 24h cooldown
+    python manage.py harvest_instagram --count 6     # max posts to keep per account
 """
+import os
 import time
-import json
-import urllib.request
-import urllib.parse
+import instaloader
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from django.db.models import Q
 
-IG_API  = 'https://i.instagram.com/api/v1/users/web_profile_info/'
-IG_HDRS = {
-    'User-Agent': (
-        'Mozilla/5.0 (Linux; Android 12; SM-G991B) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/120.0.6099.230 Mobile Safari/537.36 '
-        'Instagram/309.0.0.28.111'
-    ),
-    'X-IG-App-ID': '936619743392459',
-    'Accept': 'application/json',
-    'Accept-Language': 'en-US,en;q=0.9',
-}
-RATE_SLEEP = 6
+# Where the instaloader session file lives inside the container.
+# Mount a persistent volume here so it survives image rebuilds.
+SESSION_DIR  = os.environ.get('IG_SESSION_DIR', '/app/media/.ig_session')
+SESSION_FILE = os.path.join(SESSION_DIR, 'session')
 
 
-def _fetch_profile(handle):
-    params = urllib.parse.urlencode({'username': handle.lstrip('@')})
-    req    = urllib.request.Request(f'{IG_API}?{params}', headers=IG_HDRS)
-    try:
-        with urllib.request.urlopen(req, timeout=20) as r:
-            data = json.loads(r.read())
-    except urllib.error.HTTPError as e:
-        if e.code == 429:
-            raise RuntimeError('Instagram rate-limit (429) — wait and retry')
-        if e.code == 404:
-            return None
-        raise
-    except Exception as e:
-        raise RuntimeError(str(e))
-    return data.get('data', {}).get('user') or None
-
-
-def _parse_posts(user):
-    """Extract post dicts from the edge_owner_to_timeline_media node."""
-    edges = (
-        (user.get('edge_owner_to_timeline_media') or {})
-        .get('edges') or []
+def _get_loader():
+    """Return an Instaloader instance, logged in if a session file exists."""
+    L = instaloader.Instaloader(
+        download_pictures=False,
+        download_videos=False,
+        download_video_thumbnails=False,
+        download_geotags=False,
+        download_comments=False,
+        save_metadata=False,
+        quiet=True,
     )
-    posts = []
-    for edge in edges:
-        node = edge.get('node', {})
-        ig_id     = node.get('id', '')
-        shortcode = node.get('shortcode', '')
-        if not ig_id or not shortcode:
-            continue
-        caption_edges = (node.get('edge_media_to_caption') or {}).get('edges') or []
-        caption = caption_edges[0]['node']['text'] if caption_edges else ''
-        image_url = node.get('display_url') or node.get('thumbnail_src') or ''
-        is_video  = bool(node.get('is_video'))
-        timestamp = node.get('taken_at_timestamp')
-        if not timestamp:
-            continue
-        posts.append({
-            'ig_post_id': ig_id,
-            'shortcode':  shortcode,
-            'caption':    caption,
-            'image_url':  image_url,
-            'is_video':   is_video,
-            'posted_at':  timezone.datetime.utcfromtimestamp(timestamp).replace(
-                tzinfo=timezone.utc
-            ),
-        })
-    return posts
+    if os.path.exists(SESSION_FILE):
+        try:
+            L.load_session_from_file(username=None, filename=SESSION_FILE)
+        except Exception:
+            pass  # session stale — continue anonymously, warn below
+    return L
 
 
 class Command(BaseCommand):
-    help = 'Harvest recent posts from tracked Instagram accounts.'
+    help = 'Harvest recent posts from tracked Instagram accounts via instaloader.'
 
     def add_arguments(self, parser):
         parser.add_argument('--handle', type=str, default='',
                             help='Harvest a single account by handle')
         parser.add_argument('--force', action='store_true',
-                            help='Re-fetch accounts updated within the last hour')
+                            help='Re-fetch accounts regardless of last_fetched time')
         parser.add_argument('--dry-run', action='store_true',
                             help='Print what would be saved without writing to DB')
+        parser.add_argument('--count', type=int, default=12,
+                            help='Max recent posts to fetch per account (default: 12)')
 
     def handle(self, *args, **options):
         from events.models import InstagramAccount, InstagramPost
 
-        handle  = options['handle'].lstrip('@').strip()
-        force   = options['force']
-        dry_run = options['dry_run']
+        handle   = options['handle'].lstrip('@').strip()
+        force    = options['force']
+        dry_run  = options['dry_run']
+        max_posts = options['count']
 
-        from django.db.models import Q
         qs = InstagramAccount.objects.filter(status=InstagramAccount.STATUS_ACTIVE)
         if handle:
             qs = qs.filter(handle__iexact=handle)
         if not force:
             qs = qs.filter(
                 Q(last_fetched__isnull=True) |
-                Q(last_fetched__lt=timezone.now() - timezone.timedelta(hours=1))
+                Q(last_fetched__lt=timezone.now() - timezone.timedelta(hours=24))
             )
 
         accounts = list(qs)
-        self.stdout.write(f'Harvesting {len(accounts)} account(s)…')
+        if not accounts:
+            self.stdout.write('No accounts due for harvest.')
+            return
 
+        L = _get_loader()
+        has_session = os.path.exists(SESSION_FILE)
+        if not has_session:
+            self.stdout.write(
+                self.style.WARNING(
+                    'No session file found — running anonymously (rate limits will be tight).\n'
+                    'Run: python manage.py setup_instagram_session'
+                )
+            )
+
+        self.stdout.write(f'Harvesting {len(accounts)} account(s) | max {max_posts} posts each…')
         total_new = 0
 
         for i, account in enumerate(accounts):
             if i > 0:
-                time.sleep(RATE_SLEEP)
+                # instaloader has its own internal rate limiting; this is extra headroom
+                pause = 8 if has_session else 20
+                self.stdout.write(f'  waiting {pause}s…')
+                time.sleep(pause)
 
             self.stdout.write(f'  @{account.handle}')
 
             try:
-                user = _fetch_profile(account.handle)
-            except RuntimeError as e:
-                self.stderr.write(f'    ERROR: {e}')
-                time.sleep(15)
+                profile = instaloader.Profile.from_username(L.context, account.handle)
+            except instaloader.exceptions.ProfileNotExistsException:
+                self.stdout.write('    — profile not found or private')
                 continue
+            except instaloader.exceptions.TooManyRequestsException:
+                self.stderr.write('    rate-limited — stopping early, try again later')
+                break
             except Exception as e:
                 self.stderr.write(f'    ERROR: {e}')
                 continue
 
-            if not user:
-                self.stdout.write(f'    — not found or private')
-                continue
-
-            # Update account metadata
+            # Update account metadata from profile
             if not dry_run:
-                account.ig_user_id     = user.get('id') or account.ig_user_id
-                account.display_name   = user.get('full_name') or account.display_name
-                account.bio            = (user.get('biography') or '').strip() or account.bio
-                account.follower_count = (user.get('edge_followed_by') or {}).get('count')
+                account.ig_user_id     = str(profile.userid)
+                account.display_name   = profile.full_name or account.display_name
+                account.bio            = profile.biography or account.bio
+                account.follower_count = profile.followers
                 account.last_fetched   = timezone.now()
                 account.save(update_fields=[
                     'ig_user_id', 'display_name', 'bio', 'follower_count', 'last_fetched'
                 ])
 
-            posts = _parse_posts(user)
-            self.stdout.write(f'    {len(posts)} posts in response')
+            self.stdout.write(
+                f'    {profile.full_name} | {profile.followers:,} followers'
+            )
 
             new_count = 0
-            for p in posts:
-                if dry_run:
-                    self.stdout.write(
-                        f'    [dry] {p["shortcode"]} | '
-                        f'{p["posted_at"].strftime("%Y-%m-%d")} | '
-                        f'{p["caption"][:80]}'
+            fetched   = 0
+            try:
+                for post in profile.get_posts():
+                    if fetched >= max_posts:
+                        break
+                    fetched += 1
+
+                    posted_at = timezone.make_aware(
+                        post.date_local.replace(tzinfo=None),
+                        timezone.utc
+                    ) if post.date_utc else None
+
+                    if not posted_at:
+                        continue
+
+                    if dry_run:
+                        self.stdout.write(
+                            f'    [dry] {post.shortcode} | '
+                            f'{post.date_utc.strftime("%Y-%m-%d")} | '
+                            f'{(post.caption or "")[:80]}'
+                        )
+                        continue
+
+                    _, created = InstagramPost.objects.get_or_create(
+                        ig_post_id=str(post.mediaid),
+                        defaults={
+                            'account':   account,
+                            'shortcode': post.shortcode,
+                            'caption':   post.caption or '',
+                            'image_url': post.url or '',
+                            'is_video':  post.is_video,
+                            'posted_at': post.date_utc,
+                        }
                     )
-                    continue
-                _, created = InstagramPost.objects.get_or_create(
-                    ig_post_id=p['ig_post_id'],
-                    defaults={
-                        'account':   account,
-                        'shortcode': p['shortcode'],
-                        'caption':   p['caption'],
-                        'image_url': p['image_url'],
-                        'is_video':  p['is_video'],
-                        'posted_at': p['posted_at'],
-                    }
-                )
-                if created:
-                    new_count += 1
+                    if created:
+                        new_count += 1
+
+            except instaloader.exceptions.TooManyRequestsException:
+                self.stderr.write('    rate-limited mid-fetch — stopping early')
+                break
+            except Exception as e:
+                self.stderr.write(f'    fetch error: {e}')
+                continue
 
             if not dry_run:
-                self.stdout.write(f'    ✓ {new_count} new posts saved')
+                self.stdout.write(f'    ✓ {new_count} new / {fetched} checked')
                 total_new += new_count
 
         self.stdout.write(f'\nDone. {total_new} new posts total.')

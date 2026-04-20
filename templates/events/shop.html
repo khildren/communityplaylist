@@ -52,18 +52,31 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
 .card-shop{font-size:.67em;color:#555;margin-top:2px}
 .card-shop a{color:#ff6b35;text-decoration:none}
 .card-shop a:hover{text-decoration:underline}
-.preview-icon{position:absolute;top:7px;right:7px;background:rgba(0,0,0,.75);
-  border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;
-  font-size:.8em;opacity:0;transition:opacity .15s}
-.record-card:hover .preview-icon{opacity:1}
+.preview-icon{position:absolute;top:7px;right:7px;background:rgba(255,107,53,.85);
+  border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+  font-size:.75em;color:#fff;cursor:pointer;transition:transform .12s,background .12s;user-select:none}
+.preview-icon:hover{background:#ff6b35;transform:scale(1.15)}
 
 /* Reserve modal */
-.reserve-link{display:block;text-align:center;background:#1a0a00;border:1px solid #ff6b3530;
-  color:#ff6b35;font-size:.72em;padding:6px;text-decoration:none;transition:all .12s}
+.reserve-link{display:block;width:100%;text-align:center;background:#1a0a00;border:1px solid #ff6b3530;
+  color:#ff6b35;font-size:.72em;padding:6px;text-decoration:none;transition:all .12s;
+  cursor:pointer;font-family:inherit;box-sizing:border-box}
 .reserve-link:hover{background:#2a1000;border-color:#ff6b35}
 
 .empty{color:#444;text-align:center;padding:60px 0;font-size:.9em}
 .total-count{color:#444;font-size:.78em;margin-bottom:14px}
+
+/* Seller CTA */
+.seller-cta{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:12px 16px;margin-bottom:20px}
+.seller-cta-text{font-size:.78em;color:#666;line-height:1.5}
+.seller-cta-text strong{color:#aaa;font-weight:600}
+.seller-cta-links{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap}
+.seller-cta-links a{font-size:.75em;padding:5px 12px;border-radius:5px;text-decoration:none;white-space:nowrap}
+.cta-primary{background:#1a0a00;border:1px solid #ff6b35;color:#ff6b35}
+.cta-primary:hover{background:#2a1000}
+.cta-secondary{background:transparent;border:1px solid #2a2a2a;color:#666}
+.cta-secondary:hover{border-color:#555;color:#aaa}
 </style>
 {% endblock %}
 
@@ -71,6 +84,29 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
 <div class="page">
   <h1>🛒 Record Shop</h1>
   <p class="sub">Vinyl from Portland crews &amp; collectives · Pay at pickup · Trade welcome</p>
+
+  <!-- Seller CTA -->
+  {% if not request.user.is_authenticated %}
+  <div class="seller-cta">
+    <div class="seller-cta-text">
+      <strong>Got records to sell?</strong> Mobile, virtual, or brick &amp; mortar — list your shop here free.<br>
+      <span style="color:#444">Join Portland's community record marketplace.</span>
+    </div>
+    <div class="seller-cta-links">
+      <a href="/register/" class="cta-primary">Create account →</a>
+      <a href="/promoters/" class="cta-secondary">Browse collectives</a>
+    </div>
+  </div>
+  {% else %}
+  <div class="seller-cta">
+    <div class="seller-cta-text">
+      <strong>Selling records?</strong> Add your shop to Community Playlist — mobile, virtual, or brick &amp; mortar.
+    </div>
+    <div class="seller-cta-links">
+      <a href="/promoters/register/" class="cta-primary">List your shop →</a>
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Filter bar -->
   <form method="get" class="filter-bar" id="shop-filter">
@@ -102,7 +138,7 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
   {% if listings %}
   <div class="record-grid">
     {% for r in listings %}
-    <div class="record-card"{% if r.preview_url %} data-pv-url="{{ r.preview_url|escapejs }}"{% endif %}>
+    <div class="record-card">
       <div class="cover-wrap">
         {% if r.cover_url %}
           <img src="{{ r.cover_url }}" alt="{{ r.artist }} — {{ r.title }}" loading="lazy">
@@ -111,7 +147,7 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
         {% endif %}
         <span class="price-badge">{{ r.price_display }}</span>
         {% if r.preview_url %}
-          <span class="preview-icon" title="Play preview" onclick="event.stopPropagation();cpPvOpen(this.closest('[data-pv-url]'))">▶</span>
+          <span class="preview-icon" data-preview="{{ r.preview_url|escapejs }}" title="Preview — click to play">▶</span>
         {% endif %}
       </div>
       <div class="card-body">
@@ -126,19 +162,10 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
         {% if r.styles %}<div class="card-meta" style="color:#444">{{ r.styles }}</div>{% endif %}
         <div class="card-shop">via <a href="{% url 'promoter_detail' r.promoter.slug %}">{{ r.promoter.name }}</a></div>
       </div>
-      {% if r.preview_url %}
-      <div class="rs-pv-bar" style="display:none;padding:6px 12px;background:#0e0e0e;border-top:1px solid #1a1a1a;gap:6px;align-items:center">
-        <button class="rs-pv-play" onclick="cpPvToggle()" style="background:transparent;border:none;color:#ff6b35;cursor:pointer;font-size:.85em;padding:0 2px;flex-shrink:0;font-family:inherit">⏸</button>
-        <div class="rs-pv-prog" onclick="cpPvSeek(event,this)" style="flex:1;height:3px;background:#2a2a2a;border-radius:2px;cursor:pointer;position:relative;min-width:30px">
-          <div class="rs-pv-fill" style="position:absolute;left:0;top:0;height:100%;background:#ff6b35;border-radius:2px;width:0%"></div>
-        </div>
-        <span class="rs-pv-time" style="font-size:.67em;color:#555;white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0">0:00</span>
-        <button onclick="cpPvStop()" style="background:transparent;border:none;color:#444;cursor:pointer;font-size:.75em;padding:0 2px;flex-shrink:0;font-family:inherit">✕</button>
-      </div>
-      {% endif %}
-      <a href="{% url 'promoter_reserve' r.promoter.slug r.pk %}" class="reserve-link">
+      <button type="button" class="reserve-link"
+              onclick="shopReserveOpen('{{ r.promoter.slug|escapejs }}', {{ r.pk }}, '{{ r.artist|escapejs }} – {{ r.title|escapejs }}', '{{ r.price_display|escapejs }}')">
         Reserve →
-      </a>
+      </button>
     </div>
     {% endfor %}
   </div>
@@ -147,7 +174,130 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
   {% endif %}
 </div>
 
+<div id="shop-preview-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9200;align-items:center;justify-content:center;flex-direction:column;gap:12px"
+     onclick="if(event.target===this)shopPreviewClose()">
+  <div id="shop-preview-wrap" style="position:relative;width:min(640px,96vw);aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden"></div>
+  <button onclick="shopPreviewClose()"
+          style="background:transparent;border:1px solid #333;color:#666;padding:6px 20px;border-radius:6px;cursor:pointer;font-size:.82em;font-family:inherit">
+    ✕ Close
+  </button>
+</div>
+
+<div id="shop-reserve-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:9100;align-items:center;justify-content:center">
+  <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:24px 20px;max-width:380px;width:92%">
+    <div style="font-size:.7em;color:#555;text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px">Reserve this record</div>
+    <div id="shop-reserve-label" style="color:#eee;font-size:.92em;font-weight:600;margin-bottom:2px"></div>
+    <div id="shop-reserve-price" style="color:#ff6b35;font-size:.8em;margin-bottom:16px"></div>
+    <form id="shop-reserve-form" onsubmit="shopReserveSubmit(event)">
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-size:.75em;color:#666;margin-bottom:4px">Your name *</label>
+        <input name="name" required placeholder="Full name"
+               style="width:100%;background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:8px 10px;color:#eee;font-size:.85em;font-family:inherit;outline:none">
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-size:.75em;color:#666;margin-bottom:4px">Email</label>
+        <input name="email" type="email" placeholder="you@example.com"
+               style="width:100%;background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:8px 10px;color:#eee;font-size:.85em;font-family:inherit;outline:none">
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-size:.75em;color:#666;margin-bottom:4px">Discord / Telegram / other contact</label>
+        <input name="contact" placeholder="@yourhandle"
+               style="width:100%;background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:8px 10px;color:#eee;font-size:.85em;font-family:inherit;outline:none">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:.75em;color:#666;margin-bottom:4px">Message (optional)</label>
+        <textarea name="message" rows="2" placeholder="Any questions or pickup details…"
+                  style="width:100%;background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:8px 10px;color:#eee;font-size:.85em;font-family:inherit;outline:none;resize:vertical"></textarea>
+      </div>
+      <div id="shop-reserve-result" style="font-size:.8em;margin-bottom:10px;min-height:18px"></div>
+      <div style="display:flex;gap:8px">
+        <button id="shop-reserve-submit" type="submit"
+                style="flex:1;background:#ff6b35;color:#fff;border:none;padding:10px;border-radius:8px;cursor:pointer;font-size:.85em;font-family:inherit;font-weight:600">
+          Reserve
+        </button>
+        <button type="button" onclick="document.getElementById('shop-reserve-modal').style.display='none'"
+                style="background:transparent;border:1px solid #2a2a2a;color:#666;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:.85em;font-family:inherit">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
+// Preview player
+function shopPreviewOpen(url) {
+  var vid = '';
+  var m = url.match(/(?:youtu\.be\/|v=|\/embed\/)([\w-]{11})/);
+  if (m) vid = m[1];
+  if (!vid) return;
+  var wrap = document.getElementById('shop-preview-wrap');
+  wrap.innerHTML = '<iframe src="https://www.youtube.com/embed/' + vid +
+    '?autoplay=1&rel=0" frameborder="0" allow="autoplay;encrypted-media;picture-in-picture" allowfullscreen' +
+    ' style="position:absolute;inset:0;width:100%;height:100%;border:none"></iframe>';
+  document.getElementById('shop-preview-modal').style.display = 'flex';
+}
+function shopPreviewClose() {
+  document.getElementById('shop-preview-wrap').innerHTML = '';
+  document.getElementById('shop-preview-modal').style.display = 'none';
+}
+document.addEventListener('click', function(e) {
+  var icon = e.target.closest('.preview-icon');
+  if (icon && icon.dataset.preview) {
+    e.preventDefault();
+    e.stopPropagation();
+    shopPreviewOpen(icon.dataset.preview);
+  }
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') shopPreviewClose();
+});
+
+var _shopReserveSlug = null, _shopReservePk = null;
+function shopReserveOpen(slug, pk, label, price) {
+  _shopReserveSlug = slug;
+  _shopReservePk   = pk;
+  document.getElementById('shop-reserve-label').textContent = label;
+  document.getElementById('shop-reserve-price').textContent = price ? '(' + price + ')' : '';
+  document.getElementById('shop-reserve-form').reset();
+  document.getElementById('shop-reserve-result').textContent = '';
+  var btn = document.getElementById('shop-reserve-submit');
+  btn.disabled = false;
+  btn.textContent = 'Reserve';
+  document.getElementById('shop-reserve-modal').style.display = 'flex';
+}
+function shopReserveSubmit(e) {
+  e.preventDefault();
+  if (!_shopReserveSlug) return;
+  var btn  = document.getElementById('shop-reserve-submit');
+  var res  = document.getElementById('shop-reserve-result');
+  var data = new FormData(document.getElementById('shop-reserve-form'));
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  fetch('/promoters/' + _shopReserveSlug + '/reserve/' + _shopReservePk + '/', {
+    method: 'POST',
+    headers: {'X-CSRFToken': (document.cookie.match('(^|;) ?csrftoken=([^;]*)') || [])[2] || ''},
+    body: data,
+  }).then(function(r){ return r.json(); }).then(function(d) {
+    if (d.ok) {
+      res.style.color = '#4caf50';
+      res.textContent = d.message;
+      btn.textContent = 'Sent!';
+      setTimeout(function(){ document.getElementById('shop-reserve-modal').style.display='none'; }, 2200);
+    } else {
+      res.style.color = '#f87171';
+      res.textContent = d.error || 'Something went wrong.';
+      btn.disabled = false;
+      btn.textContent = 'Reserve';
+    }
+  }).catch(function() {
+    res.style.color = '#f87171';
+    res.textContent = 'Request failed — try again.';
+    btn.disabled = false;
+    btn.textContent = 'Reserve';
+  });
+}
+
 // Submit search on enter / debounced input
 var qEl = document.getElementById('shop-q');
 var timer;
@@ -155,90 +305,5 @@ qEl && qEl.addEventListener('input', function() {
   clearTimeout(timer);
   timer = setTimeout(function() { document.getElementById('shop-filter').submit(); }, 500);
 });
-
-// ── Inline preview player — YT IFrame API headless (dev.binsky.xyz pattern) ──
-;(function(){
-  var _pv={yt:null,apiReady:false,timer:null,activeBar:null,activeBtn:null,_pending:null};
-  function _fmt(s){s=Math.floor(s||0);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
-  function _ytId(url){var m=url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);return m?m[1]:null;}
-  function _stopTimer(){if(_pv.timer){clearInterval(_pv.timer);_pv.timer=null;}}
-  function _tick(){
-    if(!_pv.yt||!_pv.activeBar)return;
-    try{
-      var cur=_pv.yt.getCurrentTime()||0,tot=_pv.yt.getDuration()||0;
-      _pv.activeBar.querySelector('.rs-pv-fill').style.width=tot?(cur/tot*100)+'%':'0%';
-      _pv.activeBar.querySelector('.rs-pv-time').textContent=_fmt(cur)+(tot?' / '+_fmt(tot):'');
-    }catch(e){}
-  }
-  function _stateChange(e){
-    var S=YT.PlayerState,pb=_pv.activeBar&&_pv.activeBar.querySelector('.rs-pv-play');
-    if(e.data===S.PLAYING){if(pb)pb.textContent='⏸';_stopTimer();_pv.timer=setInterval(_tick,500);}
-    else if(e.data===S.PAUSED){if(pb)pb.textContent='▶';_stopTimer();}
-    else if(e.data===S.ENDED){_stopTimer();window.cpPvStop();}
-  }
-  function _onError(){
-    _stopTimer();
-    if(_pv.activeBar){
-      var url=(_pv.activeBtn&&_pv.activeBtn.dataset&&_pv.activeBtn.dataset.pvUrl)||'';
-      _pv.activeBar.innerHTML='<span style="font-size:.72em;color:#888;flex:1">Embedding blocked — </span>'
-        +'<a href="'+url+'" target="_blank" rel="noopener" style="font-size:.72em;color:#ff6b35;text-decoration:none">Open on YouTube ↗</a>'
-        +'<button onclick="cpPvStop()" style="background:transparent;border:none;color:#444;cursor:pointer;font-size:.8em;padding:0 4px;font-family:inherit;flex-shrink:0;margin-left:8px">✕</button>';
-      _pv.activeBar.style.display='flex';
-    }
-  }
-  function _doLoad(ytId){
-    if(_pv.yt&&_pv.yt.loadVideoById){_pv.yt.loadVideoById(ytId);_pv.yt.playVideo();}
-    else{_pv.yt=new YT.Player('rs-yt-div',{width:'1',height:'1',videoId:ytId,
-      playerVars:{autoplay:1,controls:0,rel:0,iv_load_policy:3},
-      events:{onReady:function(){_pv.yt.playVideo();},onStateChange:_stateChange,onError:_onError}});}
-  }
-  function _loadAPI(){
-    if(window.YT&&window.YT.Player){_pv.apiReady=true;return;}
-    if(document.getElementById('cp-yt-api-script'))return;
-    var s=document.createElement('script');
-    s.id='cp-yt-api-script';s.src='https://www.youtube.com/iframe_api';
-    document.head.appendChild(s);
-  }
-  var _prev=window.onYouTubeIframeAPIReady||null;
-  window.onYouTubeIframeAPIReady=function(){
-    _pv.apiReady=true;
-    if(typeof _prev==='function')_prev();
-    if(_pv._pending){_doLoad(_pv._pending);_pv._pending=null;}
-  };
-  if(window.YT&&window.YT.Player)_pv.apiReady=true;
-  window.cpPvOpen=function(el){
-    var pvEl=el.dataset&&el.dataset.pvUrl?el:el.closest('[data-pv-url]');
-    var url=pvEl&&pvEl.dataset.pvUrl;if(!url)return;
-    var ytId=_ytId(url);
-    var card=pvEl.classList.contains('rs-card')||pvEl.classList.contains('record-card')
-             ?pvEl:pvEl.closest('.rs-card,.record-card');
-    var bar=card&&card.querySelector('.rs-pv-bar');
-    if(!bar){if(ytId)window.open('https://youtube.com/watch?v='+ytId,'_blank','noopener');return;}
-    if(_pv.activeBar&&_pv.activeBar!==bar)window.cpPvStop();
-    _pv.activeBar=bar; _pv.activeBtn=el.tagName==='BUTTON'?el:null;
-    var fill=bar.querySelector('.rs-pv-fill'),time=bar.querySelector('.rs-pv-time'),pb=bar.querySelector('.rs-pv-play');
-    if(fill)fill.style.width='0%'; if(time)time.textContent='0:00'; if(pb)pb.textContent='⏸';
-    bar.style.display='flex';
-    if(!ytId){window.open(url,'_blank','noopener');return;}
-    _loadAPI();
-    if(_pv.apiReady){_doLoad(ytId);}else{_pv._pending=ytId;}
-  };
-  window.cpPvToggle=function(){
-    if(!_pv.yt)return;
-    try{_pv.yt.getPlayerState()===YT.PlayerState.PLAYING?_pv.yt.pauseVideo():_pv.yt.playVideo();}catch(e){}
-  };
-  window.cpPvStop=function(){
-    _stopTimer();
-    if(_pv.yt)try{_pv.yt.stopVideo();}catch(e){}
-    if(_pv.activeBar)_pv.activeBar.style.display='none';
-    _pv.activeBar=null;_pv.activeBtn=null;
-  };
-  window.cpPvSeek=function(e,bar){
-    if(!_pv.yt)return;
-    try{var pct=(e.clientX-bar.getBoundingClientRect().left)/bar.offsetWidth,dur=_pv.yt.getDuration()||0;
-      if(dur>0)_pv.yt.seekTo(pct*dur,true);}catch(e){}
-  };
-})();
 </script>
-<div id="rs-yt-div" style="display:none;position:absolute;pointer-events:none" aria-hidden="true"></div>
 {% endblock %}

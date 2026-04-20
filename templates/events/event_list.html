@@ -1077,6 +1077,23 @@ function getDefaultView() {
 
 setView(getDefaultView(), false);  // auto-default: don't overwrite user's saved choice
 
+// ── bfcache restoration: browser Back/Forward from native cache ──────────────
+// turbo:before-cache destroys the map before Turbo snapshots the page, leaving
+// mapInitialized=false. When the browser restores the page from its own bfcache
+// (e.persisted=true), scripts don't re-run, so setView never fires again.
+// The pageshow handler catches this and re-initialises or repairs the map.
+window.addEventListener('pageshow', function(e) {
+  if (!e.persisted) return;
+  if (!mapInitialized) {
+    setView(getDefaultView(), false);
+  } else if (map) {
+    setTimeout(function() {
+      map.invalidateSize({animate: false});
+      if (tileLayer) tileLayer.redraw();
+    }, 50);
+  }
+});
+
 // Player is now a floating corner widget — no map resize needed when it appears
 
 // ── Distance filter using browser geolocation ──────────────────────────────

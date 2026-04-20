@@ -41,23 +41,12 @@
     </div>
     {% if item.notes %}<div class="rs-notes">{{ item.notes }}</div>{% endif %}
   </div>
-  {% if item.preview_url %}
-  <div class="rs-pv-bar" style="display:none;padding:6px 12px;background:#0e0e0e;border-top:1px solid #1a1a1a;gap:6px;align-items:center">
-    <button class="rs-pv-play" onclick="cpPvToggle()" style="background:transparent;border:none;color:#ff6b35;cursor:pointer;font-size:.85em;padding:0 2px;flex-shrink:0;font-family:inherit">⏸</button>
-    <div class="rs-pv-prog" onclick="cpPvSeek(event,this)" style="flex:1;height:3px;background:#2a2a2a;border-radius:2px;cursor:pointer;position:relative;min-width:30px">
-      <div class="rs-pv-fill" style="position:absolute;left:0;top:0;height:100%;background:#ff6b35;border-radius:2px;width:0%"></div>
-    </div>
-    <span class="rs-pv-time" style="font-size:.67em;color:#555;white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0">0:00</span>
-    <button onclick="cpPvStop()" style="background:transparent;border:none;color:#444;cursor:pointer;font-size:.75em;padding:0 2px;flex-shrink:0;font-family:inherit">✕</button>
-  </div>
-  {% endif %}
   <div class="rs-buy">
     <div class="rs-price">{% if item.price_display %}{{ item.price_display }}{% elif item.price_sol > 0 %}◎ {{ item.price_sol }}{% else %}<span style="color:#555;font-size:.78em">ask for price</span>{% endif %}</div>
     <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
       {% if item.preview_url %}
       <button class="rs-btn rs-btn-preview"
-              data-pv-url="{{ item.preview_url|escapejs }}"
-              onclick="cpPvOpen(this)">▶ Preview</button>
+              onclick="cpPreview('{{ item.preview_url|escapejs }}', '{{ item.artist|escapejs }} – {{ item.title|escapejs }}')">▶ Preview</button>
       {% endif %}
       {% if promoter.sol_wallet and item.price_sol > 0 %}
       <a class="rs-btn"
@@ -67,7 +56,7 @@
          data-amount="{{ item.price_sol }}"
          data-label="{{ item.artist }} – {{ item.title }}">◎ Pay</a>
       {% endif %}
-      <button class="rs-btn rs-btn-reserve"
+      <button type="button" class="rs-btn rs-btn-reserve"
               onclick="cpReserveOpen({{ item.pk }}, '{{ item.artist|escapejs }} – {{ item.title|escapejs }}', '{{ item.price_display|escapejs }}')">
         {% if can_edit and item.reservation_count %}🔖 {{ item.reservation_count }}{% else %}🔖 Reserve{% endif %}
       </button>
@@ -251,91 +240,27 @@ function cpCopyWallet(id, btn) {
   });
 }
 
-// ── Inline preview player — YT IFrame API headless (dev.binsky.xyz pattern) ──
-;(function(){
-  var _pv={yt:null,apiReady:false,timer:null,activeBar:null,activeBtn:null,_pending:null};
-  function _fmt(s){s=Math.floor(s||0);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
-  function _ytId(url){var m=url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);return m?m[1]:null;}
-  function _stopTimer(){if(_pv.timer){clearInterval(_pv.timer);_pv.timer=null;}}
-  function _tick(){
-    if(!_pv.yt||!_pv.activeBar)return;
-    try{
-      var cur=_pv.yt.getCurrentTime()||0,tot=_pv.yt.getDuration()||0;
-      _pv.activeBar.querySelector('.rs-pv-fill').style.width=tot?(cur/tot*100)+'%':'0%';
-      _pv.activeBar.querySelector('.rs-pv-time').textContent=_fmt(cur)+(tot?' / '+_fmt(tot):'');
-    }catch(e){}
-  }
-  function _stateChange(e){
-    var S=YT.PlayerState,pb=_pv.activeBar&&_pv.activeBar.querySelector('.rs-pv-play');
-    if(e.data===S.PLAYING){if(pb)pb.textContent='⏸';_stopTimer();_pv.timer=setInterval(_tick,500);}
-    else if(e.data===S.PAUSED){if(pb)pb.textContent='▶';_stopTimer();}
-    else if(e.data===S.ENDED){_stopTimer();window.cpPvStop();}
-  }
-  function _onError(){
-    _stopTimer();
-    if(_pv.activeBar){
-      var url=(_pv.activeBtn&&_pv.activeBtn.dataset.pvUrl)||'';
-      _pv.activeBar.innerHTML='<span style="font-size:.72em;color:#888;flex:1">Embedding blocked — </span>'
-        +'<a href="'+url+'" target="_blank" rel="noopener" style="font-size:.72em;color:#ff6b35;text-decoration:none">Open on YouTube ↗</a>'
-        +'<button onclick="cpPvStop()" style="background:transparent;border:none;color:#444;cursor:pointer;font-size:.8em;padding:0 4px;font-family:inherit;flex-shrink:0;margin-left:8px">✕</button>';
-      _pv.activeBar.style.display='flex';
-    }
-  }
-  function _doLoad(ytId){
-    if(_pv.yt&&_pv.yt.loadVideoById){_pv.yt.loadVideoById(ytId);_pv.yt.playVideo();}
-    else{_pv.yt=new YT.Player('rs-yt-div',{width:'1',height:'1',videoId:ytId,
-      playerVars:{autoplay:1,controls:0,rel:0,iv_load_policy:3},
-      events:{onReady:function(){_pv.yt.playVideo();},onStateChange:_stateChange,onError:_onError}});}
-  }
-  function _loadAPI(){
-    if(window.YT&&window.YT.Player){_pv.apiReady=true;return;}
-    if(document.getElementById('cp-yt-api-script'))return;
-    var s=document.createElement('script');
-    s.id='cp-yt-api-script';s.src='https://www.youtube.com/iframe_api';
-    document.head.appendChild(s);
-  }
-  var _prev=window.onYouTubeIframeAPIReady||null;
-  window.onYouTubeIframeAPIReady=function(){
-    _pv.apiReady=true;
-    if(typeof _prev==='function')_prev();
-    if(_pv._pending){_doLoad(_pv._pending);_pv._pending=null;}
-  };
-  if(window.YT&&window.YT.Player)_pv.apiReady=true;
-  window.cpPvOpen=function(el){
-    var pvEl=el.dataset&&el.dataset.pvUrl?el:el.closest('[data-pv-url]');
-    var url=pvEl&&pvEl.dataset.pvUrl;if(!url)return;
-    var ytId=_ytId(url);
-    var card=pvEl.classList.contains('rs-card')||pvEl.classList.contains('record-card')
-             ?pvEl:pvEl.closest('.rs-card,.record-card');
-    var bar=card&&card.querySelector('.rs-pv-bar');
-    if(!bar){if(ytId)window.open('https://youtube.com/watch?v='+ytId,'_blank','noopener');return;}
-    if(_pv.activeBar&&_pv.activeBar!==bar)window.cpPvStop();
-    _pv.activeBar=bar; _pv.activeBtn=el.tagName==='BUTTON'?el:null;
-    var fill=bar.querySelector('.rs-pv-fill'),time=bar.querySelector('.rs-pv-time'),pb=bar.querySelector('.rs-pv-play');
-    if(fill)fill.style.width='0%'; if(time)time.textContent='0:00'; if(pb)pb.textContent='⏸';
-    bar.style.display='flex';
-    if(_pv.activeBtn)_pv.activeBtn.textContent='⏸';
-    if(!ytId){window.open(url,'_blank','noopener');return;}
-    _loadAPI();
-    if(_pv.apiReady){_doLoad(ytId);}else{_pv._pending=ytId;}
-  };
-  window.cpPvToggle=function(){
-    if(!_pv.yt)return;
-    try{_pv.yt.getPlayerState()===YT.PlayerState.PLAYING?_pv.yt.pauseVideo():_pv.yt.playVideo();}catch(e){}
-  };
-  window.cpPvStop=function(){
-    _stopTimer();
-    if(_pv.yt)try{_pv.yt.stopVideo();}catch(e){}
-    if(_pv.activeBar)_pv.activeBar.style.display='none';
-    if(_pv.activeBtn)_pv.activeBtn.textContent='▶ Preview';
-    _pv.activeBar=null;_pv.activeBtn=null;
-  };
-  window.cpPvSeek=function(e,bar){
-    if(!_pv.yt)return;
-    try{var pct=(e.clientX-bar.getBoundingClientRect().left)/bar.offsetWidth,dur=_pv.yt.getDuration()||0;
-      if(dur>0)_pv.yt.seekTo(pct*dur,true);}catch(e){}
-  };
-})();
+function cpPreview(ytUrl, label) {
+  var m = ytUrl.match(/(?:youtu\.be\/|v=|\/embed\/)([\w-]{11})/);
+  if (!m) return;
+  var vid = m[1];
+  var embedUrl = 'https://www.youtube.com/embed/' + vid + '?autoplay=1&rel=0';
+  document.getElementById('rs-preview-label').textContent = label;
+  document.getElementById('rs-preview-yt-link').href = ytUrl;
+  document.getElementById('rs-preview-yt-link-fallback').href = ytUrl;
+  document.getElementById('rs-preview-player-wrap').style.display = 'block';
+  document.getElementById('rs-preview-fallback').style.display = 'none';
+  var wrap = document.getElementById('rs-preview-player-wrap');
+  wrap.innerHTML = '<iframe src="' + embedUrl + '" frameborder="0"' +
+    ' allow="autoplay;encrypted-media;picture-in-picture" allowfullscreen' +
+    ' style="position:absolute;inset:0;width:100%;height:100%;border:none"></iframe>';
+  document.getElementById('rs-preview-modal').style.display = 'flex';
+}
+function cpPreviewClose(e) {
+  if (e && e.target !== document.getElementById('rs-preview-modal') && e.type !== 'click') return;
+  document.getElementById('rs-preview-player-wrap').innerHTML = '';
+  document.getElementById('rs-preview-modal').style.display = 'none';
+}
 
 var _rsActiveListing = null;
 function cpReserveOpen(listingPk, label, price) {
@@ -385,7 +310,29 @@ function cpReserveSubmit(e) {
 }
 </script>
 
-<div id="rs-yt-div" style="display:none;position:absolute;pointer-events:none" aria-hidden="true"></div>
+{# ── YouTube Preview modal ── #}
+<div id="rs-preview-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9200;align-items:center;justify-content:center" onclick="cpPreviewClose(event)">
+  <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;overflow:hidden;max-width:680px;width:95%" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #1e1e1e">
+      <div id="rs-preview-label" style="color:#eee;font-size:.88em;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80%"></div>
+      <button onclick="cpPreviewClose()" style="background:transparent;border:none;color:#555;cursor:pointer;font-size:1.1em;padding:0 4px;font-family:inherit;flex-shrink:0">✕</button>
+    </div>
+    <div id="rs-preview-player-wrap" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden"></div>
+    <div id="rs-preview-fallback" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:14px;text-align:center">
+      <div style="font-size:2em">🎵</div>
+      <div style="color:#888;font-size:.85em">Embedding blocked by the rights holder.</div>
+      <a id="rs-preview-yt-link-fallback" href="" target="_blank" rel="noopener"
+         style="background:#ff0000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:.85em;font-weight:600;display:inline-flex;align-items:center;gap:8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.7 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
+        Watch on YouTube
+      </a>
+    </div>
+    <div style="padding:10px 16px;font-size:.72em;color:#333;display:flex;align-items:center;justify-content:space-between">
+      <span>Via Discogs / YouTube</span>
+      <a id="rs-preview-yt-link" href="" target="_blank" rel="noopener" style="color:#555;text-decoration:none">Open on YouTube ↗</a>
+    </div>
+  </div>
+</div>
 
 {# ── Reserve modal ── #}
 <div id="rs-reserve-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:9100;align-items:center;justify-content:center">
