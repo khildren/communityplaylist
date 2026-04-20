@@ -46,7 +46,9 @@ urlpatterns = [
     path('neighborhoods/', views.neighborhood_list, name='neighborhood_list'),
     path('neighborhoods/<slug:slug>/', views.neighborhood_detail, name='neighborhood_detail'),
     # Calendar
-    path('feed/events.ics', views.calendar_feed, name='calendar_feed'),
+    path('feed/events.ics',  views.calendar_feed, name='calendar_feed'),
+    path('feed/events.rss',  views.events_rss,    name='events_rss'),
+    path('shop/',            views.shop,           name='shop'),
     path('subscribe/', views.calendar_subscribe, name='calendar_subscribe'),
     path('features/', views.features_page, name='features'),
     # Auth

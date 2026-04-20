@@ -384,7 +384,7 @@ def event_detail(request, slug):
 
 
 _CREW_KEYWORDS = re.compile(
-    r'\b(crew|kru|collective|sound|system|records|productions|booking|presents|djs?|music|pdx|posse|squad)\b',
+    r'\b(crew|kru|collective|sound|system|records|productions|booking|presents|DJs|music|pdx|posse|squad)\b',
     re.IGNORECASE,
 )
 
@@ -1662,7 +1662,7 @@ def toggle_follow(request):
 
 def profile_feed(request, handle):
     """Atom/RSS feed of upcoming events from the user's followed entities."""
-    from django.utils.feedgenerator import Rss201rev2Feed
+    from django.utils.feedgenerator import Rss201rev2Feed, Enclosure
     from django.db.models import Q
     profile = get_object_or_404(UserProfile, handle=handle, is_public=True)
     follows = Follow.objects.filter(user=profile.user)
@@ -2548,7 +2548,7 @@ def promoter_list(request):
     if active_type:
         valid = [k for k, _ in PromoterProfile.TYPE_CHOICES]
         if active_type in valid:
-            qs = qs.filter(promoter_type=active_type)
+            qs = qs.filter(promoter_type__contains=[active_type])
     return render(request, 'events/promoter_list.html', {
         'promoters': qs.order_by('name'),
         'active_type': active_type,
@@ -3027,13 +3027,13 @@ def promoter_register(request):
     bio              = request.POST.get('bio', '').strip()
     website          = request.POST.get('website', '').strip()
     drive_folder_url = request.POST.get('drive_folder_url', '').strip()
-    promoter_type    = request.POST.get('promoter_type', PromoterProfile.TYPE_CREW).strip()
     photo            = request.FILES.get('photo')
 
-    # Validate type
+    # Validate types (multiple allowed)
     valid_types = [k for k, _ in PromoterProfile.TYPE_CHOICES]
-    if promoter_type not in valid_types:
-        promoter_type = PromoterProfile.TYPE_CREW
+    promoter_type = [t for t in request.POST.getlist('promoter_type') if t in valid_types]
+    if not promoter_type:
+        promoter_type = [PromoterProfile.TYPE_CREW]
 
     errors = {}
     if not name:
@@ -3084,9 +3084,9 @@ def promoter_edit(request, slug):
         val = request.POST.get(field, '').strip()
         setattr(promoter, field, val)
     # Promoter type
-    pt = request.POST.get('promoter_type', '').strip()
     valid_types = [k for k, _ in PromoterProfile.TYPE_CHOICES]
-    if pt in valid_types:
+    pt = [t for t in request.POST.getlist('promoter_type') if t in valid_types]
+    if pt:
         promoter.promoter_type = pt
     if request.FILES.get('photo'):
         promoter.photo = request.FILES['photo']
@@ -3170,3 +3170,111 @@ def api_shelters(request):
         pass
 
     return JsonResponse({'shelters': data})
+
+
+# ── Global Shop ────────────────────────────────────────────────────────────────
+
+def shop(request):
+    """Aggregate record shop — all available listings across all promoters."""
+    from django.db.models import Q
+    listings = (
+        RecordListing.objects
+        .filter(is_available=True)
+        .select_related('promoter')
+        .order_by('artist', 'title')
+    )
+
+    # Optional filters
+    q       = request.GET.get('q', '').strip()
+    style   = request.GET.get('style', '').strip()
+    fmt     = request.GET.get('format', '').strip()
+    sort    = request.GET.get('sort', 'artist')
+
+    if q:
+        listings = listings.filter(Q(artist__icontains=q) | Q(title__icontains=q) | Q(label__icontains=q))
+    if style:
+        listings = listings.filter(styles__icontains=style)
+    if fmt:
+        listings = listings.filter(format__icontains=fmt)
+
+    sort_map = {
+        'artist': 'artist',
+        'price_lo': 'price_sol',
+        'price_hi': '-price_sol',
+        'newest': '-synced_at',
+    }
+    listings = listings.order_by(sort_map.get(sort, 'artist'))
+
+    # Distinct styles for filter chips
+    all_styles = sorted({
+        s.strip()
+        for r in RecordListing.objects.filter(is_available=True).values_list('styles', flat=True)
+        for s in (r or '').split(',') if s.strip()
+    })
+
+    return render(request, 'events/shop.html', {
+        'listings':   listings,
+        'all_styles': all_styles,
+        'q':          q,
+        'style':      style,
+        'sort':       sort,
+        'total':      listings.count(),
+    })
+
+
+# ── RSS Feed for new approved events (Zapier / IFTTT trigger) ─────────────────
+
+def events_rss(request):
+    """RSS 2.0 feed of recently approved events — consumed by Zapier for social posting."""
+    from django.utils.feedgenerator import Rss201rev2Feed, Enclosure
+    import io
+
+    now      = timezone.now()
+    category = request.GET.get('category', '')
+    limit    = min(int(request.GET.get('limit', 20)), 50)
+
+    qs = (
+        Event.objects.filter(status='approved', start_date__gte=now)
+        .order_by('start_date')
+    )
+    if category:
+        qs = qs.filter(category=category)
+    qs = qs[:limit]
+
+    feed = Rss201rev2Feed(
+        title='Community Playlist PDX — Upcoming Events',
+        link='https://communityplaylist.com/',
+        description='Portland community events submitted by the people, for the people. No ads, no tracking.',
+        language='en',
+        author_name='Community Playlist',
+        feed_url='https://communityplaylist.com/feed/events.rss',
+    )
+
+    for ev in qs:
+        start_local = ev.start_date.astimezone(timezone.get_current_timezone())
+        date_str    = start_local.strftime('%a %b %-d @ %-I:%M %p')
+        location    = ev.location or 'Portland, OR'
+        genres      = ', '.join(g.name for g in ev.genres.all()[:4])
+        desc_parts  = [f'📅 {date_str}', f'📍 {location}']
+        if genres:
+            desc_parts.append(f'🎵 {genres}')
+        if ev.description:
+            desc_parts.append(ev.description[:300])
+        desc_parts.append(f'🔗 https://communityplaylist.com/events/{ev.slug}/')
+
+        photo_url = None
+        if ev.photo:
+            photo_url = f'https://communityplaylist.com{ev.photo.url}'
+
+        feed.add_item(
+            title=ev.title,
+            link=f'https://communityplaylist.com/events/{ev.slug}/',
+            description='\n\n'.join(desc_parts),
+            pubdate=ev.created_at,
+            unique_id=f'{ev.slug}@communityplaylist.com',
+            enclosures=[Enclosure(photo_url, "0", "image/jpeg")] if photo_url else [],
+        )
+
+    buf = io.StringIO()
+    feed.write(buf, 'utf-8')
+    return HttpResponse(buf.getvalue(), content_type='application/rss+xml; charset=utf-8')

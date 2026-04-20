@@ -52,14 +52,10 @@ h1{color:#ff6b35;font-size:1.3em;margin-bottom:4px}
         <img src="{{ p.photo.url }}" alt="{{ p.name }}" class="card-photo">
       {% else %}
         <div class="card-placeholder">
-          {% if p.promoter_type == 'sound_system' %}🔊
-          {% elif p.promoter_type == 'collective' %}🤝
-          {% elif p.promoter_type == 'label' %}💿
-          {% elif p.promoter_type == 'record_swap' %}🎵
-          {% else %}📣{% endif %}
+          {{ p.get_type_icons }}
         </div>
       {% endif %}
-      <span class="card-type">{{ p.get_promoter_type_display }}</span>
+      <span class="card-type">{{ p.get_types_display }}</span>
       <div class="card-name">{{ p.name }}</div>
       {% if p.bio %}<div class="card-bio">{{ p.bio }}</div>{% endif %}
       {% if p.genres.all %}

@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% block title %}Record Shop — Community Playlist{% endblock %}
+
+{% block head_extra %}
+<meta property="og:title"       content="Record Shop — Community Playlist PDX">
+<meta property="og:description" content="Vinyl and records from Portland crews and collectives. DnB, jungle, electronic, and more.">
+<meta property="og:url"         content="https://communityplaylist.com/shop/">
+<meta property="og:site_name"   content="Community Playlist PDX">
+<link rel="canonical"           href="https://communityplaylist.com/shop/">
+{% endblock %}
+
+{% block styles %}
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif}
+.page{max-width:960px;margin:0 auto;padding:24px 16px}
+
+h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
+.sub{color:#555;font-size:.82em;margin-bottom:20px}
+
+/* Filter bar */
+.filter-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;align-items:center}
+.filter-bar input[type=search]{flex:1;min-width:160px;background:#1a1a1a;border:1px solid #2a2a2a;
+  color:#eee;padding:7px 12px;border-radius:6px;font-size:.85em}
+.filter-bar input[type=search]:focus{outline:none;border-color:#ff6b35}
+.style-chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{padding:3px 10px;border-radius:12px;font-size:.73em;border:1px solid #2a2a2a;color:#777;
+  cursor:pointer;text-decoration:none;transition:all .12s;background:#1a1a1a}
+.chip:hover,.chip.active{border-color:#ff6b35;color:#ff6b35;background:#1a0a00}
+.sort-select{background:#1a1a1a;border:1px solid #2a2a2a;color:#888;padding:6px 10px;
+  border-radius:6px;font-size:.8em;cursor:pointer}
+.sort-select:focus{outline:none;border-color:#ff6b35}
+
+/* Grid */
+.record-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.record-card{background:#161616;border:1px solid #222;border-radius:10px;overflow:hidden;
+  display:flex;flex-direction:column;transition:border-color .15s;text-decoration:none;color:inherit}
+.record-card:hover{border-color:#ff6b35}
+.cover-wrap{position:relative;aspect-ratio:1;background:#0a0a0a;overflow:hidden}
+.cover-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s}
+.record-card:hover .cover-wrap img{transform:scale(1.04)}
+.cover-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  font-size:2.8em;color:#222}
+.price-badge{position:absolute;bottom:7px;right:7px;background:rgba(0,0,0,.85);
+  color:#ff6b35;font-size:.72em;font-weight:700;padding:2px 8px;border-radius:4px;border:1px solid #ff6b3540}
+.sold-badge{position:absolute;top:7px;left:7px;background:#1a0a00;color:#ff4444;
+  font-size:.68em;font-weight:700;padding:2px 8px;border-radius:4px;border:1px solid #ff444440}
+.card-body{padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:3px}
+.card-artist{font-size:.8em;font-weight:600;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-title{font-size:.75em;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-meta{font-size:.68em;color:#444;margin-top:auto;padding-top:4px}
+.card-shop{font-size:.67em;color:#555;margin-top:2px}
+.card-shop a{color:#ff6b35;text-decoration:none}
+.card-shop a:hover{text-decoration:underline}
+.preview-icon{position:absolute;top:7px;right:7px;background:rgba(0,0,0,.75);
+  border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;
+  font-size:.8em;opacity:0;transition:opacity .15s}
+.record-card:hover .preview-icon{opacity:1}
+
+/* Reserve modal */
+.reserve-link{display:block;text-align:center;background:#1a0a00;border:1px solid #ff6b3530;
+  color:#ff6b35;font-size:.72em;padding:6px;text-decoration:none;transition:all .12s}
+.reserve-link:hover{background:#2a1000;border-color:#ff6b35}
+
+.empty{color:#444;text-align:center;padding:60px 0;font-size:.9em}
+.total-count{color:#444;font-size:.78em;margin-bottom:14px}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="page">
+  <h1>🛒 Record Shop</h1>
+  <p class="sub">Vinyl from Portland crews &amp; collectives · Pay at pickup · Trade welcome</p>
+
+  <!-- Filter bar -->
+  <form method="get" class="filter-bar" id="shop-filter">
+    <input type="search" name="q" value="{{ q }}" placeholder="Search artist, title, label…" id="shop-q">
+    <select name="sort" class="sort-select" onchange="this.form.submit()">
+      <option value="artist"   {% if sort == 'artist'   %}selected{% endif %}>A–Z by artist</option>
+      <option value="price_lo" {% if sort == 'price_lo' %}selected{% endif %}>Price: low → high</option>
+      <option value="price_hi" {% if sort == 'price_hi' %}selected{% endif %}>Price: high → low</option>
+      <option value="newest"   {% if sort == 'newest'   %}selected{% endif %}>Recently added</option>
+    </select>
+    {% if style %}<input type="hidden" name="style" value="{{ style }}">{% endif %}
+  </form>
+
+  {% if all_styles %}
+  <div class="style-chips" style="margin-bottom:16px">
+    <a href="?q={{ q }}&sort={{ sort }}"
+       class="chip {% if not style %}active{% endif %}">All</a>
+    {% for s in all_styles %}
+    <a href="?q={{ q }}&style={{ s|urlencode }}&sort={{ sort }}"
+       class="chip {% if style == s %}active{% endif %}">{{ s }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if total %}
+  <p class="total-count">{{ total }} record{{ total|pluralize }} available</p>
+  {% endif %}
+
+  {% if listings %}
+  <div class="record-grid">
+    {% for r in listings %}
+    <div class="record-card">
+      <div class="cover-wrap">
+        {% if r.cover_url %}
+          <img src="{{ r.cover_url }}" alt="{{ r.artist }} — {{ r.title }}" loading="lazy">
+        {% else %}
+          <div class="cover-placeholder">🎵</div>
+        {% endif %}
+        <span class="price-badge">{{ r.price_display }}</span>
+        {% if r.preview_url %}
+          <span class="preview-icon" title="Preview available">▶</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <div class="card-artist">{{ r.artist }}</div>
+        <div class="card-title">{{ r.title }}</div>
+        <div class="card-meta">
+          {% if r.label %}{{ r.label }}{% endif %}
+          {% if r.year %} · {{ r.year }}{% endif %}
+          {% if r.format %} · {{ r.format }}{% endif %}
+          {% if r.condition %} · {{ r.condition }}{% endif %}
+        </div>
+        {% if r.styles %}<div class="card-meta" style="color:#444">{{ r.styles }}</div>{% endif %}
+        <div class="card-shop">via <a href="{% url 'promoter_detail' r.promoter.slug %}">{{ r.promoter.name }}</a></div>
+      </div>
+      <a href="{% url 'promoter_reserve' r.promoter.slug r.pk %}" class="reserve-link">
+        Reserve →
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    <div class="empty">No records match your search.</div>
+  {% endif %}
+</div>
+
+<script>
+// Submit search on enter / debounced input
+var qEl = document.getElementById('shop-q');
+var timer;
+qEl && qEl.addEventListener('input', function() {
+  clearTimeout(timer);
+  timer = setTimeout(function() { document.getElementById('shop-filter').submit(); }, 500);
+});
+</script>
+{% endblock %}

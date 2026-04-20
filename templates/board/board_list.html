@@ -3,7 +3,8 @@
 {% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:860px;margin:0 auto}
+body{background:#111;color:#eee;font-family:sans-serif}
+.bp{max-width:860px;margin:0 auto;padding:20px}
 .back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:20px}
 .back:hover{text-decoration:underline}
 h1{color:#ff6b35;font-size:1.6em;margin-bottom:6px}
@@ -29,10 +30,11 @@ h1{color:#ff6b35;font-size:1.6em;margin-bottom:6px}
 .empty{text-align:center;padding:40px;color:#555}
 .banner{background:#0f1f0f;border:1px solid #1a3a1a;border-radius:6px;padding:10px 16px;margin-bottom:20px;color:#4caf50;font-size:.85em}
 .banner a{color:#4caf50;font-weight:600}
-@media(max-width:600px){body{padding:14px}h1{font-size:1.3em}}
+@media(max-width:600px){.bp{padding:14px}h1{font-size:1.3em}}
 </style>
 {% endblock %}
 {% block body %}
+<div class="bp">
 <a href="/" class="back">← Back to events</a>
 {% if banner %}
 <div class="banner">🌹 {{ banner.text }} — <a href="/board/aid/">See aid & mutual aid topics →</a></div>
@@ -65,4 +67,5 @@ h1{color:#ff6b35;font-size:1.6em;margin-bottom:6px}
 {% else %}
 <p class="empty">No topics yet. Be the first to post!</p>
 {% endif %}
+</div>
 {% endblock %}

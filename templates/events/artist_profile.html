@@ -1,5 +1,47 @@
 {% extends 'base.html' %}
 {% block title %}{{ artist.name }} — Community Playlist{% endblock %}
+
+{% block head_extra %}
+{% with bio=artist.bio|default:artist.auto_bio %}
+{% with desc=bio|default:"Portland-area artist on Community Playlist — local events, mixes, and more." %}
+<!-- Open Graph -->
+<meta property="og:type"        content="profile">
+<meta property="og:title"       content="{{ artist.name }} — Community Playlist">
+<meta property="og:description" content="{{ desc|truncatechars:200 }}">
+<meta property="og:url"         content="https://communityplaylist.com/artists/{{ artist.slug }}/">
+{% if artist.photo %}<meta property="og:image" content="https://communityplaylist.com{{ artist.photo.url }}">{% endif %}
+<meta property="og:site_name"   content="Community Playlist PDX">
+<!-- Twitter / X card -->
+<meta name="twitter:card"        content="summary{% if artist.photo %}_large_image{% endif %}">
+<meta name="twitter:title"       content="{{ artist.name }} — Community Playlist">
+<meta name="twitter:description" content="{{ desc|truncatechars:200 }}">
+{% if artist.photo %}<meta name="twitter:image" content="https://communityplaylist.com{{ artist.photo.url }}">{% endif %}
+<!-- Canonical -->
+<link rel="canonical" href="https://communityplaylist.com/artists/{{ artist.slug }}/">
+<!-- JSON-LD structured data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "MusicGroup",
+  "name": "{{ artist.name|escapejs }}",
+  "url": "https://communityplaylist.com/artists/{{ artist.slug }}/",
+  {% if artist.photo %}"image": "https://communityplaylist.com{{ artist.photo.url }}",{% endif %}
+  {% if desc %}"description": "{{ desc|truncatechars:300|escapejs }}",{% endif %}
+  {% if artist.city %}"foundingLocation": {"@type": "Place", "name": "{{ artist.city|escapejs }}"},{% endif %}
+  "sameAs": [
+    {% if artist.instagram %}"https://www.instagram.com/{{ artist.instagram }}/"{% endif %}
+    {% if artist.soundcloud %}{% if artist.instagram %},{% endif %}"https://soundcloud.com/{{ artist.soundcloud }}"{% endif %}
+    {% if artist.youtube %}{% if artist.instagram or artist.soundcloud %},{% endif %}"{{ artist.youtube }}"{% endif %}
+    {% if artist.bandcamp %}{% if artist.instagram or artist.soundcloud or artist.youtube %},{% endif %}"{{ artist.bandcamp }}"{% endif %}
+    {% if artist.spotify %}{% if artist.instagram or artist.soundcloud or artist.youtube or artist.bandcamp %},{% endif %}"{{ artist.spotify }}"{% endif %}
+    {% if artist.website %}{% if artist.instagram or artist.soundcloud or artist.youtube or artist.bandcamp or artist.spotify %},{% endif %}"{{ artist.website }}"{% endif %}
+  ]
+}
+</script>
+{% endwith %}
+{% endwith %}
+{% endblock %}
+
 {% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}

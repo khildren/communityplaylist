@@ -6,7 +6,7 @@ from django.urls import path
 from django.http import HttpResponseRedirect
 from django.contrib import messages
 from django import forms
-from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile, PromoterProfile, PlaylistTrack, RecordListing, RecordReservation, VideoTrack, Shelter
+from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile, PromoterProfile, PlaylistTrack, RecordListing, RecordReservation, VideoTrack, Shelter, InstagramAccount, InstagramPost
 import os
 import datetime
 import subprocess
@@ -109,30 +109,148 @@ merge_artists.short_description = 'Merge selected artists into the most canonica
 
 @admin.register(Artist)
 class ArtistAdmin(admin.ModelAdmin):
-    search_fields = ['name', 'slug']
+    search_fields = ['name', 'slug', 'city', 'home_neighborhood']
     ordering = ['name']
-    list_display = ['name', 'slug', 'mb_id', 'website', 'has_drive', 'is_verified', 'claimed_by']
+    list_display  = ['name', 'slug', 'stub_badge', 'show_count', 'home_neighborhood',
+                     'city', 'has_drive', 'is_verified', 'claimed_by', 'last_enriched_at']
     list_editable = ['is_verified']
-    list_filter = ['is_verified']
+    list_filter   = ['is_verified', 'is_stub', 'claimed_by']
     raw_id_fields = ['claimed_by']
-    actions = [merge_artists]
+    actions       = [merge_artists, 'rebuild_stubs', 'mark_not_stub', 'convert_to_crew', 'retire_as_crew']
+    readonly_fields = ['is_stub', 'auto_bio', 'home_neighborhood', 'city',
+                       'latitude', 'longitude', 'last_enriched_at']
+    raw_id_fields = ['claimed_by', 'linked_promoter']
+
+    def stub_badge(self, obj):
+        if obj.is_stub and not obj.claimed_by_id:
+            return '🤖 stub'
+        if obj.claimed_by_id:
+            return '✅ claimed'
+        return '—'
+    stub_badge.short_description = 'Status'
+
+    def show_count(self, obj):
+        return obj.events.filter(status='approved').count()
+    show_count.short_description = 'Shows'
 
     def has_drive(self, obj):
         return bool(obj.drive_folder_url)
     has_drive.boolean = True
     has_drive.short_description = 'Drive'
 
+    def rebuild_stubs(self, request, queryset):
+        from django.core.management import call_command
+        call_command('auto_stub_artists', '--force-refresh')
+        self.message_user(request, 'Stub rebuild triggered for all qualifying artists.')
+    rebuild_stubs.short_description = '🤖 Rebuild stubs (geo + auto-bio)'
+
+    def mark_not_stub(self, request, queryset):
+        updated = queryset.update(is_stub=False)
+        self.message_user(request, f'{updated} artist(s) unmarked as stubs.')
+    mark_not_stub.short_description = '✏️ Mark selected as real (not stub)'
+
+    def convert_to_crew(self, request, queryset):
+        """Create a PromoterProfile for each selected artist and link them (keeps Artist record)."""
+        from django.utils.text import slugify as _slugify
+        created = already = 0
+        for artist in queryset:
+            if artist.linked_promoter:
+                already += 1
+                continue
+            slug = _slugify(artist.name)
+            promoter, new = PromoterProfile.objects.get_or_create(
+                slug=slug,
+                defaults={
+                    'name':          artist.name,
+                    'promoter_type': 'crew',
+                    'bio':           artist.bio or artist.auto_bio,
+                    'website':       artist.website,
+                    'instagram':     artist.instagram,
+                    'soundcloud':    artist.soundcloud,
+                    'spotify':       artist.spotify,
+                    'claimed_by':    artist.claimed_by,
+                }
+            )
+            artist.linked_promoter = promoter
+            artist.save(update_fields=['linked_promoter'])
+            for ev in artist.events.all():
+                ev.promoters.add(promoter)
+            created += 1
+        self.message_user(request, f'{created} crew profile(s) created and linked, {already} already linked.')
+    convert_to_crew.short_description = '🔁 Link selected artists → Crew profile (keep Artist)'
+
+    def retire_as_crew(self, request, queryset):
+        """
+        Full crew migration: ensure PromoterProfile exists, move all event links,
+        copy missing profile fields, then DELETE the Artist stub.
+
+        Use this when the record is a crew/collective that was mistakenly
+        imported as an individual artist (e.g. Gnosis DnB, Subduction Audio).
+        """
+        from django.utils.text import slugify as _slugify
+        retired = skipped = 0
+        for artist in queryset:
+            # 1. Ensure PromoterProfile exists
+            promoter = artist.linked_promoter
+            if not promoter:
+                slug = _slugify(artist.name)
+                promoter, _ = PromoterProfile.objects.get_or_create(
+                    slug=slug,
+                    defaults={
+                        'name':          artist.name,
+                        'promoter_type': 'crew',
+                        'bio':           artist.bio or artist.auto_bio,
+                        'website':       artist.website,
+                        'instagram':     artist.instagram,
+                        'soundcloud':    artist.soundcloud,
+                        'spotify':       artist.spotify,
+                        'claimed_by':    artist.claimed_by,
+                    }
+                )
+
+            # 2. Copy any richer profile fields the promoter is missing
+            for field in ('bio', 'website', 'instagram', 'soundcloud',
+                          'bandcamp', 'mixcloud', 'youtube', 'spotify',
+                          'mastodon', 'bluesky'):
+                if not getattr(promoter, field, '') and getattr(artist, field, ''):
+                    setattr(promoter, field, getattr(artist, field))
+            if not promoter.bio and artist.auto_bio:
+                promoter.bio = artist.auto_bio
+            promoter.save()
+
+            # 3. Migrate all artist event links → promoter
+            for ev in artist.events.all():
+                ev.promoters.add(promoter)
+
+            # 4. Migrate recurring-event resident links
+            for rec in artist.resident_at.all():
+                rec.residents.remove(artist)
+                # PromoterProfile residents is a different M2M — skip silently if absent
+
+            # 5. Delete the artist stub
+            name = artist.name
+            artist.delete()
+            retired += 1
+
+        noun = 'artist' if retired == 1 else 'artists'
+        self.message_user(
+            request,
+            f'{retired} {noun} retired → crew profile. {skipped} skipped (not stubs).',
+            messages.SUCCESS,
+        )
+    retire_as_crew.short_description = '🪦 Retire selected as Crew (migrate events + delete Artist)'
+
 
 @admin.register(PromoterProfile)
 class PromoterProfileAdmin(admin.ModelAdmin):
     search_fields = ['name', 'slug', 'admin_email']
     ordering = ['name']
-    list_display = ['name', 'slug', 'admin_email', 'is_verified', 'is_public', 'has_drive', 'claimed_by']
+    list_display = ['name', 'slug', 'name_variants', 'admin_email', 'is_verified', 'is_public', 'has_drive', 'claimed_by']
     list_editable = ['is_verified', 'is_public']
     list_filter = ['is_verified', 'is_public']
     raw_id_fields = ['claimed_by']
     filter_horizontal = ['genres']
-    actions = ['send_claim_instructions']
+    actions = ['send_claim_instructions', 'convert_to_artist']
 
     def has_drive(self, obj):
         return bool(obj.drive_folder_url)
@@ -178,6 +296,37 @@ class PromoterProfileAdmin(admin.ModelAdmin):
         if skipped:
             self.message_user(request, f'{skipped} skipped (no email or already claimed).', level='warning')
     send_claim_instructions.short_description = 'Send claim instructions email'
+
+    def convert_to_artist(self, request, queryset):
+        """Create an Artist profile for each selected crew and link them."""
+        from django.utils.text import slugify as _slugify
+        created = already = 0
+        for promoter in queryset:
+            if promoter.linked_artists.exists():
+                already += 1
+                continue
+            slug = _slugify(promoter.name)
+            artist, new = Artist.objects.get_or_create(
+                slug=slug,
+                defaults={
+                    'name':       promoter.name,
+                    'bio':        promoter.bio,
+                    'website':    promoter.website,
+                    'instagram':  promoter.instagram,
+                    'soundcloud': promoter.soundcloud,
+                    'spotify':    promoter.spotify,
+                    'claimed_by': promoter.claimed_by,
+                    'is_stub':    not bool(promoter.bio),
+                }
+            )
+            artist.linked_promoter = promoter
+            artist.save(update_fields=['linked_promoter'])
+            # Pull all promoter events into the artist M2M
+            for ev in promoter.events.all():
+                ev.artists.add(artist)
+            created += 1
+        self.message_user(request, f'{created} artist profile(s) created and linked, {already} already linked.')
+    convert_to_artist.short_description = '🎤 Convert selected crews → Artist profile'
 
 
 class HasPreviewFilter(admin.SimpleListFilter):
@@ -559,6 +708,8 @@ class EventAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
         if obj.status == 'approved' and old_status != 'approved':
             post_to_discord_events(obj)
+            from events.bluesky import post_event_to_bluesky
+            post_event_to_bluesky(obj)
 
 
 @admin.register(EventPhoto)
@@ -745,6 +896,18 @@ CRON_JOBS = [
         'log':      '/var/log/cp_live_streams.log',
         'schedule': 'Every 10 min',
     },
+    {
+        'name':     'Dedup events (cross-feed merge)',
+        'command':  'dedup_events',
+        'log':      '/var/log/cp_dedup_events.log',
+        'schedule': 'Mon + Thu  7:30 AM (after import)',
+    },
+    {
+        'name':     'Enrich from Instagram (bio + links + photo)',
+        'command':  'enrich_instagram',
+        'log':      '/var/log/cp_enrich_instagram.log',
+        'schedule': 'Weekly  Sunday  4:00 AM',
+    },
 ]
 
 
@@ -927,19 +1090,19 @@ class CronStatusAdmin(admin.ModelAdmin):
             messages.error(request, f'Unknown command: {command}')
             return HttpResponseRedirect('/admin/events/cronstatus/')
 
-        _BASE = '/var/www/vhosts/communityplaylist.com/django'
-        _PYTHON = os.path.join(_BASE, 'venv/bin/python3')
-        _MANAGE = os.path.join(_BASE, 'manage.py')
+        log_path = _COMMAND_MAP[command].get('log', f'/var/log/cp_{command}.log')
 
         try:
-            # Fire-and-forget — do NOT wait (subprocess.run blocks gunicorn worker
-            # until the master kills it). The cron log file shows progress.
+            # Fire-and-forget — do NOT wait (subprocess.run blocks gunicorn worker).
+            # Works in Docker: use the container's own python + /app/manage.py.
+            # stdout/stderr go to the same log file the cron status page reads.
+            log_fh = open(log_path, 'a')
             subprocess.Popen(
-                [_PYTHON, _MANAGE, command],
-                cwd=_BASE,
+                ['python', '/app/manage.py', command],
+                cwd='/app',
                 env={**os.environ, 'DJANGO_SETTINGS_MODULE': 'communityplaylist.settings'},
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stdout=log_fh,
+                stderr=log_fh,
                 start_new_session=True,  # detach from gunicorn process group
             )
             messages.success(request, f'✓ "{command}" launched — reload this page in a moment to see updated log output.')
@@ -1119,3 +1282,91 @@ class ShelterAdmin(admin.ModelAdmin):
         n = _seed_shelters()
         self.message_user(request, f'Seeded {n} new PDX shelters (skipped existing).')
     seed_pdx_shelters.short_description = '🌱 Seed PDX shelter list (skips duplicates)'
+
+
+class InstagramPostInline(admin.TabularInline):
+    model = InstagramPost
+    extra = 0
+    readonly_fields = ['ig_post_id', 'shortcode', 'caption_preview', 'is_video', 'posted_at', 'fetched_at', 'permalink_link']
+    fields = ['ig_post_id', 'shortcode', 'caption_preview', 'is_video', 'posted_at', 'permalink_link']
+    ordering = ['-posted_at']
+    can_delete = True
+    max_num = 0
+
+    def caption_preview(self, obj):
+        return obj.caption[:120] + '…' if len(obj.caption) > 120 else obj.caption
+    caption_preview.short_description = 'Caption'
+
+    def permalink_link(self, obj):
+        return format_html('<a href="{}" target="_blank">Open ↗</a>', obj.permalink)
+    permalink_link.short_description = 'Link'
+
+
+@admin.register(InstagramAccount)
+class InstagramAccountAdmin(admin.ModelAdmin):
+    list_display   = ['handle', 'display_name', 'status_badge', 'follower_count', 'post_count', 'last_fetched']
+    list_filter    = ['status']
+    search_fields  = ['handle', 'display_name', 'bio', 'notes']
+    readonly_fields = ['ig_user_id', 'display_name', 'bio', 'follower_count', 'last_fetched']
+    list_editable  = ['status'] if False else []  # avoid accidental bulk edits; use actions
+    inlines        = [InstagramPostInline]
+    actions        = ['approve_selected', 'reject_selected', 'harvest_selected']
+    fieldsets = [
+        (None, {'fields': ['handle', 'status', 'notes']}),
+        ('Fetched data', {'fields': ['ig_user_id', 'display_name', 'bio', 'follower_count', 'last_fetched'],
+                          'classes': ['collapse']}),
+    ]
+
+    def post_count(self, obj):
+        return obj.posts.count()
+    post_count.short_description = 'Posts'
+
+    def status_badge(self, obj):
+        colours = {
+            'pending':  '#e6a817',
+            'active':   '#2e7d32',
+            'rejected': '#888',
+        }
+        colour = colours.get(obj.status, '#888')
+        return format_html(
+            '<span style="color:{};font-weight:bold">{}</span>',
+            colour, obj.get_status_display()
+        )
+    status_badge.short_description = 'Status'
+    status_badge.admin_order_field = 'status'
+
+    def approve_selected(self, request, queryset):
+        n = queryset.update(status=InstagramAccount.STATUS_ACTIVE)
+        self.message_user(request, f'{n} account(s) approved for harvesting.')
+    approve_selected.short_description = '✅ Approve — start harvesting'
+
+    def reject_selected(self, request, queryset):
+        n = queryset.update(status=InstagramAccount.STATUS_REJECTED)
+        self.message_user(request, f'{n} account(s) rejected.')
+    reject_selected.short_description = '🚫 Reject — skip this account'
+
+    def harvest_selected(self, request, queryset):
+        from django.core.management import call_command
+        harvested = 0
+        for account in queryset.filter(status=InstagramAccount.STATUS_ACTIVE):
+            call_command('harvest_instagram', '--handle', account.handle, '--force')
+            harvested += 1
+        self.message_user(request, f'Harvested {harvested} active account(s).')
+    harvest_selected.short_description = '📥 Harvest posts now'
+
+
+@admin.register(InstagramPost)
+class InstagramPostAdmin(admin.ModelAdmin):
+    list_display  = ['shortcode', 'account', 'caption_preview', 'is_video', 'posted_at']
+    list_filter   = ['account', 'is_video']
+    search_fields = ['caption', 'shortcode', 'account__handle']
+    readonly_fields = ['ig_post_id', 'shortcode', 'account', 'is_video', 'posted_at', 'fetched_at', 'permalink_link']
+    ordering      = ['-posted_at']
+
+    def caption_preview(self, obj):
+        return obj.caption[:100] + '…' if len(obj.caption) > 100 else obj.caption
+    caption_preview.short_description = 'Caption'
+
+    def permalink_link(self, obj):
+        return format_html('<a href="{}" target="_blank">instagram.com/p/{}</a>', obj.permalink, obj.shortcode)
+    permalink_link.short_description = 'Permalink'

@@ -43,15 +43,15 @@ h1{color:#ff6b35;font-size:1.2em;margin-bottom:6px}
   <div class="fg">
     <label>Type *</label>
     <div class="type-selector">
-      <input type="radio" name="promoter_type" id="pt_crew" value="crew" class="type-opt" {% if prev.promoter_type != 'sound_system' and prev.promoter_type != 'collective' and prev.promoter_type != 'label' and prev.promoter_type != 'record_swap' %}checked{% endif %}>
+      <input type="checkbox" name="promoter_type" id="pt_crew" value="crew" class="type-opt" checked>
       <label for="pt_crew">📣 Crew</label>
-      <input type="radio" name="promoter_type" id="pt_sound" value="sound_system" class="type-opt" {% if prev.promoter_type == 'sound_system' %}checked{% endif %}>
+      <input type="checkbox" name="promoter_type" id="pt_sound" value="sound_system" class="type-opt">
       <label for="pt_sound">🔊 Sound System</label>
-      <input type="radio" name="promoter_type" id="pt_coll" value="collective" class="type-opt" {% if prev.promoter_type == 'collective' %}checked{% endif %}>
+      <input type="checkbox" name="promoter_type" id="pt_coll" value="collective" class="type-opt">
       <label for="pt_coll">🤝 Collective</label>
-      <input type="radio" name="promoter_type" id="pt_label" value="label" class="type-opt" {% if prev.promoter_type == 'label' %}checked{% endif %}>
+      <input type="checkbox" name="promoter_type" id="pt_label" value="label" class="type-opt">
       <label for="pt_label">💿 Label</label>
-      <input type="radio" name="promoter_type" id="pt_swap" value="record_swap" class="type-opt" {% if prev.promoter_type == 'record_swap' %}checked{% endif %}>
+      <input type="checkbox" name="promoter_type" id="pt_swap" value="record_swap" class="type-opt">
       <label for="pt_swap">🎵 Record Swap</label>
     </div>
   </div>

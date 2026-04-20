@@ -1,5 +1,44 @@
 {% extends 'base.html' %}
 {% block title %}{{ promoter.name }} — Community Playlist{% endblock %}
+
+{% block head_extra %}
+{% with desc=promoter.bio|default:"Portland-area crew / collective on Community Playlist — local events, mixes, and more." %}
+<!-- Open Graph -->
+<meta property="og:type"        content="profile">
+<meta property="og:title"       content="{{ promoter.name }} — Community Playlist">
+<meta property="og:description" content="{{ desc|truncatechars:200 }}">
+<meta property="og:url"         content="https://communityplaylist.com/promoters/{{ promoter.slug }}/">
+{% if promoter.photo %}<meta property="og:image" content="https://communityplaylist.com{{ promoter.photo.url }}">{% endif %}
+<meta property="og:site_name"   content="Community Playlist PDX">
+<!-- Twitter / X card -->
+<meta name="twitter:card"        content="summary{% if promoter.photo %}_large_image{% endif %}">
+<meta name="twitter:title"       content="{{ promoter.name }} — Community Playlist">
+<meta name="twitter:description" content="{{ desc|truncatechars:200 }}">
+{% if promoter.photo %}<meta name="twitter:image" content="https://communityplaylist.com{{ promoter.photo.url }}">{% endif %}
+<!-- Canonical -->
+<link rel="canonical" href="https://communityplaylist.com/promoters/{{ promoter.slug }}/">
+<!-- JSON-LD structured data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "MusicGroup",
+  "name": "{{ promoter.name|escapejs }}",
+  "url": "https://communityplaylist.com/promoters/{{ promoter.slug }}/",
+  {% if promoter.photo %}"image": "https://communityplaylist.com{{ promoter.photo.url }}",{% endif %}
+  {% if promoter.bio %}"description": "{{ promoter.bio|truncatechars:300|escapejs }}",{% endif %}
+  "sameAs": [
+    {% if promoter.instagram %}"https://www.instagram.com/{{ promoter.instagram }}/"{% endif %}
+    {% if promoter.soundcloud %}{% if promoter.instagram %},{% endif %}"https://soundcloud.com/{{ promoter.soundcloud }}"{% endif %}
+    {% if promoter.youtube %}{% if promoter.instagram or promoter.soundcloud %},{% endif %}"{{ promoter.youtube }}"{% endif %}
+    {% if promoter.bandcamp %}{% if promoter.instagram or promoter.soundcloud or promoter.youtube %},{% endif %}"{{ promoter.bandcamp }}"{% endif %}
+    {% if promoter.spotify %}{% if promoter.instagram or promoter.soundcloud or promoter.youtube or promoter.bandcamp %},{% endif %}"{{ promoter.spotify }}"{% endif %}
+    {% if promoter.website %}{% if promoter.instagram or promoter.soundcloud or promoter.youtube or promoter.bandcamp or promoter.spotify %},{% endif %}"{{ promoter.website }}"{% endif %}
+  ]
+}
+</script>
+{% endwith %}
+{% endblock %}
+
 {% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -73,14 +112,9 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
       {% if promoter.is_live %}<span class="live-badge">● PDXTV Live</span>{% endif %}
     </h1>
     <div style="margin-bottom:6px">
-      <span style="font-size:.75em;color:#555;background:#161616;border:1px solid #222;border-radius:4px;padding:2px 8px;display:inline-block">
-        {% if promoter.promoter_type == 'sound_system' %}🔊
-        {% elif promoter.promoter_type == 'collective' %}🤝
-        {% elif promoter.promoter_type == 'label' %}💿
-        {% elif promoter.promoter_type == 'record_swap' %}🎵
-        {% else %}📣{% endif %}
-        {{ promoter.get_promoter_type_display }}
-      </span>
+      {% for icon, label in promoter.type_badges %}
+      <span style="font-size:.75em;color:#555;background:#161616;border:1px solid #222;border-radius:4px;padding:2px 8px;display:inline-block">{{ icon }} {{ label }}</span>
+      {% endfor %}
     </div>
 
     {% if promoter.genres.all %}

@@ -16,12 +16,48 @@ from events.models import VenueFeed, Event, RecurringEvent, Genre
 from events.enrich import enrich_event, clean_text
 import requests
 from icalendar import Calendar
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import mimetypes
 import os
+import re
 import pytz
 
 PDX_TZ = pytz.timezone('America/Los_Angeles')
+
+# ── Cross-feed dedup helpers ──────────────────────────────────────────────────
+
+def _norm_title(title):
+    """Normalize a title for cross-feed duplicate detection.
+
+    Collapses "&" / "and" / "+" variants, strips accidental punctuation,
+    so "Subduction Audio & Friends" and "Subduction Audio and Friends"
+    produce the same fingerprint.
+    """
+    t = title.lower().strip()
+    t = re.sub(r'\s*&\s*', ' and ', t)   # & → and
+    t = re.sub(r'\s*\+\s*', ' and ', t)  # + → and
+    t = re.sub(r"[''`]", '', t)           # smart quotes
+    t = re.sub(r'[^\w\s]', ' ', t)       # strip remaining punctuation
+    t = re.sub(r'\s+', ' ', t).strip()
+    return t
+
+
+def _same_day_title_exists(title, dtstart):
+    """Return an existing Event that has the same normalized title on the same
+    calendar day (±30-hour window to absorb timezone shifts between feeds)."""
+    norm = _norm_title(title)
+    day = dtstart.replace(hour=0, minute=0, second=0, microsecond=0)
+    window_start = day - timedelta(hours=6)
+    window_end   = day + timedelta(hours=30)
+    candidates = Event.objects.filter(
+        start_date__gte=window_start,
+        start_date__lt=window_end,
+    ).only('id', 'title', 'start_date')
+    for ev in candidates:
+        if _norm_title(ev.title) == norm:
+            return ev
+    return None
+
 
 IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
 IMAGE_EXTS  = {'.jpg', '.jpeg', '.png', '.webp', '.gif'}
@@ -113,13 +149,15 @@ def import_ical(feed, now, stdout, stderr):
             if dtstart < now:
                 continue
 
-            # Dedup: UID stored in website field (if set), then slug fallback.
+            # Dedup: UID stored in website field → slug → normalized title+day.
             existing = None
             if uid:
                 existing = Event.objects.filter(website=uid[:200]).first()
             if not existing:
                 slug_base = slugify(f"{summary}-{dtstart.strftime('%Y-%m-%d')}")
                 existing = Event.objects.filter(slug__startswith=slug_base).first()
+            if not existing:
+                existing = _same_day_title_exists(summary, dtstart)
 
             if existing:
                 # Patch mutable fields if the upstream event was edited

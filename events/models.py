@@ -141,6 +141,8 @@ class Artist(models.Model):
     bluesky    = models.CharField(max_length=100, blank=True, help_text='Handle e.g. yourname.bsky.social')
     tiktok     = models.CharField(max_length=100, blank=True, help_text='Handle without @')
     twitch     = models.CharField(max_length=100, blank=True, help_text='Channel name without @')
+    beatport   = models.URLField(blank=True, help_text='Beatport artist page URL')
+    discogs    = models.URLField(blank=True, help_text='Discogs artist page URL')
 
     # Music folder
     drive_folder_url = models.URLField(
@@ -156,6 +158,22 @@ class Artist(models.Model):
     is_live     = models.BooleanField(default=False, help_text='Currently streaming live (updated by check_live_streams)')
     youtube_channel_id = models.CharField(max_length=50, blank=True, help_text='Cached YouTube channel ID (UCxxx…)')
     view_count  = models.PositiveIntegerField(default=0)
+
+    # Auto-build / enrichment
+    is_stub          = models.BooleanField(default=False, help_text='Auto-generated from events — not yet claimed')
+    city             = models.CharField(max_length=100, blank=True, help_text='Derived from event venues or platform profile')
+    latitude         = models.FloatField(null=True, blank=True, help_text='Geo center derived from event venue cluster')
+    longitude        = models.FloatField(null=True, blank=True)
+    home_neighborhood = models.CharField(max_length=100, blank=True, help_text='Most frequent event neighborhood')
+    auto_bio         = models.TextField(blank=True, help_text='System-generated bio from event history — replaced by artist bio on claim')
+    last_enriched_at = models.DateTimeField(null=True, blank=True, help_text='Last time enrichment was run for this artist')
+
+    # Crew / alias linkage
+    linked_promoter  = models.ForeignKey(
+        'PromoterProfile', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='linked_artists',
+        help_text='If this artist record is also a crew/collective, link their PromoterProfile here',
+    )
 
     class Meta:
         ordering = ['name']
@@ -203,9 +221,9 @@ class PromoterProfile(models.Model):
 
     name          = models.CharField(max_length=200, unique=True)
     slug          = models.SlugField(max_length=220, unique=True, blank=True)
-    promoter_type = models.CharField(
-        max_length=20, choices=TYPE_CHOICES, default=TYPE_CREW,
-        help_text='What kind of entity is this?',
+    promoter_type = models.JSONField(
+        default=list,
+        help_text='One or more types — stored as a JSON list, e.g. ["crew", "record_swap"]',
     )
     bio    = models.TextField(blank=True)
     photo  = models.ImageField(upload_to='promoters/', blank=True, null=True)
@@ -268,6 +286,12 @@ class PromoterProfile(models.Model):
     youtube_channel_id = models.CharField(max_length=50, blank=True, help_text='Cached YouTube channel ID (UCxxx…)')
     created_at  = models.DateTimeField(auto_now_add=True)
     view_count  = models.PositiveIntegerField(default=0)
+    name_variants = models.TextField(
+        blank=True,
+        help_text='Pipe-separated name aliases that should resolve to this profile '
+                  '(e.g. "Subduction Audio & Friends|Subduction Audio Crew"). '
+                  'Used by the event parser to consolidate mismatched listings.',
+    )
 
     class Meta:
         ordering = ['name']
@@ -277,6 +301,32 @@ class PromoterProfile(models.Model):
     def __str__(self):
         return self.name
 
+    @property
+    def types(self):
+        """Always return promoter_type as a list, even if DB contains a legacy string."""
+        val = self.promoter_type
+        if isinstance(val, list):
+            return val
+        if isinstance(val, str) and val:
+            return [val]
+        return [self.TYPE_CREW]
+
+    def has_type(self, type_key):
+        return type_key in self.types
+
+    def get_types_display(self):
+        label_map = dict(self.TYPE_CHOICES)
+        return ' · '.join(label_map.get(t, t) for t in self.types)
+
+    def get_type_icons(self):
+        return ' '.join(self.TYPE_ICONS.get(t, '📣') for t in self.types)
+
+    @property
+    def type_badges(self):
+        """List of (icon, label) tuples for each type — easy to iterate in templates."""
+        label_map = dict(self.TYPE_CHOICES)
+        return [(self.TYPE_ICONS.get(t, '📣'), label_map.get(t, t)) for t in self.types]
+
     def save(self, *args, **kwargs):
         if not self.slug:
             base = slugify(self.name)
@@ -284,6 +334,9 @@ class PromoterProfile(models.Model):
             while PromoterProfile.objects.filter(slug=slug).exclude(pk=self.pk).exists():
                 slug = f'{base}-{n}'; n += 1
             self.slug = slug
+        # Normalise to list before saving
+        if isinstance(self.promoter_type, str):
+            self.promoter_type = [self.promoter_type] if self.promoter_type else [self.TYPE_CREW]
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
@@ -1200,6 +1253,64 @@ class Shelter(models.Model):
             'available_cold':  self.available_cold,
             'available_smoke': self.available_smoke,
         }
+
+
+class InstagramAccount(models.Model):
+    """A public Instagram account whose posts should be periodically harvested."""
+    STATUS_PENDING  = 'pending'
+    STATUS_ACTIVE   = 'active'
+    STATUS_REJECTED = 'rejected'
+    STATUS_CHOICES  = [
+        (STATUS_PENDING,  'Pending review'),
+        (STATUS_ACTIVE,   'Active — harvest posts'),
+        (STATUS_REJECTED, 'Rejected — skip'),
+    ]
+
+    handle          = models.CharField(max_length=100, unique=True,
+                                       help_text='Handle without @, e.g. rave.pdx')
+    ig_user_id      = models.CharField(max_length=50, blank=True)
+    display_name    = models.CharField(max_length=200, blank=True)
+    bio             = models.TextField(blank=True)
+    follower_count  = models.IntegerField(null=True, blank=True)
+    status          = models.CharField(max_length=20, choices=STATUS_CHOICES,
+                                       default=STATUS_ACTIVE,
+                                       help_text='Active accounts are harvested; pending awaits review')
+    last_fetched    = models.DateTimeField(null=True, blank=True)
+    is_active       = models.BooleanField(default=True)
+    notes           = models.TextField(blank=True, help_text='Internal notes about this account')
+
+    class Meta:
+        ordering = ['handle']
+        verbose_name = 'Instagram Account'
+        verbose_name_plural = 'Instagram Accounts'
+
+    def __str__(self):
+        return f'@{self.handle}'
+
+
+class InstagramPost(models.Model):
+    """A single post harvested from a tracked Instagram account."""
+    account     = models.ForeignKey(InstagramAccount, on_delete=models.CASCADE,
+                                    related_name='posts')
+    ig_post_id  = models.CharField(max_length=100, unique=True)
+    shortcode   = models.CharField(max_length=100, unique=True)
+    caption     = models.TextField(blank=True)
+    image_url   = models.URLField(max_length=1000, blank=True)
+    is_video    = models.BooleanField(default=False)
+    posted_at   = models.DateTimeField()
+    fetched_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-posted_at']
+        verbose_name = 'Instagram Post'
+        verbose_name_plural = 'Instagram Posts'
+
+    def __str__(self):
+        return f'@{self.account.handle} — {self.shortcode}'
+
+    @property
+    def permalink(self):
+        return f'https://www.instagram.com/p/{self.shortcode}/'
 
 
 class CronStatus(models.Model):

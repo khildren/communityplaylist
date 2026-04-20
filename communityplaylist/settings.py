@@ -50,6 +50,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'events.context_processors.admin_pending',
+                'events.context_processors.featured_record',
             ],
         },
     },
@@ -136,6 +137,14 @@ YOUTUBE_API_KEY = config('YOUTUBE_API_KEY', default='')
 # Set OAuth Redirect URL to https://communityplaylist.com, Category: Website Integration
 TWITCH_CLIENT_ID     = config('TWITCH_CLIENT_ID', default='')
 TWITCH_CLIENT_SECRET = config('TWITCH_CLIENT_SECRET', default='')
+
+# Spotify Web API — artist search, genre tags, images, popularity
+SPOTIFY_CLIENT_ID     = config('SPOTIFY_CLIENT_ID', default='')
+SPOTIFY_CLIENT_SECRET = config('SPOTIFY_CLIENT_SECRET', default='')
+
+# Bluesky — direct AT Protocol posting on event approval
+BLUESKY_HANDLE       = config('BLUESKY_HANDLE', default='')
+BLUESKY_APP_PASSWORD = config('BLUESKY_APP_PASSWORD', default='')
 
 # Email — Plesk local SMTP with SASL auth
 # Uses communityplaylist/email_backend.py to skip self-signed cert verification

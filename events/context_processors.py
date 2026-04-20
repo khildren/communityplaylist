@@ -1,3 +1,13 @@
+def featured_record(request):
+    """Inject a random available record listing for the marquee / global promo."""
+    try:
+        from events.models import RecordListing
+        record = RecordListing.objects.filter(is_available=True).order_by('?').first()
+        return {'featured_record': record}
+    except Exception:
+        return {}
+
+
 def admin_pending(request):
     """Inject pending-item counts into every admin page for the notification bar."""
     if not request.path.startswith('/admin/') or not getattr(request.user, 'is_staff', False):

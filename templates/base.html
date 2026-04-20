@@ -568,11 +568,12 @@
   var rhMap      = null;
   var rhMarkers  = [];
 
-  var allShelters   = [];
-  var activeFilter  = '';
-  var userLat       = null;
-  var userLng       = null;
-  var activeAlerts  = []; // ['cold','hot','smoke']
+  var allShelters      = [];
+  var sheltersLoading  = false;
+  var activeFilter     = '';
+  var userLat          = null;
+  var userLng          = null;
+  var activeAlerts     = []; // ['cold','hot','smoke']
 
   // ── Tag color helper ────────────────────────────────────────────────────────
   var TYPE_EMOJI = {
@@ -587,7 +588,7 @@
     hub.classList.add('open');
     var rb = document.getElementById('sh-resource-btn');
     if (rb) rb.classList.add('active');
-    if (allShelters.length === 0) loadShelters();
+    loadShelters();
     setTimeout(initRhMap, 200);
     // Auto-collapse player so hub has full bottom space
     var pl = document.getElementById('cp-player');
@@ -619,19 +620,24 @@
       tabs.forEach(function(t){ t.classList.remove('active'); });
       tab.classList.add('active');
       activeFilter = tab.dataset.filter;
-      renderList();
+      if (!sheltersLoading) renderList();
     });
   });
 
   // ── Load shelters from API ─────────────────────────────────────────────────
   function loadShelters() {
+    if (sheltersLoading) return;
+    sheltersLoading = true;
+    listEl.innerHTML = '<p class="cp-rh-empty">Loading resources…</p>';
     var url = '/api/shelters/';
     if (userLat !== null) url += '?lat=' + userLat + '&lng=' + userLng;
     fetch(url).then(function(r){ return r.json(); }).then(function(d) {
+      sheltersLoading = false;
       allShelters = d.shelters || [];
       renderList();
       renderRhMarkers();
     }).catch(function() {
+      sheltersLoading = false;
       listEl.innerHTML = '<p class="cp-rh-empty">Could not load resources. Try calling 211.</p>';
     });
   }
@@ -717,7 +723,7 @@
     rhMarkers.forEach(function(m){ try { rhMap.removeLayer(m.marker); } catch(e){} });
     rhMarkers = [];
     var items = activeFilter
-      ? allShelters.filter(function(s){ return s.type === s.activeFilter; })
+      ? allShelters.filter(function(s){ return s.type === activeFilter; })
       : allShelters;
     allShelters.forEach(function(s) {
       if (!s.latitude || !s.longitude) return;

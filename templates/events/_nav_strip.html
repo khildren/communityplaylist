@@ -6,10 +6,13 @@
     {% if visit_count %}<span class="aid-marquee-soft">👁 {{ visit_count }} unique visitors · {{ daily_count }} avg daily</span><span class="aid-marquee-sep">✦</span>{% endif %}
     {# Board banner posts #}
     {% for b in banners %}<a href="/board/aid/">🌹 {{ b.text }}</a><span class="aid-marquee-sep">✦</span>{% endfor %}
+    {# Featured record from shop #}
+    {% if featured_record %}<a href="/shop/" style="color:#ff6b35">🛒 {{ featured_record.artist }} — {{ featured_record.title }} · {{ featured_record.price_display }}</a><span class="aid-marquee-sep">✦</span>{% endif %}
     {# Duplicate for seamless loop #}
     <span class="aid-marquee-soft">Portland events · by the people, for the people</span><span class="aid-marquee-sep">✦</span>
     {% if visit_count %}<span class="aid-marquee-soft">👁 {{ visit_count }} unique visitors · {{ daily_count }} avg daily</span><span class="aid-marquee-sep">✦</span>{% endif %}
     {% for b in banners %}<a href="/board/aid/">🌹 {{ b.text }}</a><span class="aid-marquee-sep">✦</span>{% endfor %}
+    {% if featured_record %}<a href="/shop/" style="color:#ff6b35">🛒 {{ featured_record.artist }} — {{ featured_record.title }} · {{ featured_record.price_display }}</a><span class="aid-marquee-sep">✦</span>{% endif %}
   </div>
 </div>
 <script>

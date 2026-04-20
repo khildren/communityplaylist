@@ -3,7 +3,8 @@
 {% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:860px;margin:0 auto}
+body{background:#111;color:#eee;font-family:sans-serif}
+.bp{max-width:860px;margin:0 auto;padding:20px}
 .back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:20px}
 .back:hover{text-decoration:underline}
 .cat-badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:.75em;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px}
@@ -32,10 +33,11 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:8px}
 .banner{background:#0f1f0f;border:1px solid #1a3a1a;border-radius:6px;padding:8px 14px;margin-bottom:18px;color:#4caf50;font-size:.82em}
 .rec-link{display:inline-block;margin-top:16px;padding:6px 14px;border:1px solid #333;border-radius:6px;color:#aaa;text-decoration:none;font-size:.82em}
 .rec-link:hover{border-color:#ff6b35;color:#ff6b35}
-@media(max-width:600px){body{padding:14px}h1{font-size:1.2em}}
+@media(max-width:600px){.bp{padding:14px}h1{font-size:1.2em}}
 </style>
 {% endblock %}
 {% block body %}
+<div class="bp">
 <a href="/board/" class="back">← Board</a>
 {% if banner %}
 <div class="banner">🌹 {{ banner.text }}</div>
@@ -77,5 +79,6 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:8px}
     </div>
     <button type="submit" class="btn">Post Reply</button>
   </form>
+</div>
 </div>
 {% endblock %}
