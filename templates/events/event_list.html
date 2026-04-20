@@ -385,7 +385,7 @@ a.event.ee-loading{opacity:.6;pointer-events:none}
   <div id="map"></div>
 </div>
 
-<script src="/static/leaflet/leaflet.js" data-turbo-eval="false"></script>
+<script src="/static/leaflet/leaflet.js"></script>
 <script>
 var mapEvents = {{ map_events|safe }};
 window.cpEventsList = mapEvents;
@@ -992,6 +992,10 @@ document.addEventListener('turbo:load', function(){
   const burger = document.getElementById('sh-burger');
   if (nav)    { nav.classList.remove('open'); }
   if (burger) { burger.classList.remove('open'); burger.textContent = '☰'; burger.setAttribute('aria-expanded','false'); }
+  // Safety net: if inline setView failed (e.g. L not yet defined), retry here
+  if (document.getElementById('map') && typeof L !== 'undefined' && !mapInitialized) {
+    setView(getDefaultView(), false);
+  }
 });
 
 // ── View burger (mobile) ──
