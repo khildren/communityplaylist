@@ -360,6 +360,14 @@ def event_detail(request, slug):
 
     venue = Venue.for_location(event.location)
 
+    # Guard against DB rows that reference a deleted/missing photo file.
+    # Django templates don't catch ValueError, so we compute a safe URL here.
+    try:
+        photo_url = event.photo.url if event.photo else ''
+    except ValueError:
+        photo_url = ''
+        event.photo = None  # also clear so {% if event.photo %} is False
+
     can_edit_lineup = request.user.is_authenticated and (
         request.user.is_staff or event.submitted_user == request.user
     )
@@ -375,6 +383,7 @@ def event_detail(request, slug):
         'maps_url': maps_url,
         'recurring_instances': recurring_instances,
         'now': timezone.now(),
+        'photo_url': photo_url,
         'venue': venue,
         'event_edit_fields': EditSuggestion.FIELDS['event'],
         'can_edit_lineup': can_edit_lineup,
@@ -3346,7 +3355,10 @@ def event_flyer(request, slug):
     else:
         price_str = ''
 
-    photo_url = request.build_absolute_uri(event.photo.url) if event.photo else None
+    try:
+        photo_url = request.build_absolute_uri(event.photo.url) if event.photo else None
+    except ValueError:
+        photo_url = None
 
     return render(request, 'events/event_flyer.html', {
         'event':      event,

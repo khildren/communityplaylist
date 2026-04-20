@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}{{ event.title }} — Community Playlist PDX{% endblock %}
 {% block head_extra %}
-{% with desc=event.description|truncatechars:200 %}{% with img=event.photo.url|default:'' %}
+{% with desc=event.description|truncatechars:200 %}{% with img=photo_url|default:'' %}
 <meta name="description" content="{{ desc }}">
 <link rel="canonical" href="https://communityplaylist.com/events/{{ event.slug }}/">
 <meta property="og:type"        content="website">
