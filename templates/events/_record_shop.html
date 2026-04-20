@@ -46,7 +46,7 @@
     <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
       {% if item.preview_url %}
       <button class="rs-btn rs-btn-preview"
-              onclick="cpPreview('{{ item.preview_url|escapejs }}', '{{ item.artist|escapejs }} – {{ item.title|escapejs }}')">▶ Preview</button>
+              onclick="rsCpToggle('{{ forloop.counter0 }}', '{{ item.preview_url|escapejs }}')">▶ Preview</button>
       {% endif %}
       {% if promoter.sol_wallet and item.price_sol > 0 %}
       <a class="rs-btn"
@@ -65,6 +65,14 @@
       {% endif %}
     </div>
   </div>
+  {% if item.preview_url %}
+  <div class="rs-preview-bar" id="rscpbar-{{ forloop.counter0 }}" data-pv-url="{{ item.preview_url|escapejs }}">
+    <button class="rscpb-btn" id="rscpbtn-{{ forloop.counter0 }}" onclick="rsCpToggle('{{ forloop.counter0 }}')">▶</button>
+    <div class="rscpb-track" onclick="rsCpSeek(event,'{{ forloop.counter0 }}')"><div class="rscpb-fill" id="rscpfill-{{ forloop.counter0 }}"></div></div>
+    <span class="rscpb-time" id="rscptime-{{ forloop.counter0 }}">0:00</span>
+    <button class="rscpb-btn" style="color:#555;font-size:.7em;margin-left:2px" onclick="rsCpClose('{{ forloop.counter0 }}')">✕</button>
+  </div>
+  {% endif %}
 </div>
 {% endfor %}
 </div>
@@ -183,6 +191,11 @@
 .rs-btn-reserve:hover{border-color:#555;color:#eee;background:#222}
 .rs-btn-preview{background:#1e1e1e;border:1px solid #ff6b3544;color:#ff6b35}
 .rs-btn-preview:hover{background:#ff6b3511;border-color:#ff6b35}
+.rs-preview-bar{display:none;align-items:center;gap:7px;padding:6px 10px;background:#0d0d0d;border-top:1px solid #1a1a1a}
+.rscpb-btn{background:none;border:none;color:#ff6b35;font-size:.85em;cursor:pointer;flex-shrink:0;padding:0;line-height:1;width:18px;text-align:center;font-family:inherit}
+.rscpb-track{flex:1;height:3px;background:#222;border-radius:2px;cursor:pointer;overflow:hidden}
+.rscpb-fill{height:100%;background:#ff6b35;border-radius:2px;width:0}
+.rscpb-time{font-size:.65em;color:#444;flex-shrink:0;font-variant-numeric:tabular-nums}
 .rs-wallet-line{font-size:.72em;color:#444;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .rs-wallet-label{color:#555}
 .rs-wallet-addr{color:#555;font-family:monospace;font-size:.9em;word-break:break-all}
@@ -240,54 +253,85 @@ function cpCopyWallet(id, btn) {
   });
 }
 
-// Preview player — YT IFrame API (avoids embedding restrictions)
-var _rsYTPlayer = null, _rsPendingVid = null, _rsPendingUrl = null;
-function cpPreview(ytUrl, label) {
-  var m = ytUrl.match(/(?:youtu\.be\/|v=|\/embed\/)([\w-]{11})/);
+// Inline preview player for record shop
+var _rsCpYT = null, _rsCpActive = null, _rsCpTimer = null, _rsCpPending = null;
+function _rsCpFmt(s) { s = Math.floor(s || 0); return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); }
+
+function rsCpToggle(idx, url) {
+  if (_rsCpActive === idx && _rsCpYT) {
+    try { var st = _rsCpYT.getPlayerState(); if (st === YT.PlayerState.PLAYING) _rsCpYT.pauseVideo(); else _rsCpYT.playVideo(); } catch(e) {}
+    return;
+  }
+  if (_rsCpActive !== null && _rsCpActive !== idx) rsCpClose(_rsCpActive);
+  var bar = document.getElementById('rscpbar-' + idx);
+  if (!bar) return;
+  bar.style.display = 'flex';
+  _rsCpActive = idx;
+  var pvUrl = url || bar.dataset.pvUrl;
+  var m = (pvUrl || '').match(/(?:youtu\.be\/|v=|\/embed\/)([\w-]{11})/);
   if (!m) return;
-  document.getElementById('rs-preview-label').textContent = label;
-  document.getElementById('rs-preview-yt-link').href = ytUrl;
-  document.getElementById('rs-preview-yt-link-fallback').href = ytUrl;
-  document.getElementById('rs-preview-fallback').style.display = 'none';
-  document.getElementById('rs-preview-modal').style.display = 'flex';
-  _rsCpPlayOrQueue(m[1], ytUrl);
-}
-function _rsCpPlayOrQueue(vid, ytUrl) {
-  if (window.YT && window.YT.Player) { _rsCpDoPlay(vid, ytUrl); return; }
-  _rsPendingVid = vid; _rsPendingUrl = ytUrl;
-  var _prev = window.onYouTubeIframeAPIReady;
-  window.onYouTubeIframeAPIReady = function() {
-    if (typeof _prev === 'function') _prev();
-    window.onYouTubeIframeAPIReady = _prev;
-    if (_rsPendingVid) { _rsCpDoPlay(_rsPendingVid, _rsPendingUrl); _rsPendingVid = null; }
-  };
-  if (!document.getElementById('rs-yt-api')) {
-    var s = document.createElement('script');
-    s.id = 'rs-yt-api';
-    s.src = 'https://www.youtube.com/iframe_api';
-    document.head.appendChild(s);
+  if (window.YT && window.YT.Player) { _rsCpDoPlay(idx, m[1]); return; }
+  _rsCpPending = {idx: idx, vid: m[1]};
+  if (!document.getElementById('rscp-yt-api')) {
+    var prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = function() {
+      if (typeof prev === 'function') prev();
+      window.onYouTubeIframeAPIReady = prev;
+      if (_rsCpPending) { _rsCpDoPlay(_rsCpPending.idx, _rsCpPending.vid); _rsCpPending = null; }
+    };
+    var s = document.createElement('script'); s.id = 'rscp-yt-api';
+    s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s);
   }
 }
-function _rsCpDoPlay(vid, ytUrl) {
-  var wrap = document.getElementById('rs-preview-player-wrap');
-  wrap.innerHTML = '<div id="rs-yt-div" style="position:absolute;inset:0;width:100%;height:100%"></div>';
-  _rsYTPlayer = new YT.Player('rs-yt-div', {
+
+function _rsCpDoPlay(idx, vid) {
+  _rsCpStopTimer();
+  if (_rsCpYT) { try { _rsCpYT.destroy(); } catch(e) {} _rsCpYT = null; }
+  document.getElementById('rs-yt-container').innerHTML = '<div id="rs-yt-div"></div>';
+  _rsCpYT = new YT.Player('rs-yt-div', {
     videoId: vid,
-    playerVars: { autoplay: 1, rel: 0, controls: 1 },
+    playerVars: {autoplay: 1, rel: 0, controls: 0},
     events: {
-      onError: function() {
-        document.getElementById('rs-preview-player-wrap').innerHTML = '';
-        document.getElementById('rs-preview-yt-link-fallback').href = ytUrl || '#';
-        document.getElementById('rs-preview-fallback').style.display = 'flex';
-      }
+      onStateChange: function(e) {
+        var S = YT.PlayerState, btn = document.getElementById('rscpbtn-' + idx);
+        if (e.data === S.PLAYING)     { if (btn) btn.textContent = '⏸'; _rsCpStartTimer(idx); }
+        else if (e.data === S.PAUSED) { if (btn) btn.textContent = '▶'; _rsCpStopTimer(); }
+        else if (e.data === S.ENDED)  { rsCpClose(idx); }
+      },
+      onError: function() { rsCpClose(idx); }
     }
   });
 }
-function cpPreviewClose(e) {
-  if (e && e.target !== document.getElementById('rs-preview-modal') && e.type !== 'click') return;
-  if (_rsYTPlayer) { try { _rsYTPlayer.stopVideo(); } catch(err){} _rsYTPlayer = null; }
-  document.getElementById('rs-preview-player-wrap').innerHTML = '';
-  document.getElementById('rs-preview-modal').style.display = 'none';
+
+function _rsCpStartTimer(idx) {
+  _rsCpStopTimer();
+  _rsCpTimer = setInterval(function() {
+    if (!_rsCpYT) return;
+    try {
+      var cur = _rsCpYT.getCurrentTime() || 0, tot = _rsCpYT.getDuration() || 0;
+      var fill = document.getElementById('rscpfill-' + idx), time = document.getElementById('rscptime-' + idx);
+      if (fill && tot > 0) fill.style.width = (cur / tot * 100) + '%';
+      if (time) time.textContent = _rsCpFmt(cur);
+    } catch(e) {}
+  }, 500);
+}
+function _rsCpStopTimer() { if (_rsCpTimer) { clearInterval(_rsCpTimer); _rsCpTimer = null; } }
+
+function rsCpSeek(e, idx) {
+  if (!_rsCpYT || _rsCpActive !== idx) return;
+  var r = e.currentTarget.getBoundingClientRect(), pct = (e.clientX - r.left) / r.width;
+  try { var d = _rsCpYT.getDuration(); if (d > 0) _rsCpYT.seekTo(pct * d, true); } catch(err) {}
+}
+function rsCpClose(idx) {
+  _rsCpStopTimer();
+  if (_rsCpYT) { try { _rsCpYT.stopVideo(); _rsCpYT.destroy(); } catch(e) {} _rsCpYT = null; }
+  var bar = document.getElementById('rscpbar-' + idx), btn = document.getElementById('rscpbtn-' + idx);
+  var fill = document.getElementById('rscpfill-' + idx), time = document.getElementById('rscptime-' + idx);
+  if (bar) bar.style.display = 'none';
+  if (btn) btn.textContent = '▶';
+  if (fill) fill.style.width = '0%';
+  if (time) time.textContent = '0:00';
+  if (_rsCpActive === idx) _rsCpActive = null;
 }
 
 var _rsActiveListing = null;
@@ -338,28 +382,9 @@ function cpReserveSubmit(e) {
 }
 </script>
 
-{# ── YouTube Preview modal ── #}
-<div id="rs-preview-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9200;align-items:center;justify-content:center" onclick="cpPreviewClose(event)">
-  <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;overflow:hidden;max-width:680px;width:95%" onclick="event.stopPropagation()">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #1e1e1e">
-      <div id="rs-preview-label" style="color:#eee;font-size:.88em;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80%"></div>
-      <button onclick="cpPreviewClose()" style="background:transparent;border:none;color:#555;cursor:pointer;font-size:1.1em;padding:0 4px;font-family:inherit;flex-shrink:0">✕</button>
-    </div>
-    <div id="rs-preview-player-wrap" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden"></div>
-    <div id="rs-preview-fallback" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:14px;text-align:center">
-      <div style="font-size:2em">🎵</div>
-      <div style="color:#888;font-size:.85em">Embedding blocked by the rights holder.</div>
-      <a id="rs-preview-yt-link-fallback" href="" target="_blank" rel="noopener"
-         style="background:#ff0000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:.85em;font-weight:600;display:inline-flex;align-items:center;gap:8px">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.7 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
-        Watch on YouTube
-      </a>
-    </div>
-    <div style="padding:10px 16px;font-size:.72em;color:#333;display:flex;align-items:center;justify-content:space-between">
-      <span>Via Discogs / YouTube</span>
-      <a id="rs-preview-yt-link" href="" target="_blank" rel="noopener" style="color:#555;text-decoration:none">Open on YouTube ↗</a>
-    </div>
-  </div>
+{# ── Headless YT container for inline preview bars ── #}
+<div id="rs-yt-container" style="display:none;width:1px;height:1px;position:fixed;left:-9999px">
+  <div id="rs-yt-div"></div>
 </div>
 
 {# ── Reserve modal ── #}

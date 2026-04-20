@@ -56,6 +56,11 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
   border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;
   font-size:.75em;color:#fff;cursor:pointer;transition:transform .12s,background .12s;user-select:none}
 .preview-icon:hover{background:#ff6b35;transform:scale(1.15)}
+.card-preview-bar{display:none;align-items:center;gap:7px;padding:6px 10px;background:#0d0d0d;border-top:1px solid #1a1a1a}
+.cpb-btn{background:none;border:none;color:#ff6b35;font-size:.85em;cursor:pointer;flex-shrink:0;padding:0;line-height:1;width:18px;text-align:center;font-family:inherit}
+.cpb-track{flex:1;height:3px;background:#222;border-radius:2px;cursor:pointer;overflow:hidden}
+.cpb-fill{height:100%;background:#ff6b35;border-radius:2px;width:0}
+.cpb-time{font-size:.65em;color:#444;flex-shrink:0;font-variant-numeric:tabular-nums}
 
 /* Reserve modal */
 .reserve-link{display:block;width:100%;text-align:center;background:#1a0a00;border:1px solid #ff6b3530;
@@ -147,7 +152,7 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
         {% endif %}
         <span class="price-badge">{{ r.price_display }}</span>
         {% if r.preview_url %}
-          <span class="preview-icon" data-preview="{{ r.preview_url|escapejs }}" title="Preview — click to play">▶</span>
+          <span class="preview-icon" data-pv-idx="{{ forloop.counter0 }}" title="Preview">▶</span>
         {% endif %}
       </div>
       <div class="card-body">
@@ -162,6 +167,14 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
         {% if r.styles %}<div class="card-meta" style="color:#444">{{ r.styles }}</div>{% endif %}
         <div class="card-shop">via <a href="{% url 'promoter_detail' r.promoter.slug %}">{{ r.promoter.name }}</a></div>
       </div>
+      {% if r.preview_url %}
+      <div class="card-preview-bar" id="cpbar-{{ forloop.counter0 }}" data-pv-url="{{ r.preview_url|escapejs }}">
+        <button class="cpb-btn" id="cpbtn-{{ forloop.counter0 }}" onclick="cpbToggle('{{ forloop.counter0 }}')">▶</button>
+        <div class="cpb-track" onclick="cpbSeek(event,'{{ forloop.counter0 }}')"><div class="cpb-fill" id="cpfill-{{ forloop.counter0 }}"></div></div>
+        <span class="cpb-time" id="cptime-{{ forloop.counter0 }}">0:00</span>
+        <button class="cpb-btn" style="color:#555;font-size:.7em;margin-left:2px" onclick="cpbClose('{{ forloop.counter0 }}')">✕</button>
+      </div>
+      {% endif %}
       <button type="button" class="reserve-link"
               onclick="shopReserveOpen('{{ r.promoter.slug|escapejs }}', {{ r.pk }}, '{{ r.artist|escapejs }} – {{ r.title|escapejs }}', '{{ r.price_display|escapejs }}')">
         Reserve →
@@ -174,13 +187,8 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
   {% endif %}
 </div>
 
-<div id="shop-preview-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9200;align-items:center;justify-content:center;flex-direction:column;gap:12px"
-     onclick="if(event.target===this)shopPreviewClose()">
-  <div id="shop-preview-wrap" style="position:relative;width:min(640px,96vw);aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden"></div>
-  <button onclick="shopPreviewClose()"
-          style="background:transparent;border:1px solid #333;color:#666;padding:6px 20px;border-radius:6px;cursor:pointer;font-size:.82em;font-family:inherit">
-    ✕ Close
-  </button>
+<div id="shop-yt-container" style="display:none;width:1px;height:1px;position:fixed;left:-9999px">
+  <div id="shop-yt-div"></div>
 </div>
 
 <div id="shop-reserve-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:9100;align-items:center;justify-content:center">
@@ -225,61 +233,93 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
 </div>
 
 <script>
-// Preview player — YT IFrame API (avoids embedding restrictions)
-var _shopYTPlayer = null, _shopPendingVid = null;
-function shopPreviewOpen(url) {
-  var m = url.match(/(?:youtu\.be\/|v=|\/embed\/)([\w-]{11})/);
+// Inline preview player
+var _cpYT = null, _cpActive = null, _cpTimer = null, _cpPending = null;
+function _cpFmt(s) { s = Math.floor(s || 0); return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); }
+
+function cpbOpen(idx) {
+  if (_cpActive !== null && _cpActive !== idx) cpbClose(_cpActive);
+  var bar = document.getElementById('cpbar-' + idx);
+  if (!bar) return;
+  bar.style.display = 'flex';
+  _cpActive = idx;
+  var m = (bar.dataset.pvUrl || '').match(/(?:youtu\.be\/|v=|\/embed\/)([\w-]{11})/);
   if (!m) return;
-  document.getElementById('shop-preview-modal').style.display = 'flex';
-  _shopPlayOrQueue(m[1]);
-}
-function _shopPlayOrQueue(vid) {
-  if (window.YT && window.YT.Player) { _shopDoPlay(vid); return; }
-  _shopPendingVid = vid;
-  var _prev = window.onYouTubeIframeAPIReady;
-  window.onYouTubeIframeAPIReady = function() {
-    if (typeof _prev === 'function') _prev();
-    window.onYouTubeIframeAPIReady = _prev;
-    if (_shopPendingVid) { _shopDoPlay(_shopPendingVid); _shopPendingVid = null; }
-  };
-  if (!document.getElementById('shop-yt-api')) {
-    var s = document.createElement('script');
-    s.id = 'shop-yt-api';
-    s.src = 'https://www.youtube.com/iframe_api';
-    document.head.appendChild(s);
+  if (window.YT && window.YT.Player) { _cpDoPlay(idx, m[1]); return; }
+  _cpPending = {idx: idx, vid: m[1]};
+  if (!document.getElementById('cpyt-api')) {
+    var prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = function() {
+      if (typeof prev === 'function') prev();
+      window.onYouTubeIframeAPIReady = prev;
+      if (_cpPending) { _cpDoPlay(_cpPending.idx, _cpPending.vid); _cpPending = null; }
+    };
+    var s = document.createElement('script'); s.id = 'cpyt-api';
+    s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s);
   }
 }
-function _shopDoPlay(vid) {
-  var wrap = document.getElementById('shop-preview-wrap');
-  wrap.innerHTML = '<div id="shop-yt-div" style="width:100%;height:100%"></div>';
-  _shopYTPlayer = new YT.Player('shop-yt-div', {
+
+function _cpDoPlay(idx, vid) {
+  _cpStopTimer();
+  if (_cpYT) { try { _cpYT.destroy(); } catch(e) {} _cpYT = null; }
+  document.getElementById('shop-yt-container').innerHTML = '<div id="shop-yt-div"></div>';
+  _cpYT = new YT.Player('shop-yt-div', {
     videoId: vid,
-    playerVars: { autoplay: 1, rel: 0, controls: 1 },
+    playerVars: {autoplay: 1, rel: 0, controls: 0},
     events: {
-      onError: function() {
-        wrap.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;padding:20px;text-align:center">' +
-          '<div style="font-size:2em">🎵</div>' +
-          '<div style="color:#888;font-size:.85em">Preview unavailable — embedding restricted by rights holder.</div>' +
-          '</div>';
-      }
+      onStateChange: function(e) {
+        var S = YT.PlayerState, btn = document.getElementById('cpbtn-' + idx);
+        if (e.data === S.PLAYING)      { if (btn) btn.textContent = '⏸'; _cpStartTimer(idx); }
+        else if (e.data === S.PAUSED)  { if (btn) btn.textContent = '▶'; _cpStopTimer(); }
+        else if (e.data === S.ENDED)   { cpbClose(idx); }
+      },
+      onError: function() { cpbClose(idx); }
     }
   });
 }
-function shopPreviewClose() {
-  if (_shopYTPlayer) { try { _shopYTPlayer.stopVideo(); } catch(e){} _shopYTPlayer = null; }
-  document.getElementById('shop-preview-wrap').innerHTML = '';
-  document.getElementById('shop-preview-modal').style.display = 'none';
+
+function _cpStartTimer(idx) {
+  _cpStopTimer();
+  _cpTimer = setInterval(function() {
+    if (!_cpYT) return;
+    try {
+      var cur = _cpYT.getCurrentTime() || 0, tot = _cpYT.getDuration() || 0;
+      var fill = document.getElementById('cpfill-' + idx), time = document.getElementById('cptime-' + idx);
+      if (fill && tot > 0) fill.style.width = (cur / tot * 100) + '%';
+      if (time) time.textContent = _cpFmt(cur);
+    } catch(e) {}
+  }, 500);
 }
+function _cpStopTimer() { if (_cpTimer) { clearInterval(_cpTimer); _cpTimer = null; } }
+
+function cpbToggle(idx) {
+  if (!_cpYT || _cpActive !== idx) { cpbOpen(idx); return; }
+  try { var st = _cpYT.getPlayerState(); if (st === YT.PlayerState.PLAYING) _cpYT.pauseVideo(); else _cpYT.playVideo(); } catch(e) {}
+}
+function cpbSeek(e, idx) {
+  if (!_cpYT || _cpActive !== idx) return;
+  var r = e.currentTarget.getBoundingClientRect(), pct = (e.clientX - r.left) / r.width;
+  try { var d = _cpYT.getDuration(); if (d > 0) _cpYT.seekTo(pct * d, true); } catch(err) {}
+}
+function cpbClose(idx) {
+  _cpStopTimer();
+  if (_cpYT) { try { _cpYT.stopVideo(); _cpYT.destroy(); } catch(e) {} _cpYT = null; }
+  var bar = document.getElementById('cpbar-' + idx), btn = document.getElementById('cpbtn-' + idx);
+  var fill = document.getElementById('cpfill-' + idx), time = document.getElementById('cptime-' + idx);
+  if (bar) bar.style.display = 'none';
+  if (btn) btn.textContent = '▶';
+  if (fill) fill.style.width = '0%';
+  if (time) time.textContent = '0:00';
+  if (_cpActive === idx) _cpActive = null;
+}
+
 document.addEventListener('click', function(e) {
   var icon = e.target.closest('.preview-icon');
-  if (icon && icon.dataset.preview) {
-    e.preventDefault();
-    e.stopPropagation();
-    shopPreviewOpen(icon.dataset.preview);
+  if (icon && icon.dataset.pvIdx !== undefined) {
+    e.preventDefault(); e.stopPropagation();
+    var idx = icon.dataset.pvIdx;
+    if (_cpActive === idx) cpbToggle(idx); else cpbOpen(idx);
   }
-});
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') shopPreviewClose();
 });
 
 var _shopReserveSlug = null, _shopReservePk = null;
