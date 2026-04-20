@@ -240,24 +240,52 @@ function cpCopyWallet(id, btn) {
   });
 }
 
+// Preview player — YT IFrame API (avoids embedding restrictions)
+var _rsYTPlayer = null, _rsPendingVid = null, _rsPendingUrl = null;
 function cpPreview(ytUrl, label) {
   var m = ytUrl.match(/(?:youtu\.be\/|v=|\/embed\/)([\w-]{11})/);
   if (!m) return;
-  var vid = m[1];
-  var embedUrl = 'https://www.youtube.com/embed/' + vid + '?autoplay=1&rel=0';
   document.getElementById('rs-preview-label').textContent = label;
   document.getElementById('rs-preview-yt-link').href = ytUrl;
   document.getElementById('rs-preview-yt-link-fallback').href = ytUrl;
-  document.getElementById('rs-preview-player-wrap').style.display = 'block';
   document.getElementById('rs-preview-fallback').style.display = 'none';
-  var wrap = document.getElementById('rs-preview-player-wrap');
-  wrap.innerHTML = '<iframe src="' + embedUrl + '" frameborder="0"' +
-    ' allow="autoplay;encrypted-media;picture-in-picture" allowfullscreen' +
-    ' style="position:absolute;inset:0;width:100%;height:100%;border:none"></iframe>';
   document.getElementById('rs-preview-modal').style.display = 'flex';
+  _rsCpPlayOrQueue(m[1], ytUrl);
+}
+function _rsCpPlayOrQueue(vid, ytUrl) {
+  if (window.YT && window.YT.Player) { _rsCpDoPlay(vid, ytUrl); return; }
+  _rsPendingVid = vid; _rsPendingUrl = ytUrl;
+  var _prev = window.onYouTubeIframeAPIReady;
+  window.onYouTubeIframeAPIReady = function() {
+    if (typeof _prev === 'function') _prev();
+    window.onYouTubeIframeAPIReady = _prev;
+    if (_rsPendingVid) { _rsCpDoPlay(_rsPendingVid, _rsPendingUrl); _rsPendingVid = null; }
+  };
+  if (!document.getElementById('rs-yt-api')) {
+    var s = document.createElement('script');
+    s.id = 'rs-yt-api';
+    s.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(s);
+  }
+}
+function _rsCpDoPlay(vid, ytUrl) {
+  var wrap = document.getElementById('rs-preview-player-wrap');
+  wrap.innerHTML = '<div id="rs-yt-div" style="position:absolute;inset:0;width:100%;height:100%"></div>';
+  _rsYTPlayer = new YT.Player('rs-yt-div', {
+    videoId: vid,
+    playerVars: { autoplay: 1, rel: 0, controls: 1 },
+    events: {
+      onError: function() {
+        document.getElementById('rs-preview-player-wrap').innerHTML = '';
+        document.getElementById('rs-preview-yt-link-fallback').href = ytUrl || '#';
+        document.getElementById('rs-preview-fallback').style.display = 'flex';
+      }
+    }
+  });
 }
 function cpPreviewClose(e) {
   if (e && e.target !== document.getElementById('rs-preview-modal') && e.type !== 'click') return;
+  if (_rsYTPlayer) { try { _rsYTPlayer.stopVideo(); } catch(err){} _rsYTPlayer = null; }
   document.getElementById('rs-preview-player-wrap').innerHTML = '';
   document.getElementById('rs-preview-modal').style.display = 'none';
 }
