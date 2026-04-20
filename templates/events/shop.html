@@ -265,8 +265,9 @@ function _cpDoPlay(idx, vid) {
   document.getElementById('shop-yt-container').innerHTML = '<div id="shop-yt-div"></div>';
   _cpYT = new YT.Player('shop-yt-div', {
     videoId: vid,
-    playerVars: {autoplay: 1, rel: 0, controls: 0},
+    playerVars: {autoplay: 0, rel: 0, controls: 0},
     events: {
+      onReady: function(e) { e.target.playVideo(); },
       onStateChange: function(e) {
         var S = YT.PlayerState, btn = document.getElementById('cpbtn-' + idx);
         if (e.data === S.PLAYING)      { if (btn) btn.textContent = '⏸'; _cpStartTimer(idx); }

@@ -290,8 +290,9 @@ function _rsCpDoPlay(idx, vid) {
   document.getElementById('rs-yt-container').innerHTML = '<div id="rs-yt-div"></div>';
   _rsCpYT = new YT.Player('rs-yt-div', {
     videoId: vid,
-    playerVars: {autoplay: 1, rel: 0, controls: 0},
+    playerVars: {autoplay: 0, rel: 0, controls: 0},
     events: {
+      onReady: function(e) { e.target.playVideo(); },
       onStateChange: function(e) {
         var S = YT.PlayerState, btn = document.getElementById('rscpbtn-' + idx);
         if (e.data === S.PLAYING)     { if (btn) btn.textContent = '⏸'; _rsCpStartTimer(idx); }
