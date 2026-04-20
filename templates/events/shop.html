@@ -152,7 +152,7 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
         {% endif %}
         <span class="price-badge">{{ r.price_display }}</span>
         {% if r.preview_url %}
-          <span class="preview-icon" data-pv-idx="{{ forloop.counter0 }}" title="Preview">▶</span>
+          <span class="preview-icon" onclick="cpbOpen('{{ forloop.counter0 }}','{{ r.preview_url|escapejs }}')" title="Preview">▶</span>
         {% endif %}
       </div>
       <div class="card-body">
@@ -233,52 +233,59 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:4px}
 </div>
 
 <script>
-// Inline preview player
-var _cpYT = null, _cpActive = null, _cpTimer = null, _cpPending = null;
+// Inline preview player — init on page load, loadVideoById on click (binsky pattern)
+var _cpYT = null, _cpActive = null, _cpTimer = null, _cpPendingVid = null;
+
+(function() {
+  function create() {
+    _cpYT = new YT.Player('shop-yt-div', {
+      playerVars: {controls: 0, rel: 0, iv_load_policy: 3},
+      events: {
+        onReady: function() {
+          if (_cpPendingVid) { _cpYT.loadVideoById(_cpPendingVid); _cpPendingVid = null; }
+        },
+        onStateChange: function(e) {
+          var S = YT.PlayerState, idx = _cpActive;
+          if (idx === null) return;
+          var btn = document.getElementById('cpbtn-' + idx);
+          if (e.data === S.PLAYING)     { if (btn) btn.textContent = '⏸'; _cpStartTimer(idx); }
+          else if (e.data === S.PAUSED) { if (btn) btn.textContent = '▶'; _cpStopTimer(); }
+          else if (e.data === S.ENDED)  { cpbClose(idx); }
+        },
+        onError: function() { if (_cpActive !== null) cpbClose(_cpActive); }
+      }
+    });
+  }
+  if (window.YT && window.YT.Player) { create(); return; }
+  var prev = window.onYouTubeIframeAPIReady;
+  window.onYouTubeIframeAPIReady = function() {
+    if (typeof prev === 'function') prev();
+    window.onYouTubeIframeAPIReady = prev;
+    create();
+  };
+  if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+    var s = document.createElement('script');
+    s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s);
+  }
+})();
+
 function _cpFmt(s) { s = Math.floor(s || 0); return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); }
 
-function cpbOpen(idx) {
+function cpbOpen(idx, url) {
   if (_cpActive !== null && _cpActive !== idx) cpbClose(_cpActive);
   var bar = document.getElementById('cpbar-' + idx);
   if (!bar) return;
   bar.style.display = 'flex';
   _cpActive = idx;
-  var m = (bar.dataset.pvUrl || '').match(/(?:youtu\.be\/|v=|\/embed\/)([\w-]{11})/);
+  var m = (url || '').match(/(?:youtu\.be\/|v=|\/embed\/)([\w-]{11})/);
   if (!m) return;
-  if (window.YT && window.YT.Player) { _cpDoPlay(idx, m[1]); return; }
-  _cpPending = {idx: idx, vid: m[1]};
-  if (!document.getElementById('cpyt-api')) {
-    var prev = window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady = function() {
-      if (typeof prev === 'function') prev();
-      window.onYouTubeIframeAPIReady = prev;
-      if (_cpPending) { _cpDoPlay(_cpPending.idx, _cpPending.vid); _cpPending = null; }
-    };
-    var s = document.createElement('script'); s.id = 'cpyt-api';
-    s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s);
+  var vid = m[1];
+  if (_cpYT && typeof _cpYT.loadVideoById === 'function') {
+    _cpYT.loadVideoById(vid);
+  } else {
+    _cpPendingVid = vid;
   }
 }
-
-function _cpDoPlay(idx, vid) {
-  _cpStopTimer();
-  if (_cpYT) { try { _cpYT.destroy(); } catch(e) {} _cpYT = null; }
-  document.getElementById('shop-yt-container').innerHTML = '<div id="shop-yt-div"></div>';
-  _cpYT = new YT.Player('shop-yt-div', {
-    videoId: vid,
-    playerVars: {autoplay: 0, rel: 0, controls: 0},
-    events: {
-      onReady: function(e) { e.target.playVideo(); },
-      onStateChange: function(e) {
-        var S = YT.PlayerState, btn = document.getElementById('cpbtn-' + idx);
-        if (e.data === S.PLAYING)      { if (btn) btn.textContent = '⏸'; _cpStartTimer(idx); }
-        else if (e.data === S.PAUSED)  { if (btn) btn.textContent = '▶'; _cpStopTimer(); }
-        else if (e.data === S.ENDED)   { cpbClose(idx); }
-      },
-      onError: function() { cpbClose(idx); }
-    }
-  });
-}
-
 function _cpStartTimer(idx) {
   _cpStopTimer();
   _cpTimer = setInterval(function() {
@@ -292,9 +299,8 @@ function _cpStartTimer(idx) {
   }, 500);
 }
 function _cpStopTimer() { if (_cpTimer) { clearInterval(_cpTimer); _cpTimer = null; } }
-
 function cpbToggle(idx) {
-  if (!_cpYT || _cpActive !== idx) { cpbOpen(idx); return; }
+  if (!_cpYT || _cpActive !== idx) { return; }
   try { var st = _cpYT.getPlayerState(); if (st === YT.PlayerState.PLAYING) _cpYT.pauseVideo(); else _cpYT.playVideo(); } catch(e) {}
 }
 function cpbSeek(e, idx) {
@@ -304,7 +310,7 @@ function cpbSeek(e, idx) {
 }
 function cpbClose(idx) {
   _cpStopTimer();
-  if (_cpYT) { try { _cpYT.stopVideo(); _cpYT.destroy(); } catch(e) {} _cpYT = null; }
+  if (_cpYT) { try { _cpYT.stopVideo(); } catch(e) {} }
   var bar = document.getElementById('cpbar-' + idx), btn = document.getElementById('cpbtn-' + idx);
   var fill = document.getElementById('cpfill-' + idx), time = document.getElementById('cptime-' + idx);
   if (bar) bar.style.display = 'none';
@@ -313,15 +319,6 @@ function cpbClose(idx) {
   if (time) time.textContent = '0:00';
   if (_cpActive === idx) _cpActive = null;
 }
-
-document.addEventListener('click', function(e) {
-  var icon = e.target.closest('.preview-icon');
-  if (icon && icon.dataset.pvIdx !== undefined) {
-    e.preventDefault(); e.stopPropagation();
-    var idx = icon.dataset.pvIdx;
-    if (_cpActive === idx) cpbToggle(idx); else cpbOpen(idx);
-  }
-});
 
 var _shopReserveSlug = null, _shopReservePk = null;
 function shopReserveOpen(slug, pk, label, price) {
