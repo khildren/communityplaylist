@@ -3322,3 +3322,40 @@ def events_rss(request):
     buf = io.StringIO()
     feed.write(buf, 'utf-8')
     return HttpResponse(buf.getvalue(), content_type='application/rss+xml; charset=utf-8')
+
+
+def event_flyer(request, slug):
+    """Render a printable / screenshot-able event flyer (portrait + square formats)."""
+    if request.user.is_staff:
+        event = get_object_or_404(Event, slug=slug)
+    else:
+        event = get_object_or_404(Event, slug=slug, status='approved')
+
+    start_local = localtime(event.start_date)
+    date_str    = start_local.strftime('%A, %B %-d, %Y')
+    time_str    = start_local.strftime('%-I:%M %p')
+
+    artists   = list(event.artists.all()[:8])
+    genres    = list(event.genres.values_list('name', flat=True)[:6])
+    promoters = list(event.promoters.all()[:2])
+
+    if event.is_free:
+        price_str = 'FREE'
+    elif event.price_info:
+        price_str = event.price_info[:40]
+    else:
+        price_str = ''
+
+    photo_url = request.build_absolute_uri(event.photo.url) if event.photo else None
+
+    return render(request, 'events/event_flyer.html', {
+        'event':      event,
+        'date_str':   date_str,
+        'time_str':   time_str,
+        'artists':    artists,
+        'genres':     genres,
+        'promoters':  promoters,
+        'price_str':  price_str,
+        'photo_url':  photo_url,
+        'event_url':  f'communityplaylist.com/events/{event.slug}/',
+    })

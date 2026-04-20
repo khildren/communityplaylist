@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ event.title }} — Flyer</title>
+<style>
+/* ── Page chrome ─────────────────────────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:#0a0a0a;font-family:sans-serif;min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;padding:20px 16px 40px;gap:16px}
+
+.ctrl-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;
+  background:#141414;border:1px solid #222;border-radius:8px;padding:10px 14px;
+  width:min(640px,100%)}
+.ctrl-btn{background:#1e1e1e;border:1px solid #2a2a2a;color:#888;padding:6px 14px;
+  border-radius:6px;cursor:pointer;font-size:.8em;font-family:inherit;transition:all .12s;white-space:nowrap}
+.ctrl-btn:hover{border-color:#ff6b35;color:#ff6b35}
+.ctrl-btn.on{background:#ff6b35;border-color:#ff6b35;color:#fff}
+.ctrl-sep{width:1px;height:20px;background:#2a2a2a}
+.ctrl-hint{font-size:.72em;color:#444;white-space:nowrap}
+.back-link{color:#555;font-size:.78em;text-decoration:none}
+.back-link:hover{color:#ff6b35}
+
+/* ── Flyer wrapper (handles both sizes) ─────────────────────────────── */
+.flyer-wrap{position:relative;cursor:default;user-select:none}
+
+/* ── Flyer — portrait 2:3 ───────────────────────────────────────────── */
+.flyer{
+  width:600px;height:900px;
+  position:relative;overflow:hidden;
+  background:#111;
+  border-radius:4px;
+  font-family:'Impact','Arial Black','Franklin Gothic Heavy',sans-serif;
+}
+.flyer.sq{height:600px}
+
+/* ── Background layer ────────────────────────────────────────────────── */
+.fl-bg{position:absolute;inset:0;z-index:0}
+.fl-bg img{width:100%;height:100%;object-fit:cover;display:block;filter:brightness(.55) saturate(1.2)}
+.fl-no-photo{width:100%;height:100%;
+  background:radial-gradient(ellipse at 40% 30%, #1a0a2e 0%, #0d0d0d 55%),
+             radial-gradient(ellipse at 80% 80%, #0a1a0a 0%, transparent 60%)}
+
+/* Gradient overlay — portrait */
+.fl-grad{position:absolute;inset:0;z-index:1;
+  background:linear-gradient(
+    to bottom,
+    rgba(0,0,0,.05)   0%,
+    rgba(0,0,0,.15)  25%,
+    rgba(0,0,0,.55)  52%,
+    rgba(0,0,0,.88)  72%,
+    rgba(0,0,0,.97) 100%
+  )}
+/* Gradient overlay — square (heavier sooner) */
+.flyer.sq .fl-grad{
+  background:linear-gradient(
+    to bottom,
+    rgba(0,0,0,.1)  0%,
+    rgba(0,0,0,.5)  40%,
+    rgba(0,0,0,.92) 65%,
+    rgba(0,0,0,.98) 100%
+  )}
+
+/* ── Content ─────────────────────────────────────────────────────────── */
+.fl-content{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;padding:28px 32px 24px}
+
+/* Top row: CP logo */
+.fl-header{display:flex;align-items:center;justify-content:space-between;flex-shrink:0;margin-bottom:auto}
+.fl-logo{display:flex;align-items:center;gap:7px}
+.fl-logo-dot{width:28px;height:28px;border-radius:50%;background:#ff6b35;
+  display:flex;align-items:center;justify-content:center;font-size:.7em;font-weight:700;
+  color:#fff;font-family:sans-serif;flex-shrink:0;letter-spacing:-.5px}
+.fl-logo-text{font-size:.62em;color:rgba(255,255,255,.5);font-family:sans-serif;
+  letter-spacing:.04em;text-transform:uppercase;line-height:1.2;font-weight:400}
+.fl-presented{font-size:.6em;color:rgba(255,255,255,.35);font-family:sans-serif;
+  text-transform:uppercase;letter-spacing:.08em;text-align:right;line-height:1.3}
+.fl-presented strong{color:rgba(255,255,255,.55)}
+
+/* ── Artist block ────────────────────────────────────────────────────── */
+.fl-artists{margin-top:auto;margin-bottom:14px}
+
+/* Font sizes scale with artist count — JS applies class */
+.fl-artists .fl-headliner{
+  display:block;
+  font-size:86px;line-height:.92;
+  color:#fff;text-transform:uppercase;
+  letter-spacing:-2px;
+  word-break:break-word;
+  text-shadow:0 2px 24px rgba(0,0,0,.8);
+}
+.fl-artists.two   .fl-headliner{font-size:68px}
+.fl-artists.three .fl-headliner{font-size:54px}
+.fl-artists.four  .fl-headliner{font-size:44px}
+.fl-artists.many  .fl-headliner{font-size:36px}
+
+.fl-artists .fl-headliner:not(:first-child){
+  color:rgba(255,255,255,.72);
+  font-size:.72em; /* relative to current headliner size */
+  margin-top:2px
+}
+.fl-artists .fl-headliner:nth-child(3)~.fl-headliner{
+  color:rgba(255,255,255,.5);
+  font-size:.6em
+}
+
+/* ── Info strip ──────────────────────────────────────────────────────── */
+.fl-divider{width:40px;height:2px;background:#ff6b35;margin-bottom:12px;border-radius:1px}
+.fl-title{font-size:18px;color:rgba(255,255,255,.8);font-family:sans-serif;
+  font-weight:700;letter-spacing:.01em;margin-bottom:10px;line-height:1.2;
+  text-transform:none;word-break:break-word}
+.fl-meta-row{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:10px;align-items:center}
+.fl-meta{font-family:sans-serif;font-size:13.5px;color:rgba(255,255,255,.75);
+  display:flex;align-items:center;gap:5px;line-height:1.3}
+.fl-meta-icon{color:#ff6b35;font-size:1em}
+.fl-meta strong{font-weight:700;color:#fff}
+
+.fl-genres{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.fl-genre{background:rgba(255,107,53,.12);border:1px solid rgba(255,107,53,.35);
+  color:rgba(255,107,53,.9);font-size:11px;font-family:sans-serif;font-weight:600;
+  padding:2px 8px;border-radius:3px;text-transform:uppercase;letter-spacing:.05em}
+
+.fl-price{display:inline-flex;align-items:center;background:#ff6b35;color:#fff;
+  font-family:sans-serif;font-size:13px;font-weight:700;padding:4px 12px;
+  border-radius:20px;letter-spacing:.04em;margin-bottom:10px}
+.fl-price.free{background:#1a2e1a;border:1px solid #2a5a2a;color:#4caf50}
+
+/* ── Footer ──────────────────────────────────────────────────────────── */
+.fl-footer{display:flex;align-items:center;justify-content:space-between;margin-top:auto}
+.fl-url{font-family:sans-serif;font-size:10.5px;color:rgba(255,255,255,.28);
+  letter-spacing:.06em;text-transform:lowercase}
+.fl-qr-area{width:36px;height:36px} /* placeholder for future QR */
+
+/* ── Square adjustments ──────────────────────────────────────────────── */
+.flyer.sq .fl-content{padding:22px 26px 20px}
+.flyer.sq .fl-artists .fl-headliner{font-size:72px}
+.flyer.sq .fl-artists.two   .fl-headliner{font-size:58px}
+.flyer.sq .fl-artists.three .fl-headliner{font-size:46px}
+.flyer.sq .fl-artists.four  .fl-headliner{font-size:38px}
+.flyer.sq .fl-artists.many  .fl-headliner{font-size:30px}
+.flyer.sq .fl-title{font-size:16px}
+.flyer.sq .fl-meta{font-size:12.5px}
+
+/* ── Print (hides controls, sizes to content) ─────────────────────────── */
+@media print{
+  html,body{background:#000;padding:0;gap:0}
+  .ctrl-bar,.back-link{display:none!important}
+  .flyer-wrap{box-shadow:none}
+  .flyer{border-radius:0}
+}
+</style>
+</head>
+<body>
+
+<!-- Controls -->
+<a href="/events/{{ event.slug }}/" class="back-link">← Back to event</a>
+<div class="ctrl-bar">
+  <button class="ctrl-btn on" id="btn-portrait" onclick="setFmt('portrait')">📄 Flyer (2:3)</button>
+  <button class="ctrl-btn"    id="btn-square"   onclick="setFmt('square')">⬛ Square (1:1)</button>
+  <div class="ctrl-sep"></div>
+  <button class="ctrl-btn" onclick="window.print()">🖨 Print</button>
+  <button class="ctrl-btn" id="dl-btn" onclick="downloadPNG()">⬇ Download PNG</button>
+  <div class="ctrl-sep"></div>
+  <span class="ctrl-hint">Screenshot or download to save as image</span>
+</div>
+
+<!-- Flyer -->
+<div class="flyer-wrap">
+<div class="flyer" id="flyer">
+
+  <!-- Background -->
+  <div class="fl-bg">
+    {% if photo_url %}
+      <img src="{{ photo_url }}" alt="" crossorigin="anonymous">
+    {% else %}
+      <div class="fl-no-photo"></div>
+    {% endif %}
+    <div class="fl-grad"></div>
+  </div>
+
+  <!-- Content -->
+  <div class="fl-content">
+
+    <!-- Header -->
+    <div class="fl-header">
+      <div class="fl-logo">
+        <div class="fl-logo-dot">CP</div>
+        <div class="fl-logo-text">Community<br>Playlist PDX</div>
+      </div>
+      {% if promoters %}
+      <div class="fl-presented">
+        Presented by<br>
+        {% for p in promoters %}<strong>{{ p.name }}</strong>{% if not forloop.last %} &amp; {% endif %}{% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Artists -->
+    {% if artists %}
+    <div class="fl-artists" id="fl-artists">
+      {% for artist in artists %}
+      <span class="fl-headliner">{{ artist.name }}</span>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="fl-artists" id="fl-artists">
+      <span class="fl-headliner">{{ event.title }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Info -->
+    <div>
+      <div class="fl-divider"></div>
+
+      {% if artists %}
+      <div class="fl-title">{{ event.title }}</div>
+      {% endif %}
+
+      <div class="fl-meta-row">
+        <span class="fl-meta">
+          <span class="fl-meta-icon">📅</span>
+          <strong>{{ date_str }}</strong>
+        </span>
+        <span class="fl-meta">
+          <span class="fl-meta-icon">🕐</span>
+          {{ time_str }}
+        </span>
+      </div>
+
+      {% if event.location %}
+      <div class="fl-meta-row">
+        <span class="fl-meta">
+          <span class="fl-meta-icon">📍</span>
+          {{ event.location }}
+        </span>
+      </div>
+      {% endif %}
+
+      {% if genres %}
+      <div class="fl-genres">
+        {% for g in genres %}
+        <span class="fl-genre">{{ g }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if price_str %}
+      <div class="fl-price {% if price_str == 'FREE' %}free{% endif %}">
+        {{ price_str }}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <div class="fl-footer">
+      <span class="fl-url">{{ event_url }}</span>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+// ── Format toggle ───────────────────────────────────────────────────────
+function setFmt(fmt) {
+  var flyer = document.getElementById('flyer');
+  flyer.classList.toggle('sq', fmt === 'square');
+  document.getElementById('btn-portrait').classList.toggle('on', fmt === 'portrait');
+  document.getElementById('btn-square').classList.toggle('on', fmt === 'square');
+  scaleArtists();
+}
+
+// ── Scale artist names by count ─────────────────────────────────────────
+function scaleArtists() {
+  var block = document.getElementById('fl-artists');
+  if (!block) return;
+  var n = block.querySelectorAll('.fl-headliner').length;
+  block.classList.remove('two','three','four','many');
+  if      (n === 2) block.classList.add('two');
+  else if (n === 3) block.classList.add('three');
+  else if (n === 4) block.classList.add('four');
+  else if (n >= 5)  block.classList.add('many');
+}
+scaleArtists();
+
+// ── Download PNG via html2canvas ────────────────────────────────────────
+function downloadPNG() {
+  var btn = document.getElementById('dl-btn');
+  btn.textContent = 'Generating…';
+  btn.disabled = true;
+
+  function doCapture() {
+    var el = document.getElementById('flyer');
+    html2canvas(el, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#111111',
+      logging: false,
+    }).then(function(canvas) {
+      var link = document.createElement('a');
+      var fmt  = el.classList.contains('sq') ? 'square' : 'flyer';
+      link.download = '{{ event.slug }}-' + fmt + '.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      btn.textContent = '⬇ Download PNG';
+      btn.disabled = false;
+    }).catch(function(err) {
+      console.error(err);
+      btn.textContent = '⬇ Download PNG';
+      btn.disabled = false;
+      alert('PNG capture failed — try using a screenshot instead.');
+    });
+  }
+
+  if (!window.html2canvas) {
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    s.onload = doCapture;
+    s.onerror = function() {
+      btn.textContent = '⬇ Download PNG';
+      btn.disabled = false;
+      alert('Could not load html2canvas — try screenshotting instead.');
+    };
+    document.head.appendChild(s);
+  } else {
+    doCapture();
+  }
+}
+
+// ── Restore format from URL param ───────────────────────────────────────
+(function(){
+  var p = new URLSearchParams(location.search);
+  if (p.get('fmt') === 'square') setFmt('square');
+})();
+</script>
+
+</body>
+</html>

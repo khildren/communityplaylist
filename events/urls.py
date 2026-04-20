@@ -35,6 +35,7 @@ urlpatterns = [
     path('events/<slug:slug>/lineup/', views.event_lineup_edit, name='event_lineup_edit'),
     path('events/<slug:slug>/lineup/create/', views.event_lineup_create, name='event_lineup_create'),
     path('events/<slug:slug>/claim/', views.claim_event, name='claim_event'),
+    path('events/<slug:slug>/flyer/', views.event_flyer, name='event_flyer'),
     path('events/<slug:slug>/edit/', views.event_edit, name='event_edit'),
     # Venues
     path('venues/', views.venue_list, name='venue_list'),

@@ -175,7 +175,10 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
 {% elif user.is_authenticated and event.submitted_user == user %}
 <div style="margin-top:20px;padding:10px 16px;background:#1a1a1a;border:1px solid #333;border-radius:8px;font-size:.82em;color:#666;display:flex;justify-content:space-between;align-items:center">
   <span>You own this event</span>
-  <a href="/events/{{ event.slug }}/edit/" style="color:#ff6b35;text-decoration:none;font-size:.9em">Edit →</a>
+  <div style="display:flex;gap:10px;align-items:center">
+    <a href="/events/{{ event.slug }}/flyer/" target="_blank" style="color:#888;text-decoration:none;font-size:.82em;border:1px solid #2a2a2a;padding:3px 10px;border-radius:5px">🎨 Flyer</a>
+    <a href="/events/{{ event.slug }}/edit/" style="color:#ff6b35;text-decoration:none;font-size:.9em">Edit →</a>
+  </div>
 </div>
 {% endif %}
 {# ── Lineup ── #}
