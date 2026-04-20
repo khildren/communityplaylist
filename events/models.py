@@ -71,9 +71,11 @@ class VenueFeed(models.Model):
 
 
 class SiteStats(models.Model):
-    visit_count = models.BigIntegerField(default=0)
-    daily_count = models.BigIntegerField(default=0)
-    daily_date  = models.DateField(null=True, blank=True)
+    visit_count      = models.BigIntegerField(default=0)
+    daily_count      = models.BigIntegerField(default=0)
+    daily_date       = models.DateField(null=True, blank=True)
+    tracking_started = models.DateField(null=True, blank=True,
+                                        help_text='Date counting began — used to compute all-time avg daily')
 
     class Meta:
         verbose_name_plural = 'site stats'
@@ -83,7 +85,9 @@ class SiteStats(models.Model):
         if not request.session.get('cp_counted'):
             from django.utils import timezone
             today = timezone.localdate()
-            obj, _ = cls.objects.get_or_create(pk=1)
+            obj, created = cls.objects.get_or_create(pk=1)
+            if created or obj.tracking_started is None:
+                cls.objects.filter(pk=1).update(tracking_started=today)
             if obj.daily_date != today:
                 cls.objects.filter(pk=1).update(
                     visit_count=F('visit_count') + 1,
@@ -104,11 +108,16 @@ class SiteStats(models.Model):
 
     @classmethod
     def get_counts(cls):
+        import math
         from django.utils import timezone
         obj, _ = cls.objects.get_or_create(pk=1)
         today = timezone.localdate()
-        daily = obj.daily_count if obj.daily_date == today else 0
-        return obj.visit_count, daily
+        if obj.tracking_started:
+            days = max(1, (today - obj.tracking_started).days + 1)
+            avg_daily = math.ceil(obj.visit_count / days)
+        else:
+            avg_daily = obj.daily_count if obj.daily_date == today else 0
+        return obj.visit_count, avg_daily
 
 
 class Genre(models.Model):

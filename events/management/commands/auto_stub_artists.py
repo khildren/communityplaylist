@@ -122,7 +122,7 @@ class Command(BaseCommand):
                 self.stdout.write(
                     f'[DRY RUN] {"stub" if artist.is_stub else "NEW stub"}: '
                     f'"{artist_name}" ({show_count} shows) | '
-                    f'hood={home_hood or "?"} lat={avg_lat:.4f if avg_lat else "?"}'
+                    f'hood={home_hood or "?"} lat={f"{avg_lat:.4f}" if avg_lat else "?"}'
                 )
                 created += 1
                 continue

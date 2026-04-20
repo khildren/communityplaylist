@@ -1041,6 +1041,50 @@ def calendar_feed(request):
     return resp
 
 
+def rss_feed(request):
+    from django.utils.feedgenerator import Rss201rev2Feed
+
+    feed = Rss201rev2Feed(
+        title='Community Playlist — PDX Events',
+        link='https://communityplaylist.com/',
+        description='Portland community events submitted by the people, for the people.',
+        language='en',
+        feed_url='https://communityplaylist.com/feed/events.rss',
+    )
+
+    now = timezone.now()
+    events = Event.objects.filter(status='approved', start_date__gte=now).order_by('start_date')[:100]
+
+    category = request.GET.get('category')
+    genre_id = request.GET.get('genre')
+    free_only = request.GET.get('free')
+    if category:
+        events = events.filter(category=category)
+    if genre_id:
+        events = events.filter(genres__id=genre_id)
+    if free_only:
+        events = events.filter(is_free=True)
+
+    for event in events:
+        location = getattr(event, 'location', '') or ''
+        description = event.description[:500] if event.description else ''
+        if location and not location.startswith(('http', 'www')):
+            description = f'{location} — {description}' if description else location
+
+        feed.add_item(
+            title=event.title,
+            link=f'https://communityplaylist.com/events/{event.slug}/',
+            unique_id=f'https://communityplaylist.com/events/{event.slug}/',
+            description=description,
+            pubdate=event.start_date if timezone.is_aware(event.start_date) else timezone.make_aware(event.start_date),
+            categories=[event.get_category_display()] if event.category else [],
+        )
+
+    resp = HttpResponse(content_type='application/rss+xml; charset=utf-8')
+    feed.write(resp, 'utf-8')
+    return resp
+
+
 def calendar_subscribe(request):
     genres = Genre.objects.filter(
         events__status='approved', events__start_date__gte=timezone.now()
