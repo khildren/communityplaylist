@@ -241,8 +241,30 @@ class ArtistAdmin(admin.ModelAdmin):
     retire_as_crew.short_description = '🪦 Retire selected as Crew (migrate events + delete Artist)'
 
 
+class PromoterProfileAdminForm(forms.ModelForm):
+    promoter_type = forms.MultipleChoiceField(
+        choices=PromoterProfile.TYPE_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        required=True,
+    )
+
+    class Meta:
+        model = PromoterProfile
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        instance = kwargs.get('instance')
+        if instance:
+            self.initial['promoter_type'] = instance.types
+
+    def clean_promoter_type(self):
+        return self.cleaned_data['promoter_type']
+
+
 @admin.register(PromoterProfile)
 class PromoterProfileAdmin(admin.ModelAdmin):
+    form = PromoterProfileAdminForm
     search_fields = ['name', 'slug', 'admin_email']
     ordering = ['name']
     list_display = ['name', 'slug', 'name_variants', 'admin_email', 'is_verified', 'is_public', 'has_drive', 'claimed_by']

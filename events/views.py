@@ -1522,6 +1522,66 @@ def _is_yt_channel(url):
     return bool(_re_yt.search(r'youtube\.com/([A-Za-z0-9_]+)/?$', url))
 
 
+# ── Twitch clips helper ───────────────────────────────────────────────────────
+_twitch_clips_cache: dict = {}
+_TWITCH_CLIPS_TTL = 3600
+
+def _get_twitch_clips_cached(channel):
+    """Return list of top-clip dicts for a Twitch channel, cached 1h."""
+    if not channel:
+        return []
+    now = _time.time()
+    entry = _twitch_clips_cache.get(channel)
+    if entry and now - entry[1] < _TWITCH_CLIPS_TTL:
+        return entry[0]
+    clips = _fetch_twitch_clips(channel)
+    _twitch_clips_cache[channel] = (clips, now)
+    return clips
+
+def _fetch_twitch_clips(channel):
+    from django.conf import settings as _s
+    cid = getattr(_s, 'TWITCH_CLIENT_ID', '')
+    csec = getattr(_s, 'TWITCH_CLIENT_SECRET', '')
+    if not cid or not csec:
+        return []
+    try:
+        tok_r = requests.post(
+            'https://id.twitch.tv/oauth2/token',
+            params={'client_id': cid, 'client_secret': csec, 'grant_type': 'client_credentials'},
+            timeout=5,
+        )
+        token = tok_r.json().get('access_token', '')
+        if not token:
+            return []
+        hdrs = {'Client-ID': cid, 'Authorization': f'Bearer {token}'}
+        user_r = requests.get(
+            'https://api.twitch.tv/helix/users',
+            params={'login': channel}, headers=hdrs, timeout=5,
+        )
+        users = user_r.json().get('data', [])
+        if not users:
+            return []
+        broadcaster_id = users[0]['id']
+        clips_r = requests.get(
+            'https://api.twitch.tv/helix/clips',
+            params={'broadcaster_id': broadcaster_id, 'first': 4},
+            headers=hdrs, timeout=5,
+        )
+        clips = []
+        for c in clips_r.json().get('data', []):
+            clips.append({
+                'id':        c['id'],
+                'title':     c['title'],
+                'thumbnail': c['thumbnail_url'],
+                'views':     c['view_count'],
+                'duration':  int(c.get('duration', 0)),
+                'url':       c['url'],
+            })
+        return clips
+    except Exception:
+        return []
+
+
 # ── Discogs API helper ────────────────────────────────────────────────────────
 _discogs_cache: dict = {}
 _DISCOGS_TTL = 86400  # 24h — release metadata doesn't change often
@@ -3001,6 +3061,9 @@ def promoter_detail(request, slug):
         SavedTrack.objects.filter(user=request.user, track__in=tracks).values_list('track_id', flat=True)
     ) if request.user.is_authenticated else set()
     yt_embed_html = _get_yt_embed_cached(promoter.youtube) if _is_yt_channel(promoter.youtube) else ''
+    twitch_clips = _get_twitch_clips_cached(promoter.twitch) if promoter.twitch and not promoter.is_live else []
+    from .models import TrackShare
+    shared_tracks = list(TrackShare.objects.filter(promoter=promoter, is_approved=True).select_related('submitted_by'))
 
     listings = list(promoter.record_listings.filter(is_available=True)) if promoter.shop_sheet_url else []
 
@@ -3034,6 +3097,8 @@ def promoter_detail(request, slug):
         'can_edit': can_edit, 'is_following': is_following,
         'saved_ids': saved_ids,
         'yt_embed_html': yt_embed_html,
+        'twitch_clips': twitch_clips,
+        'shared_tracks': shared_tracks,
         'members': promoter.members.order_by('name'),
         'listings': listings,
         'pending_reservations': pending_reservations,
@@ -3171,16 +3236,20 @@ def promoter_edit(request, slug):
 
     all_artists = Artist.objects.order_by('name')
     type_choices = PromoterProfile.TYPE_CHOICES
+    all_genres = Genre.objects.order_by('name')
     if request.method == 'GET':
         return render(request, 'events/promoter_edit.html', {
             'promoter': promoter,
             'all_artists': all_artists,
             'member_pks': set(promoter.members.values_list('pk', flat=True)),
             'type_choices': type_choices,
+            'all_genres': all_genres,
+            'selected_genre_pks': set(promoter.genres.values_list('pk', flat=True)),
         })
 
     promoter.shop_pay_in_person = 'shop_pay_in_person' in request.POST
     promoter.shop_open_to_trade = 'shop_open_to_trade' in request.POST
+    promoter.accept_demos       = 'accept_demos' in request.POST
     old_drive_p = promoter.drive_folder_url or ''
     for field in ['name', 'bio', 'website', 'drive_folder_url',
                   'shop_sheet_url', 'sol_wallet'] + SOCIAL_FIELDS:
@@ -3199,10 +3268,66 @@ def promoter_edit(request, slug):
     selected_pks = [int(x) for x in request.POST.getlist('members') if x.isdigit()]
     promoter.members.set(Artist.objects.filter(pk__in=selected_pks))
 
+    # Update genres
+    genre_pks = [int(x) for x in request.POST.getlist('genres') if x.isdigit()]
+    promoter.genres.set(Genre.objects.filter(pk__in=genre_pks))
+
     if old_drive_p and not promoter.drive_folder_url:
         PlaylistTrack.objects.filter(promoter=promoter).delete()
     messages.success(request, 'Profile updated.')
     return redirect('promoter_detail', slug=promoter.slug)
+
+
+_DEMO_MAX_MB = 300
+_DEMO_MAX_BYTES = _DEMO_MAX_MB * 1024 * 1024
+
+@login_required
+def submit_demo(request, slug):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST only'}, status=405)
+    promoter = get_object_or_404(PromoterProfile, slug=slug, is_public=True)
+    if not promoter.accept_demos:
+        return JsonResponse({'error': 'Demo submissions are not enabled for this profile.'}, status=403)
+    title = request.POST.get('title', '').strip()
+    note  = request.POST.get('note', '').strip()
+    f     = request.FILES.get('audio_file')
+    if not title:
+        return JsonResponse({'error': 'Title is required.'}, status=400)
+    if not f:
+        return JsonResponse({'error': 'No file attached.'}, status=400)
+    name_lower = f.name.lower()
+    if not name_lower.endswith('.mp3'):
+        return JsonResponse({'error': 'Only .mp3 files are accepted.'}, status=400)
+    if f.size > _DEMO_MAX_BYTES:
+        return JsonResponse({'error': f'File too large — max {_DEMO_MAX_MB} MB.'}, status=400)
+    from .models import TrackShare
+    share = TrackShare.objects.create(
+        promoter=promoter,
+        submitted_by=request.user,
+        title=title,
+        audio_file=f,
+        note=note,
+    )
+    return JsonResponse({
+        'ok': True,
+        'id': share.pk,
+        'title': share.title,
+        'url': share.audio_file.url,
+        'by': request.user.username,
+    })
+
+
+@login_required
+def delete_track_share(request, pk):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST only'}, status=405)
+    from .models import TrackShare
+    share = get_object_or_404(TrackShare, pk=pk)
+    if not (request.user == share.submitted_by or request.user.is_staff
+            or share.promoter.claimed_by == request.user):
+        return JsonResponse({'error': 'Not allowed.'}, status=403)
+    share.delete()
+    return JsonResponse({'ok': True})
 
 
 def api_event_detail(request, slug):

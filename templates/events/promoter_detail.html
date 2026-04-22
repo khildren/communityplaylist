@@ -45,21 +45,25 @@
 body{background:#111;color:#eee;font-family:sans-serif}
 .logo-link img{height:34px;width:auto;display:block}
 .page{max-width:860px;margin:0 auto;padding:24px 16px}
-.hero{display:flex;align-items:flex-start;gap:20px;margin-bottom:28px;flex-wrap:wrap}
-.hero-photo{width:96px;height:96px;border-radius:12px;object-fit:cover;background:#1a1a1a;flex-shrink:0}
-.hero-placeholder{width:96px;height:96px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:2.4em;color:#333;flex-shrink:0}
-.hero-info{flex:1;min-width:0}
+.hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;margin-bottom:28px}
+.hero-photo{width:160px;height:160px;border-radius:14px;object-fit:contain;background:#1a1a1a;flex-shrink:0;padding:6px}
+.hero-placeholder{width:160px;height:160px;border-radius:14px;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:3.5em;color:#333;flex-shrink:0}
+.hero-info{min-width:0;width:100%}
 h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
 .verified-badge{display:inline-block;background:#1a3a1a;color:#4caf50;font-size:.7em;padding:2px 7px;border-radius:3px;border:1px solid #2a5a2a;vertical-align:middle;margin-left:6px;letter-spacing:.05em}
 .live-badge{display:inline-flex;align-items:center;gap:5px;background:#1a0000;color:#ff3333;font-size:.72em;font-weight:700;padding:3px 9px;border-radius:4px;border:1px solid #550000;vertical-align:middle;margin-left:8px;letter-spacing:.06em;text-transform:uppercase;animation:livepulse 2s ease-in-out infinite}
 @keyframes livepulse{0%,100%{border-color:#550000;color:#ff3333}50%{border-color:#ff3333;color:#ff6666}}
-.bio{color:#bbb;line-height:1.6;font-size:.9em;margin:10px 0}
-.genres{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.bio-wrap{position:relative;margin:10px 0;text-align:center}
+.bio{color:#bbb;line-height:1.6;font-size:.9em;max-height:16em;overflow:hidden;transition:max-height .4s ease;text-align:center}
+.bio p{margin:0 0 .8em}
+.bio-fade{position:absolute;bottom:28px;left:0;right:0;height:44px;background:linear-gradient(transparent,#111);pointer-events:none;transition:opacity .4s}
+.bio-toggle{background:none;border:none;color:#ff6b35;font-size:.8em;cursor:pointer;padding:4px 0;display:block;width:100%;text-align:center}
+.genres{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;justify-content:center}
 .genre-tag{background:#1e1228;color:#cc88ff;font-size:.75em;padding:3px 9px;border-radius:3px;font-weight:600;letter-spacing:.04em}
-.socials{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.socials{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;justify-content:center}
 .social-pill{display:inline-flex;align-items:center;gap:5px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:4px 10px;text-decoration:none;color:#888;font-size:.78em;transition:all .15s}
 .social-pill:hover{border-color:#ff6b35;color:#ff6b35}
-.action-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.action-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;justify-content:center}
 .follow-btn{background:transparent;border:1px solid #333;color:#aaa;padding:5px 14px;border-radius:6px;cursor:pointer;font-size:.8em;transition:all .15s}
 .follow-btn:hover{border-color:#ff6b35;color:#ff6b35}
 .follow-btn.active{background:#1a1a10;border-color:#ddaa33;color:#ddaa33}
@@ -82,6 +86,44 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
 .track-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;text-align:right}
 .track-genre{display:inline-block;background:#1e1228;color:#cc88ff;font-size:.68em;padding:1px 6px;border-radius:3px;font-weight:600;letter-spacing:.04em}
 .track-dur{color:#444;font-size:.7em;font-family:monospace}
+.twitch-clips{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0 20px}
+.clip-card{position:relative;border-radius:8px;overflow:hidden;background:#0a0a0a;border:1px solid #1a1a1a;cursor:pointer;text-decoration:none;display:block}
+.clip-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+.clip-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;background:rgba(0,0,0,.45)}
+.clip-card:hover .clip-overlay{opacity:1}
+.clip-play{width:44px;height:44px;border-radius:50%;background:#6441a5;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1em}
+.clip-info{padding:7px 10px}
+.clip-title{color:#ddd;font-size:.8em;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clip-meta{color:#555;font-size:.7em;margin-top:2px}
+.clip-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center}
+.clip-modal.open{display:flex}
+.clip-modal-inner{width:min(860px,96vw);position:relative}
+.clip-modal-inner iframe{width:100%;aspect-ratio:16/9;border:none;border-radius:8px}
+.clip-modal-close{position:absolute;top:-32px;right:0;background:none;border:none;color:#aaa;font-size:1.4em;cursor:pointer;line-height:1}
+@media(max-width:520px){.twitch-clips{grid-template-columns:1fr}}
+.demo-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9998;align-items:center;justify-content:center}
+.demo-modal.open{display:flex}
+.demo-box{width:min(480px,94vw);background:#161616;border:1px solid #2a2a2a;border-radius:12px;padding:24px}
+.demo-box h3{color:#ff6b35;font-size:.95em;margin-bottom:16px}
+.demo-field{margin-bottom:12px}
+.demo-field label{display:block;font-size:.78em;color:#888;margin-bottom:4px}
+.demo-field input[type=text],.demo-field textarea{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.86em;font-family:inherit}
+.demo-field input[type=file]{color:#888;font-size:.82em}
+.demo-hint{font-size:.72em;color:#444;margin-top:3px}
+.demo-actions{display:flex;gap:8px;margin-top:16px;align-items:center}
+.demo-submit-btn{background:#ff6b35;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:.84em}
+.demo-submit-btn:disabled{opacity:.5;cursor:default}
+.demo-cancel-btn{background:none;border:1px solid #333;color:#888;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:.84em}
+.demo-status{font-size:.8em;color:#888;flex:1;text-align:right}
+.share-row{display:flex;align-items:center;gap:12px;background:#161616;border:1px solid #222;border-radius:8px;padding:10px 14px;transition:border-color .15s}
+.share-row:hover{border-color:#ff6b35}
+.share-play{width:28px;height:28px;border-radius:50%;background:#ff6b35;border:none;color:#fff;font-size:.75em;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.share-play:hover{background:#e55a25}
+.share-info{flex:1;min-width:0}
+.share-title{color:#ddd;font-size:.88em;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.share-by{color:#555;font-size:.75em;margin-top:2px}
+.share-del{background:none;border:none;color:#333;cursor:pointer;font-size:.9em;padding:0 2px;transition:color .15s;flex-shrink:0}
+.share-del:hover{color:#cc4466}
 .drive-sync-wrap{margin-top:10px}
 .drive-sync-btn{background:transparent;border:1px solid #1a4a2a;color:#4caf50;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.78em;transition:all .15s}
 .drive-sync-btn:hover{border-color:#4caf50;background:#0f2a18}
@@ -91,10 +133,15 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
 .save-btn{background:transparent;border:none;color:#333;font-size:1em;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;transition:color .15s}
 .save-btn:hover{color:#cc4466}
 .save-btn.saved{color:#cc4466}
-@media(max-width:600px){h1{font-size:1.2em}.hero-photo,.hero-placeholder{width:72px;height:72px;font-size:1.8em}}
+@media(max-width:600px){h1{font-size:1.2em}.hero-photo,.hero-placeholder{width:120px;height:120px;font-size:2.6em}}
 </style>
 {% endblock %}
 {% block body %}
+
+{% if messages %}
+<style>.cp-toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#1a3a1a;color:#4caf50;border:1px solid #2a5a2a;border-radius:6px;padding:9px 20px;font-size:.84em;z-index:9999;animation:toastfade 3.5s ease forwards}.cp-toast-err{background:#2a0a0a;color:#ff6b6b;border-color:#550000}@keyframes toastfade{0%{opacity:0;transform:translateX(-50%) translateY(-8px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:1}100%{opacity:0}}</style>
+{% for message in messages %}<div class="cp-toast {% if message.tags == 'error' %}cp-toast-err{% endif %}">{{ message }}</div>{% endfor %}
+{% endif %}
 
 <div class="page">
 
@@ -121,7 +168,13 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
     <div class="genres">{% for g in promoter.genres.all %}<span class="genre-tag">{{ g.name }}</span>{% endfor %}</div>
     {% endif %}
 
-    {% if promoter.bio %}<p class="bio">{{ promoter.bio }}</p>{% endif %}
+    {% if promoter.bio %}
+    <div class="bio-wrap" id="bio-wrap">
+      <div class="bio" id="bio-text">{{ promoter.bio|safe }}</div>
+      <div class="bio-fade" id="bio-fade"></div>
+      <button class="bio-toggle" id="bio-toggle" onclick="bioToggle()">Read more ▾</button>
+    </div>
+    {% endif %}
 
     <div class="socials">
       {% if promoter.website %}<a href="{{ promoter.website }}" class="social-pill" target="_blank" rel="noopener">🌐 Website</a>{% endif %}
@@ -152,13 +205,37 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
   </div>
 </div>
 
-{# ── Embeds — Spotify / YouTube / Twitch / Mixcloud / Beatport / Apple Music ── #}
-{% if promoter.spotify or promoter.youtube or promoter.mixcloud or promoter.bandcamp or promoter.twitch %}
+{# ── Twitch Popular Clips (offline only) ── #}
+{% if twitch_clips %}
+<p class="section-title">📺 Popular Clips &mdash; <a href="https://twitch.tv/{{ promoter.twitch }}" target="_blank" rel="noopener" style="color:#6441a5;text-decoration:none">twitch.tv/{{ promoter.twitch }}</a></p>
+<div class="twitch-clips">
+  {% for clip in twitch_clips %}
+  <a class="clip-card" href="#" onclick="openClip('{{ clip.id|escapejs }}');return false" title="{{ clip.title|escapejs }}">
+    <img class="clip-thumb" src="{{ clip.thumbnail }}" alt="{{ clip.title|escapejs }}" loading="lazy">
+    <div class="clip-overlay"><div class="clip-play">▶</div></div>
+    <div class="clip-info">
+      <div class="clip-title">{{ clip.title }}</div>
+      <div class="clip-meta">{{ clip.views|floatformat:"0" }} views &middot; {{ clip.duration }}s</div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+<div class="clip-modal" id="clip-modal" onclick="closeClip(event)">
+  <div class="clip-modal-inner">
+    <button class="clip-modal-close" onclick="closeClip()">✕</button>
+    <iframe id="clip-iframe" src="" allowfullscreen></iframe>
+  </div>
+</div>
+{% endif %}
+
+{# ── Embeds — Spotify / YouTube / Twitch / SoundCloud / Mixcloud / Beatport / Apple Music ── #}
+{% if promoter.spotify or promoter.youtube or promoter.mixcloud or promoter.soundcloud or promoter.bandcamp or promoter.twitch and promoter.is_live %}
 <script>
 window.cpEmbedLinks = [
   {% if promoter.spotify %}{"url":"{{ promoter.spotify|escapejs }}","label":"Spotify"},{% endif %}
   {% if promoter.youtube %}{"url":"{{ promoter.youtube|escapejs }}","label":"YouTube"{% if yt_embed_html %},"embed_html":"{{ yt_embed_html|escapejs }}"{% endif %}},{% endif %}
-  {% if promoter.twitch %}{"url":"https://twitch.tv/{{ promoter.twitch|escapejs }}","label":"Twitch"},{% endif %}
+  {% if promoter.twitch and promoter.is_live %}{"url":"https://twitch.tv/{{ promoter.twitch|escapejs }}","label":"Twitch"},{% endif %}
+  {% if promoter.soundcloud %}{"url":"https://soundcloud.com/{{ promoter.soundcloud|escapejs }}","label":"SoundCloud"},{% endif %}
   {% if promoter.mixcloud %}{"url":"https://www.mixcloud.com/{{ promoter.mixcloud|escapejs }}/","label":"Mixcloud"},{% endif %}
   {% if promoter.bandcamp %}{"url":"{{ promoter.bandcamp|escapejs }}","label":"Bandcamp"},{% endif %}
 ];
@@ -194,6 +271,60 @@ window.cpEmbedLinks = [
 </div>
 {% else %}
 <p style="color:#444;font-size:.85em;padding:8px 0">No tracks synced yet.</p>
+{% endif %}
+
+{# ── Direct Shares ── #}
+{% if shared_tracks or promoter.accept_demos and request.user.is_authenticated %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin:28px 0 10px">
+  <p class="section-title" style="margin:0;border:none;padding:0">Direct Shares</p>
+  {% if promoter.accept_demos and request.user.is_authenticated %}
+  <button onclick="document.getElementById('demo-modal').classList.add('open')" style="background:transparent;border:1px solid #ff6b35;color:#ff6b35;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:.76em">+ Submit Demo</button>
+  {% endif %}
+</div>
+{% if shared_tracks %}
+<div class="track-list" id="share-list" style="margin-bottom:20px">
+  {% for s in shared_tracks %}
+  <div class="share-row" id="share-{{ s.pk }}">
+    <button class="share-play" onclick="cpPlayShare(this)" data-url="{{ s.audio_file.url }}" data-title="{{ s.title|escapejs }}" data-artist="{{ s.submitted_by.username|default:'Unknown' }}" title="Play">▶</button>
+    <div class="share-info">
+      <div class="share-title">{{ s.title }}</div>
+      <div class="share-by">from @{{ s.submitted_by.username|default:"unknown" }}{% if s.note %} · {{ s.note }}{% endif %} · {{ s.created_at|date:"M j, Y" }}</div>
+    </div>
+    {% if request.user == s.submitted_by or request.user.is_staff or can_edit %}
+    <button class="share-del" title="Remove" onclick="deleteShare({{ s.pk }}, this)">✕</button>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p style="color:#444;font-size:.85em;padding:4px 0 16px">No demos submitted yet — be the first.</p>
+{% endif %}
+{% endif %}
+
+{# ── Demo submit modal ── #}
+{% if promoter.accept_demos and request.user.is_authenticated %}
+<div class="demo-modal" id="demo-modal" onclick="if(event.target===this)closeDemoModal()">
+  <div class="demo-box">
+    <h3>🎵 Submit a Demo / Mix</h3>
+    <div class="demo-field">
+      <label>Title *</label>
+      <input type="text" id="demo-title" placeholder="e.g. My Set @ Holocene 2025-04-20" maxlength="300">
+    </div>
+    <div class="demo-field">
+      <label>Note (optional)</label>
+      <input type="text" id="demo-note" placeholder="Genre, BPM, event name…" maxlength="200">
+    </div>
+    <div class="demo-field">
+      <label>MP3 File * <span class="demo-hint" style="display:inline">(max 300 MB)</span></label>
+      <input type="file" id="demo-file" accept=".mp3,audio/mpeg">
+    </div>
+    <div class="demo-actions">
+      <button class="demo-submit-btn" id="demo-submit-btn" onclick="submitDemo()">Upload</button>
+      <button class="demo-cancel-btn" onclick="closeDemoModal()">Cancel</button>
+      <span class="demo-status" id="demo-status"></span>
+    </div>
+  </div>
+</div>
 {% endif %}
 
 {# ── Members ── #}
@@ -267,6 +398,26 @@ window.cpEmbedLinks = [
 </div>{# /page #}
 
 <script>
+// ── Bio collapse ──
+(function(){
+  var bio = document.getElementById('bio-text');
+  var btn = document.getElementById('bio-toggle');
+  var fade = document.getElementById('bio-fade');
+  if (!bio || !btn) return;
+  if (bio.scrollHeight <= bio.clientHeight + 4) {
+    btn.style.display = 'none';
+    if (fade) fade.style.display = 'none';
+    bio.style.maxHeight = 'none';
+    return;
+  }
+  window.bioToggle = function() {
+    var expanded = bio.classList.toggle('expanded');
+    bio.style.maxHeight = expanded ? bio.scrollHeight + 'px' : '16em';
+    if (fade) fade.style.opacity = expanded ? '0' : '1';
+    btn.textContent = expanded ? 'Read less ▴' : 'Read more ▾';
+  };
+})();
+
 (function(){
   var btn = document.getElementById('follow-btn');
   if (!btn) return;
@@ -298,6 +449,100 @@ function cpSaveTrack(btn) {
   });
 }
 function getCookie(n){var v=document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');return v?v[2]:null}
+
+// ── Demo submit ──
+function closeDemoModal() {
+  document.getElementById('demo-modal').classList.remove('open');
+  document.getElementById('demo-status').textContent = '';
+  var btn = document.getElementById('demo-submit-btn');
+  if (btn) btn.disabled = false;
+}
+function submitDemo() {
+  var title = document.getElementById('demo-title').value.trim();
+  var note  = document.getElementById('demo-note').value.trim();
+  var file  = document.getElementById('demo-file').files[0];
+  var btn   = document.getElementById('demo-submit-btn');
+  var status = document.getElementById('demo-status');
+  if (!title) { status.textContent = 'Title required.'; status.style.color='#ff6b6b'; return; }
+  if (!file)  { status.textContent = 'Please choose an MP3.'; status.style.color='#ff6b6b'; return; }
+  if (!file.name.toLowerCase().endsWith('.mp3')) { status.textContent = 'Only .mp3 files allowed.'; status.style.color='#ff6b6b'; return; }
+  if (file.size > 300*1024*1024) { status.textContent = 'File exceeds 300 MB limit.'; status.style.color='#ff6b6b'; return; }
+  var fd = new FormData();
+  fd.append('title', title);
+  fd.append('note', note);
+  fd.append('audio_file', file);
+  fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+  btn.disabled = true;
+  status.style.color = '#888';
+  status.textContent = 'Uploading…';
+  fetch('{% url "submit_demo" promoter.slug %}', { method:'POST', body:fd })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.ok) {
+        status.style.color = '#4caf50';
+        status.textContent = 'Uploaded!';
+        var list = document.getElementById('share-list');
+        if (!list) {
+          list = document.createElement('div');
+          list.id = 'share-list';
+          list.className = 'track-list';
+          list.style.marginBottom = '20px';
+          document.getElementById('demo-modal').previousElementSibling.insertAdjacentElement('afterend', list);
+        }
+        var row = document.createElement('div');
+        row.className = 'share-row';
+        row.id = 'share-' + d.id;
+        row.innerHTML = '<button class="share-play" onclick="cpPlayShare(this)" data-url="' + d.url + '" data-title="' + d.title.replace(/"/g,'&quot;') + '" data-artist="' + d.by + '" title="Play">▶</button>' +
+          '<div class="share-info"><div class="share-title">' + d.title + '</div>' +
+          '<div class="share-by">from @' + d.by + ' · just now</div></div>' +
+          '<button class="share-del" title="Remove" onclick="deleteShare(' + d.id + ', this)">✕</button>';
+        list.insertBefore(row, list.firstChild);
+        btn.disabled = false;
+        document.getElementById('demo-title').value = '';
+        document.getElementById('demo-note').value = '';
+        document.getElementById('demo-file').value = '';
+        setTimeout(closeDemoModal, 1200);
+      } else {
+        status.style.color = '#ff6b6b';
+        status.textContent = d.error || 'Upload failed.';
+        btn.disabled = false;
+      }
+    }).catch(function(){ status.style.color='#ff6b6b'; status.textContent='Network error.'; btn.disabled=false; });
+}
+function deleteShare(id, btn) {
+  if (!confirm('Remove this submission?')) return;
+  fetch('/demos/' + id + '/delete/', {
+    method:'POST', headers:{'X-CSRFToken':getCookie('csrftoken')}
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (d.ok) { var row = document.getElementById('share-' + id); if (row) row.remove(); }
+  });
+}
+function cpPlayShare(btn) {
+  var row    = btn.closest('.share-row');
+  var url    = btn.dataset.url;
+  var title  = btn.dataset.title;
+  var artist = btn.dataset.artist;
+  if (window.cpLoad) window.cpLoad(url, title, artist, window.location.pathname);
+}
+
+// ── Twitch clip modal ──
+function openClip(id) {
+  var modal = document.getElementById('clip-modal');
+  var iframe = document.getElementById('clip-iframe');
+  if (!modal || !iframe) return;
+  iframe.src = 'https://clips.twitch.tv/embed?clip=' + id + '&parent=communityplaylist.com&autoplay=true';
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeClip(e) {
+  if (e && e.target !== document.getElementById('clip-modal') && !e.target.classList.contains('clip-modal-close')) return;
+  var modal = document.getElementById('clip-modal');
+  var iframe = document.getElementById('clip-iframe');
+  if (modal) modal.classList.remove('open');
+  if (iframe) iframe.src = '';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeClip({target:document.getElementById('clip-modal')}); });
 
 // ── Track play buttons → global CP player ──
 function cpPlay(btn) {

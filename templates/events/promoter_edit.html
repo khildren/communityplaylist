@@ -58,6 +58,17 @@ h1{color:#ff6b35;font-size:1.2em;margin-bottom:22px}
       <style>input[name=promoter_type]:checked+label{border-color:#ff6b35 !important;color:#ff6b35 !important;background:#1a0d08 !important}</style>
     </div>
     <div class="fg">
+      <label>Genres</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;max-height:200px;overflow-y:auto;background:#111;border:1px solid #1e1e1e;border-radius:6px;padding:10px;margin-top:2px">
+        {% for g in all_genres %}
+        <label style="display:inline-flex;align-items:center;gap:5px;background:#1a1a1a;border:1px solid {% if g.pk in selected_genre_pks %}#cc88ff{% else %}#2a2a2a{% endif %};border-radius:20px;padding:4px 10px;cursor:pointer;font-size:.8em;color:{% if g.pk in selected_genre_pks %}#cc88ff{% else %}#888{% endif %}">
+          <input type="checkbox" name="genres" value="{{ g.pk }}" {% if g.pk in selected_genre_pks %}checked{% endif %} style="display:none" onchange="this.closest('label').style.borderColor=this.checked?'#cc88ff':'#2a2a2a';this.closest('label').style.color=this.checked?'#cc88ff':'#888'">
+          {{ g.name }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="fg">
       <label>Name</label>
       <input type="text" name="name" value="{{ promoter.name }}">
     </div>
@@ -73,6 +84,13 @@ h1{color:#ff6b35;font-size:1.2em;margin-bottom:22px}
     <div class="fg">
       <label>Website</label>
       <input type="url" name="website" value="{{ promoter.website }}" placeholder="https://...">
+    </div>
+    <div class="fg" style="border-top:1px solid #1e1e1e;padding-top:14px;margin-top:4px">
+      <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;color:#aaa;font-size:.84em;margin-bottom:0">
+        <input type="checkbox" name="accept_demos" {% if promoter.accept_demos %}checked{% endif %} style="width:auto;accent-color:#ff6b35">
+        🎵 Allow users to submit MP3 demos / mixes to this profile
+      </label>
+      <div class="hint">When enabled, a "+ Submit Demo" button appears on your public profile for logged-in users.</div>
     </div>
   </div>
 </div>

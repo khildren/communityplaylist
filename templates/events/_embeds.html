@@ -86,6 +86,15 @@ SoundCloud + Bandcamp require server-cached embed_html (user profiles only).
       }
     }
 
+    // ── SoundCloud ───────────────────────────────────────────────
+    if (!html && url.includes('soundcloud.com')) {
+      var scUrl = encodeURIComponent(url.replace(/\/$/, ''));
+      html = '<iframe width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" loading="lazy" ' +
+             'src="https://w.soundcloud.com/player/?url=' + scUrl +
+             '&color=%23ff5500&auto_play=false&hide_related=false&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true"></iframe>' +
+             '<div class="cp-embed-label">&#9728; SoundCloud' + sublabel('SoundCloud', label) + '</div>';
+    }
+
     // ── Beatport ─────────────────────────────────────────────────
     if (!html && url.includes('beatport.com')) {
       var bpTrack   = url.match(/beatport\.com\/track\/[^/]+\/(\d+)/);

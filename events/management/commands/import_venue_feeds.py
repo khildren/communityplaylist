@@ -404,9 +404,11 @@ def import_squarespace(feed, now, stdout, stderr):
         return 0, 0, ''
 
     # ── Identify truly recurring titles ───────────────────────────────────────
-    # A title qualifies if it appears >= RECURRING_MIN_OCCURRENCES times AND
-    # each occurrence has a short duration (i.e. it's a regular weekly night,
-    # not a single multi-week festival listed multiple times by mistake).
+    # Only count FUTURE occurrences — past events in the feed (e.g. last year's
+    # Halloween party) would otherwise trigger false recurring detection.
+    # A title qualifies if it appears >= RECURRING_MIN_OCCURRENCES times in the
+    # future AND each occurrence has a short duration (<= 1 day).
+    now_ms = now.timestamp() * 1000
     title_entries: dict = {}
     for ev in all_raw:
         title = (ev.get('title') or '').strip()
@@ -414,7 +416,7 @@ def import_squarespace(feed, now, stdout, stderr):
             continue
         start_ms = ev.get('startDate') or 0
         end_ms   = ev.get('endDate') or 0
-        if not start_ms:
+        if not start_ms or start_ms < now_ms:
             continue
         hours = (end_ms - start_ms) / 3_600_000 if end_ms else 0
         title_entries.setdefault(title, []).append(hours)

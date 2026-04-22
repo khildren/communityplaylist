@@ -614,7 +614,10 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
       animate: true, duration: FIT_DURATION, easeLinearity: 0.12
     });
 
-    map.once('moveend', function() {
+    let phaseStarted = false;
+    function doPhase() {
+      if (phaseStarted) return;
+      phaseStarted = true;
       if (!cycling) { clearRoute(); return; }
 
       // Wait for tiles to finish rendering before starting dot animation.
@@ -647,9 +650,14 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
               clearRoute();
               if (!cycling) return;
               if (map && destLatLng) {
+                let flyDone = false;
+                const flyFallback = setTimeout(function() {
+                  if (!flyDone) { flyDone = true; onDone(); }
+                }, Math.round(FLY_DURATION * 1000) + 600);
                 map.flyTo(destLatLng, 15, { animate: true, duration: FLY_DURATION, easeLinearity: 0.12 });
                 map.once('moveend', function() {
-                  setTimeout(onDone, 200);
+                  clearTimeout(flyFallback);
+                  if (!flyDone) { flyDone = true; setTimeout(onDone, 200); }
                 });
               } else {
                 onDone();
@@ -668,6 +676,14 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
           setTimeout(startDotPhase, 150); // small buffer after tiles paint
         });
       }
+    }
+
+    // If fitBounds doesn't move the map (route already visible), moveend never fires —
+    // fall back after FIT_DURATION so the dot animation always starts.
+    const moveFallback = setTimeout(doPhase, Math.round(FIT_DURATION * 1000) + 400);
+    map.once('moveend', function() {
+      clearTimeout(moveFallback);
+      doPhase();
     });
   }
 
