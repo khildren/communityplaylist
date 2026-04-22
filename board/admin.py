@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import BannerMessage, Topic, Reply
+from .models import BannerMessage, Topic, Reply, Offering
 
 
 class ReplyInline(admin.TabularInline):
@@ -33,3 +33,13 @@ class ReplyAdmin(admin.ModelAdmin):
 class BannerMessageAdmin(admin.ModelAdmin):
     list_display  = ['text', 'active', 'created_at']
     list_editable = ['active']
+
+
+@admin.register(Offering)
+class OfferingAdmin(admin.ModelAdmin):
+    list_display  = ['title', 'category', 'author_name', 'neighborhood', 'is_claimed', 'active', 'expires_at', 'created_at']
+    list_editable = ['is_claimed', 'active']
+    list_filter   = ['category', 'is_claimed', 'active', 'neighborhood']
+    search_fields = ['title', 'body', 'author_name', 'poster_ip']
+    raw_id_fields = ['board_topic', 'neighborhood']
+    readonly_fields = ['poster_ip', 'created_at', 'claimed_at']

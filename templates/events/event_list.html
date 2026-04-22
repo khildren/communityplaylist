@@ -44,7 +44,9 @@ body{background:#111;color:#eee;font-family:sans-serif}
 
 /* Layout container */
 .hybrid-wrap{display:block}
-#map{display:none}
+#map{display:none;background:#111}
+.leaflet-container{background:#111!important}
+.radar-tiles{filter:blur(14px);mix-blend-mode:screen}
 .events-grid{max-width:860px;margin:0 auto;padding:20px}
 
 /* Cards */
@@ -174,6 +176,7 @@ body.night-builder-mode .cp-nb-btn{border-color:#ff6b35;background:#1a0c06;color
 .cp-user-dot{width:14px;height:14px;background:#ff6b35;border:2px solid #fff;border-radius:50%;position:relative;z-index:2}
 .cp-user-ring{width:36px;height:36px;border:2px solid rgba(255,107,53,.5);border-radius:50%;position:absolute;top:-13px;left:-13px;animation:cp-ring-pulse 1.8s ease-out infinite}
 @keyframes cp-ring-pulse{0%{transform:scale(.4);opacity:.9}100%{transform:scale(1);opacity:0}}
+@keyframes cp-marker-pulse{0%{transform:scale(1);opacity:.85}100%{transform:scale(2.6);opacity:0}}
 /* Near tray */
 #cp-near-tray{position:fixed;bottom:0;left:0;right:0;z-index:1200;display:none;background:linear-gradient(to top,rgba(10,10,10,.97) 80%,transparent);padding:10px 12px 12px;overflow-x:auto;white-space:nowrap;gap:8px;-webkit-overflow-scrolling:touch}
 #cp-near-tray.visible{display:flex}
@@ -305,6 +308,7 @@ a.event.ee-loading{opacity:.6;pointer-events:none}
         <span class="cp-near-x" id="cp-near-x" style="display:none" onclick="event.stopPropagation();cpHomeClear()" title="Clear">✕</span>
       </button>
       <button type="button" class="cp-nb-btn" id="cp-nb-btn" onclick="cpNightBuilderToggle()" title="Night Builder GPS mode">🧭 <span class="cp-nb-text">Night Builder</span></button>
+      <button type="button" class="cp-nb-btn" id="radar-btn" onclick="cpRadarToggle()" title="Live precipitation radar">🌧 <span class="cp-nb-text">Radar</span></button>
     </div>
   </div>
 </div>
@@ -423,12 +427,15 @@ var CAT_COLORS = {
   food:  '#ddaa33',
   hybrid:'#ff9944',
 };
-function makeIcon(active, category) {
+function makeIcon(active, category, pulse) {
   const size = active ? 24 : 18;
   const color = active ? '#ff6b35' : (CAT_COLORS[category] || '#5865F2');
+  const ring = pulse
+    ? `<div class="cp-marker-ring" style="position:absolute;inset:0;border-radius:50%;border:2px solid ${color};animation:cp-marker-pulse 1.4s ease-out infinite"></div>`
+    : '';
   return L.divIcon({
     className: '',
-    html: `<div style="width:${size}px;height:${size}px;background:${color};border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.7)"></div>`,
+    html: `<div style="position:relative;width:${size}px;height:${size}px;background:transparent">${ring}<div style="width:${size}px;height:${size}px;background:${color};border-radius:50%;border:3px solid rgba(255,255,255,.85);box-shadow:0 0 6px ${color}88"></div></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, -(size / 2 + 4)],
@@ -460,7 +467,11 @@ function initMap() {
   delete _mc._leaflet_id;
   if (_mc.children.length) { _mc.innerHTML = ''; }
   try {
-    map = L.map('map').setView([45.5051, -122.6750], 12);
+    map = L.map('map', {
+      zoomAnimationThreshold: 4,
+      wheelPxPerZoomLevel: 120,
+      zoomSnap: 0.5,
+    }).setView([45.5051, -122.6750], 12);
     window.map = map;
   } catch(e) { return; }
   tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -487,7 +498,33 @@ function initMap() {
     categoryBySlug[e.slug] = e.category;
   });
   mapInitialized = true;
+  // Auto-start radar after map is ready
+  setTimeout(function(){ if (window.cpRadarToggle) window.cpRadarToggle(); }, 800);
 }
+
+// ── Precipitation radar ──────────────────────────────────────────────────────
+(function(){
+  var radarLayer = null;
+  var radarOn = false;
+
+  function showRadar() {
+    if (!window.map || radarLayer) return;
+    // Iowa State Mesonet NEXRAD — true transparent PNG, precipitation pixels only
+    radarLayer = L.tileLayer(
+      'https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913/{z}/{x}/{y}.png',
+      { opacity: 0.75, tileSize: 256, maxZoom: 19, className: 'radar-tiles', attribution: 'IEM NEXRAD' }
+    ).addTo(window.map);
+  }
+
+  window.cpRadarToggle = function() {
+    radarOn = !radarOn;
+    if (!radarOn) {
+      if (radarLayer && window.map) { window.map.removeLayer(radarLayer); radarLayer = null; }
+      return;
+    }
+    showRadar();
+  };
+})();
 
 // Card hover ↔ marker
 document.querySelectorAll('.event[data-slug]').forEach(card => {
@@ -504,12 +541,12 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
 
 // ── Idle map cycle with GPS route animation ──────────────────────────────────
 (function() {
-  const IDLE_START_MS   = 8000;
+  const IDLE_START_MS   = 120000;
   const IDLE_RESUME_MS  = 120000;
-  const PER_EVENT_MS    = 6000;   // dwell on each event
-  const ROUTE_TRAVEL_MS = 5000;   // dot travel time along route
-  const FLY_DURATION    = 2.2;    // seconds for flyTo zoom-into-event
-  const FIT_DURATION    = 2.5;    // seconds for fitBounds zoom-to-route
+  const PER_EVENT_MS    = 1800;   // brief card read before route begins
+  const ROUTE_TRAVEL_MS = 8000;   // dot travel time — slow and deliberate
+  const FLY_DURATION    = 3.5;    // seconds for flyTo zoom-into-event
+  const FIT_DURATION    = 4.0;    // seconds for fitBounds zoom-to-route
 
   let cycleTimer = null;
   let idleTimer  = null;
@@ -565,9 +602,9 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
     clearRoute();
     if (!map) { onDone(); return; }
 
-    // Draw route line at opacity 0, fade in after map settles
+    // Draw route immediately at low opacity — full opacity after tiles settle
     routeLayer = L.polyline(pts, {
-      color: '#4caf50', weight: 3.5, opacity: 0, dashArray: '9 12'
+      color: '#ff6b35', weight: 3.5, opacity: 0.25, dashArray: '9 12'
     }).addTo(map);
 
     // Phase 1: zoom out to show full route — extra bottom pad for player bar on mobile
@@ -576,7 +613,7 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
     map.fitBounds(routeLayer.getBounds(), {
       paddingTopLeft:     [65, 65],
       paddingBottomRight: [65 + _playerPad, 65],
-      animate: true, duration: FIT_DURATION
+      animate: true, duration: FIT_DURATION, easeLinearity: 0.12
     });
 
     map.once('moveend', function() {
@@ -612,7 +649,7 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
               clearRoute();
               if (!cycling) return;
               if (map && destLatLng) {
-                map.flyTo(destLatLng, 15, { animate: true, duration: FLY_DURATION });
+                map.flyTo(destLatLng, 15, { animate: true, duration: FLY_DURATION, easeLinearity: 0.12 });
                 map.once('moveend', function() {
                   setTimeout(onDone, 200);
                 });
@@ -723,7 +760,8 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
 
   function applyEventWx(data) {
     const el = document.getElementById('header-weather');
-    if (!el || el.style.display==='none') return;
+    if (!el) return;
+    el.style.display = '';   // ensure visible even if current-weather hasn't loaded yet
     document.getElementById('hw-icon').textContent = WMO_ICONS[data.code] || '🌡️';
     document.getElementById('hw-temp').textContent = data.temp + '°F';
     document.getElementById('hw-cond').textContent = WMO_LABELS[data.code] || '';
@@ -759,12 +797,12 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
     }
     const m = markersBySlug[slug];
     if (m) {
-      m.setIcon(makeIcon(true, categoryBySlug[slug]));
+      m.setIcon(makeIcon(true, categoryBySlug[slug], true));  // pulse = true on arrive
       if (m._icon) m._icon.style.zIndex = 1000;
       if (map && !skipFly) {
-        map.flyTo(m.getLatLng(), 15, { animate: true, duration: FLY_DURATION });
+        map.flyTo(m.getLatLng(), 15, { animate: true, duration: FLY_DURATION, easeLinearity: 0.12 });
         map.once('moveend', function() {
-          m.setIcon(makeIcon(true, categoryBySlug[slug]));
+          m.setIcon(makeIcon(true, categoryBySlug[slug], true));
           if (m._icon) m._icon.style.zIndex = 1000;
         });
       }
@@ -788,17 +826,15 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
       }
       cycleIdx++;
 
-      // Open popup after map settles (~600ms), close it 1.5s before transition
-      const POPUP_DELAY  = 700;
-      const POPUP_CLOSE  = PER_EVENT_MS - 1500;
+      // Open popup briefly while card is shown, close before route begins
       const m = markersBySlug[slug];
       const popupOpen = setTimeout(function() {
         if (!cycling || !m) return;
         m.openPopup();
-      }, POPUP_DELAY);
+      }, 400);
       const popupClose = setTimeout(function() {
         if (m) m.closePopup();
-      }, POPUP_CLOSE);
+      }, 1500);
 
       // Pre-fetch route to the NEXT event while dwelling on this one
       const nextCard = cards[cycleIdx < cards.length ? cycleIdx : 0];
@@ -853,7 +889,7 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
       c.classList.remove('highlighted');
     });
     restoreCurrentWeather();
-    if (map) map.flyTo([45.5051, -122.6750], 12, { animate: true, duration: 1.0 });
+    if (map) map.flyTo([45.5051, -122.6750], 12, { animate: true, duration: 1.8, easeLinearity: 0.12 });
   }
 
   function onInteraction() {
@@ -1652,7 +1688,21 @@ if (!window._cpPrewarmBound) {
       },{enableHighAccuracy:true,maximumAge:5000,timeout:10000});
 
     }, function(err){
-      alert('Could not get your location. Make sure location access is allowed in your browser settings.');
+      // GPS failed — fall back to pulsing the current cycle event's marker
+      var msg = err.code === 1
+        ? 'Location access denied. Showing current event on map instead.'
+        : 'Could not get your location. Showing current event on map instead.';
+      var highlighted = document.querySelector('.event.highlighted');
+      if (highlighted && window.markersBySlug) {
+        var slug = highlighted.dataset.slug;
+        var m = window.markersBySlug[slug];
+        if (m && window.map) {
+          m.setIcon(makeIcon(true, window.categoryBySlug && window.categoryBySlug[slug], true));
+          if (m._icon) m._icon.style.zIndex = 1000;
+          window.map.flyTo(m.getLatLng(), 15, { animate: true, duration: 2.0, easeLinearity: 0.15 });
+        }
+      }
+      alert(msg);
     },{enableHighAccuracy:true,timeout:10000,maximumAge:0});
   }
 

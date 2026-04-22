@@ -7,14 +7,24 @@ body{background:#111;color:#eee;font-family:sans-serif}
 .dash{max-width:800px;margin:0 auto;padding:20px 14px 60px}
 
 /* ── Top bar ── */
-.topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22px}
-.topbar-avatar{width:46px;height:46px;border-radius:50%;object-fit:cover;background:#222;border:2px solid #2a2a2a;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.3em;color:#444}
-.topbar-info{flex:1;min-width:0}
+.topbar{display:grid;grid-template-columns:auto 1fr auto;grid-template-rows:auto auto;grid-template-areas:"avatar handle actions""avatar sub actions";column-gap:12px;row-gap:2px;align-items:center;margin-bottom:22px}
+.topbar-avatar{grid-area:avatar;width:46px;height:46px;border-radius:50%;object-fit:cover;background:#222;border:2px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:1.3em;color:#444;align-self:center}
+.topbar-info{grid-area:handle;min-width:0}
 .topbar-handle{color:#ff6b35;font-weight:700;font-size:1em}
-.topbar-sub{font-size:.74em;color:#555;margin-top:2px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.topbar-sub{grid-area:sub;font-size:.74em;color:#555;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.topbar-sub .topbar-email{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;display:inline-block}
 .verified{color:#4caf50}
 .unverified{color:#ddaa33}
-.topbar-actions{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap}
+.topbar-actions{grid-area:actions;display:flex;gap:8px;flex-wrap:wrap;align-self:center}
+@media(max-width:640px){
+  .topbar{grid-template-columns:1fr;grid-template-rows:auto;grid-template-areas:"avatar""handle""actions""sub";justify-items:center;text-align:center;gap:10px;padding:6px 0 10px;margin-bottom:18px}
+  .topbar-avatar{width:70px;height:70px;font-size:1.8em;border-color:#333}
+  .topbar-info{text-align:center}
+  .topbar-handle{font-size:1.1em}
+  .topbar-actions{justify-content:center;width:100%}
+  .topbar-sub{justify-content:center;font-size:.73em;gap:6px}
+  .topbar-email{display:none}
+}
 .btn-sm{display:inline-block;background:#1a1a1a;border:1px solid #2a2a2a;color:#aaa;padding:5px 13px;border-radius:6px;text-decoration:none;font-size:.78em;transition:all .15s;cursor:pointer;font-family:inherit}
 .btn-sm:hover{border-color:#ff6b35;color:#ff6b35}
 .btn-orange{background:#ff6b35;border-color:#ff6b35;color:#fff}
@@ -149,20 +159,20 @@ details[open] .sum-chevron{transform:rotate(180deg)}
   {% endif %}
   <div class="topbar-info">
     <div class="topbar-handle">@{{ profile.handle }}</div>
-    <div class="topbar-sub">
-      {% if profile.email_verified %}
-        <span class="verified">✓ verified</span>
-      {% else %}
-        <span class="unverified">⚠ <a href="/resend-verification/" style="color:#ddaa33;text-decoration:none">verify email</a></span>
-      {% endif %}
-      · <span style="color:#444">{{ request.user.email }}</span>
-      {% if profile.is_public %}· <a href="/u/@{{ profile.handle }}/" style="color:#555;text-decoration:none;font-size:.95em">public profile ↗</a>{% endif %}
-    </div>
   </div>
   <div class="topbar-actions">
     <a href="/submit/" class="btn-sm btn-orange">+ Submit event</a>
     <a href="/profile/settings/" class="btn-sm">Edit profile</a>
     <a href="/logout/" class="btn-sm">Sign out</a>
+  </div>
+  <div class="topbar-sub">
+    {% if profile.email_verified %}
+      <span class="verified">✓ verified</span>
+    {% else %}
+      <span class="unverified">⚠ <a href="/resend-verification/" style="color:#ddaa33;text-decoration:none">verify email</a></span>
+    {% endif %}
+    <span class="topbar-email" style="color:#444">{{ request.user.email }}</span>
+    {% if profile.is_public %}<a href="/u/@{{ profile.handle }}/" style="color:#555;text-decoration:none;font-size:.95em">public profile ↗</a>{% endif %}
   </div>
 </div>
 

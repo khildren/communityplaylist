@@ -397,6 +397,8 @@
   setInterval(function(){ if (!audio.paused) saveState(); }, 5000);
 
   window.cpLoad = function(url, title, artist, sourceUrl) {
+    // Exit video mode if active so the audio player takes over
+    if (window.cpVideo && window.cpVideo.leave) window.cpVideo.leave();
     show();
     audio.src = url;
     setTrackDisplay(title, artist);
@@ -799,8 +801,43 @@
   var _playerObs = new MutationObserver(_syncVideoLabel);
   if (footerBar) _playerObs.observe(footerBar, {attributes: true, attributeFilter: ['style']});
 
-  // Expose for debugging
-  window.cpVideo = { enter: enterVideoMode, leave: leaveVideoMode, next: nextVideo, prev: prevVideo };
+  function _makeVQItem(it) {
+    return {
+      video_id:    it.video_id,
+      embed_url:   'https://www.youtube.com/embed/' + it.video_id,
+      title:       it.title  || '—',
+      artist:      it.artist || '',
+      source_url:  it.source_url || ('https://www.youtube.com/watch?v=' + it.video_id),
+      is_live:     false,
+      has_show_soon: false,
+      source_type: 'youtube',
+    };
+  }
+
+  window.cpVideo = {
+    enter: enterVideoMode,
+    leave: leaveVideoMode,
+    next:  nextVideo,
+    prev:  prevVideo,
+    // Load a single video into the player and play it immediately
+    load: function(videoId, title, artist, sourceUrl) {
+      if (!videoId) return;
+      videoQueue = [_makeVQItem({video_id: videoId, title: title, artist: artist, source_url: sourceUrl})];
+      videoIdx   = 0;
+      if (window.cpAudio && !window.cpAudio.paused) window.cpAudio.pause();
+      enterVideoMode();
+      playVideo(0);
+    },
+    // Load an array of {video_id, title, artist} and play from startIdx (default 0)
+    queue: function(items, startIdx) {
+      if (!items || !items.length) return;
+      videoQueue = items.map(_makeVQItem);
+      videoIdx   = startIdx || 0;
+      if (window.cpAudio && !window.cpAudio.paused) window.cpAudio.pause();
+      enterVideoMode();
+      playVideo(videoIdx);
+    },
+  };
 })();
 
 // ── Player collapse ──────────────────────────────────────────────────────────

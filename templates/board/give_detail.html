@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% block title %}{{ offering.title }} — Free &amp; Trade — Community Playlist{% endblock %}
+{% block styles %}
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif}
+.page-wrap{max-width:680px;margin:0 auto;padding:20px}
+.back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:20px}
+.back:hover{text-decoration:underline}
+.card{background:#161616;border:1px solid #222;border-radius:12px;overflow:hidden;margin-bottom:16px}
+.offer-photo{width:100%;max-height:420px;object-fit:contain;background:#111;display:block}
+.offer-body{padding:20px}
+.cat-badge{display:inline-block;font-size:.67em;padding:3px 9px;border-radius:3px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+.cat-give{background:#0a1a0a;color:#4caf50;border:1px solid #1a4a1a}
+.cat-trade{background:#101820;color:#6699dd;border:1px solid #224466}
+.cat-iso{background:#1a1008;color:#ddaa33;border:1px solid #4a3010}
+h1{color:#eee;font-size:1.3em;font-weight:700;margin-bottom:8px;line-height:1.4}
+.meta{font-size:.8em;color:#555;margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap}
+.body-text{color:#aaa;font-size:.88em;line-height:1.75;white-space:pre-wrap;margin-bottom:16px}
+.contact-row{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:7px;padding:12px 14px;font-size:.85em;color:#aaa}
+.contact-row strong{color:#ccc}
+.claim-form{margin-top:20px}
+.claim-btn{background:#4caf50;color:#111;border:none;padding:11px 28px;border-radius:7px;cursor:pointer;font-size:.9em;font-weight:700}
+.claim-btn:hover{background:#3d9140}
+.claimed-banner{background:#0a1a0a;border:1px solid #1a4a1a;border-radius:8px;padding:14px 18px;color:#4caf50;font-size:.88em;margin-top:20px}
+/* Thread */
+.thread-section{margin-top:4px}
+.thread-header{padding:12px 16px;border-bottom:1px solid #1e1e1e;display:flex;align-items:center;justify-content:space-between}
+.thread-header-label{color:#888;font-size:.78em;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.thread-header a{color:#444;font-size:.78em;text-decoration:none;border:1px solid #252525;padding:3px 10px;border-radius:4px;transition:all .15s}
+.thread-header a:hover{border-color:#ff6b35;color:#ff6b35}
+.reply-list{padding:0}
+.reply{display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid #1a1a1a}
+.reply:last-child{border-bottom:none}
+.reply-avatar{width:28px;height:28px;border-radius:50%;background:#2a2a2a;display:flex;align-items:center;justify-content:center;font-size:.72em;font-weight:700;color:#888;flex-shrink:0;margin-top:1px;text-transform:uppercase}
+.reply-avatar.is-system{background:#0a1a0a;color:#4caf50}
+.reply-content{flex:1;min-width:0}
+.reply-meta{font-size:.73em;color:#555;margin-bottom:4px;display:flex;align-items:baseline;gap:8px}
+.reply-meta strong{color:#999;font-weight:600}
+.reply-body{font-size:.85em;color:#aaa;line-height:1.65;white-space:pre-wrap}
+.reply-body.is-system{color:#4caf50;font-style:italic}
+.no-replies{padding:20px 16px;text-align:center;color:#383838;font-size:.83em}
+/* Reply form */
+.reply-form-wrap{padding:14px 16px;border-top:1px solid #1e1e1e;background:#131313}
+.reply-form-label{font-size:.73em;text-transform:uppercase;letter-spacing:.08em;color:#555;font-weight:700;margin-bottom:10px}
+.reply-form-fields{display:flex;flex-direction:column;gap:8px}
+.rf-name-row{display:flex;gap:8px;align-items:center}
+.rf-name{background:#1e1e1e;border:1px solid #2a2a2a;border-radius:5px;padding:8px 11px;color:#eee;font-size:.84em;font-family:inherit;flex:1;min-width:0}
+.rf-name:focus{outline:none;border-color:#ff6b35}
+.rf-body{width:100%;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:5px;padding:9px 11px;color:#eee;font-size:.84em;font-family:inherit;resize:vertical;min-height:72px}
+.rf-body:focus{outline:none;border-color:#ff6b35}
+.rf-submit-row{display:flex;justify-content:flex-end}
+.btn-reply{background:#ff6b35;color:#fff;border:none;padding:8px 20px;border-radius:5px;cursor:pointer;font-size:.84em;font-weight:600}
+.btn-reply:hover{background:#e55a25}
+.banner{background:#0f1f0f;border:1px solid #1a3a1a;border-radius:6px;padding:8px 14px;margin-bottom:16px;color:#4caf50;font-size:.82em}
+@media(max-width:600px){.page-wrap{padding:14px}.rf-name-row{flex-direction:column}}
+</style>
+{% endblock %}
+{% block body %}
+<div class="page-wrap">
+<a href="/board/give/" class="back">← Free &amp; Trade</a>
+{% if banner %}<div class="banner">🌹 {{ banner.text }}</div>{% endif %}
+
+<div class="card">
+  {% if offering.photo %}
+  <img class="offer-photo" src="{{ offering.photo.url }}" alt="{{ offering.title }}">
+  {% endif %}
+  <div class="offer-body">
+    <span class="cat-badge cat-{{ offering.category }}">{{ offering.get_category_display }}</span>
+    <h1>{{ offering.title }}</h1>
+    <div class="meta">
+      <span>{{ offering.author_name }}</span>
+      {% if offering.neighborhood %}<span>📍 {{ offering.neighborhood.name }}</span>{% endif %}
+      <span>{{ offering.created_at|timesince }} ago</span>
+      <span>Expires {{ offering.expires_at|date:"M j" }}</span>
+    </div>
+
+    {% if offering.body %}
+    <div class="body-text">{{ offering.body }}</div>
+    {% endif %}
+
+    {% if offering.contact_hint %}
+    <div class="contact-row"><strong>Contact:</strong> {{ offering.contact_hint }}</div>
+    {% endif %}
+
+    {% if offering.is_claimed %}
+    <div class="claimed-banner">✓ This item has been claimed. Check back — more free stuff is posted regularly. <a href="/board/give/" style="color:#4caf50;text-decoration:underline">Browse all →</a></div>
+    {% else %}
+    <div class="claim-form">
+      <p style="font-size:.82em;color:#555;margin-bottom:10px">Got it? Mark it as claimed so others know it's gone.</p>
+      <form method="post" action="/board/give/{{ offering.pk }}/claim/">
+        {% csrf_token %}
+        <button type="submit" class="claim-btn">✓ Mark as Claimed</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {# ── Direct message bridge — both users logged in ── #}
+    {% if poster_profile %}
+    <div style="background:#0d1a0d;border:1px solid #1a4a1a;border-radius:8px;padding:14px 16px;margin-top:16px">
+      <div style="font-size:.78em;color:#4caf50;font-weight:600;margin-bottom:8px">💬 Message @{{ poster_profile.handle }} directly</div>
+      <div style="display:flex;flex-wrap:wrap;gap:7px">
+        {% if poster_profile.messenger_telegram %}
+        <a href="https://t.me/{{ poster_profile.messenger_telegram }}" target="_blank" rel="noopener"
+           style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border:1px solid #1a3a1a;border-radius:20px;color:#4caf50;font-size:.78em;text-decoration:none;background:#0a1a0a">✈ Telegram</a>
+        {% endif %}
+        {% if poster_profile.messenger_signal %}
+        <a href="https://signal.me/#p/{{ poster_profile.messenger_signal }}" target="_blank" rel="noopener"
+           style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border:1px solid #1a3a1a;border-radius:20px;color:#4caf50;font-size:.78em;text-decoration:none;background:#0a1a0a">🔒 Signal</a>
+        {% endif %}
+        {% if poster_profile.messenger_discord %}
+        <a href="https://discord.com/users/{{ poster_profile.messenger_discord }}" target="_blank" rel="noopener"
+           style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border:1px solid #1a3a1a;border-radius:20px;color:#4caf50;font-size:.78em;text-decoration:none;background:#0a1a0a">💬 Discord</a>
+        {% endif %}
+        {% for link in poster_profile.links %}{% if link.url %}
+        {% if 'instagram.com' in link.url %}
+        <a href="{{ link.url }}" target="_blank" rel="noopener"
+           style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border:1px solid #1a3a1a;border-radius:20px;color:#4caf50;font-size:.78em;text-decoration:none;background:#0a1a0a">📷 Instagram</a>
+        {% endif %}
+        {% endif %}{% endfor %}
+        {% if not poster_profile.messenger_telegram and not poster_profile.messenger_signal and not poster_profile.messenger_discord %}
+        <span style="font-size:.78em;color:#555">@{{ poster_profile.handle }} hasn't set up direct messaging yet — reply in the thread below.</span>
+        {% endif %}
+      </div>
+    </div>
+    {% elif request.user.is_authenticated and offering.poster_user and request.user == offering.poster_user %}
+    <div style="background:#0a0a1a;border:1px solid #1e1e2a;border-radius:8px;padding:12px 14px;margin-top:14px;font-size:.79em;color:#555;line-height:1.65">
+      💡 <strong style="color:#666">This is your post.</strong> Add messaging handles to your <a href="/profile/settings/" style="color:#9966dd">profile settings</a> so logged-in visitors can reach you directly.
+    </div>
+    {% elif not request.user.is_authenticated %}
+    <div style="background:#111;border:1px solid #1e1e1e;border-radius:8px;padding:12px 14px;margin-top:14px;font-size:.79em;color:#555;line-height:1.65">
+      <a href="/login/?next={{ request.path }}" style="color:#ff6b35;text-decoration:none">Log in</a> to see direct message options if the poster has their account connected.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ── Board thread ── #}
+<div class="card thread-section">
+  <div class="thread-header">
+    <span class="thread-header-label">💬 Thread</span>
+    {% if offering.board_topic %}
+    <a href="{{ offering.board_topic.get_absolute_url }}">Full thread ↗</a>
+    {% endif %}
+  </div>
+
+  <div class="reply-list">
+  {% if thread_replies %}
+    {% for r in thread_replies %}
+    <div class="reply">
+      <div class="reply-avatar {% if r.author_name == 'Community Playlist' %}is-system{% endif %}">
+        {% if r.author_name == 'Community Playlist' %}✓{% else %}{{ r.author_name|slice:":1" }}{% endif %}
+      </div>
+      <div class="reply-content">
+        <div class="reply-meta">
+          <strong>{{ r.author_name }}</strong>
+          <span>{{ r.created_at|timesince }} ago</span>
+        </div>
+        <div class="reply-body {% if r.author_name == 'Community Playlist' %}is-system{% endif %}">{{ r.body }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="no-replies">No replies yet — ask a question or leave a note below.</div>
+  {% endif %}
+  </div>
+
+  {% if offering.board_topic and not offering.is_claimed %}
+  <div class="reply-form-wrap">
+    <div class="reply-form-label">Leave a note</div>
+    <form method="post" action="{{ offering.board_topic.get_absolute_url }}">
+      {% csrf_token %}
+      <div class="reply-form-fields">
+        <div class="rf-name-row">
+          <input class="rf-name" type="text" name="author_name" placeholder="Your name" maxlength="80"
+                 value="{% if request.user.is_authenticated %}{{ request.user.profile.handle }}{% endif %}">
+        </div>
+        <textarea class="rf-body" name="body" placeholder="Ask a question, arrange pickup, say thanks…" maxlength="2000"></textarea>
+        <div class="rf-submit-row">
+          <button type="submit" class="btn-reply">Post Reply</button>
+        </div>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+</div>
+{% endblock %}

@@ -52,6 +52,19 @@ h1{color:#ff6b35;font-size:1.6em;margin-bottom:8px}
 .reply-form textarea{flex:1;min-width:180px;resize:vertical;min-height:56px}
 .btn-reply{background:#2563eb;color:#fff;border:none;padding:7px 14px;border-radius:5px;cursor:pointer;font-size:.82em;flex-shrink:0}
 .btn-reply:hover{background:#1d4ed8}
+/* Offerings */
+.offer-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:12px}
+.offer-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;text-decoration:none;color:inherit;display:flex;flex-direction:column;transition:border-color .15s;font-size:.82em}
+.offer-card:hover{border-color:#4caf50}
+.offer-thumb{width:100%;aspect-ratio:4/3;object-fit:cover;background:#111;display:block}
+.offer-thumb-ph{width:100%;aspect-ratio:4/3;background:#151515;display:flex;align-items:center;justify-content:center;font-size:1.8em;color:#2a2a2a}
+.offer-info{padding:7px 9px}
+.offer-cat-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.dot-give{background:#4caf50}.dot-trade{background:#6699dd}.dot-iso{background:#ddaa33}
+.offer-title-sm{color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.offer-age{font-size:.72em;color:#444;margin-top:2px}
+.give-see-more{color:#4caf50;font-size:.8em;text-decoration:none}
+.give-see-more:hover{text-decoration:underline}
 /* New topic form */
 .new-topic-form{background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:20px}
 .new-topic-form h3{color:#ff6b35;font-size:.95em;margin-bottom:16px}
@@ -121,6 +134,36 @@ h1{color:#ff6b35;font-size:1.6em;margin-bottom:8px}
     <p style="margin-top:6px"><a href="/?neighborhood={{ hood.name|urlencode }}" style="color:#ff6b35;font-size:.83em;text-decoration:none">Browse all events →</a></p>
   {% endif %}
 </div>
+
+<!-- Free & Trade offerings -->
+{% if offerings %}
+<div class="section">
+  <div class="section-title">🎁 Free &amp; Trade
+    <a href="/board/give/?hood={{ hood.slug }}" class="give-see-more" style="margin-left:auto">See all →</a>
+  </div>
+  <div class="offer-grid">
+    {% for o in offerings %}
+    <a href="{{ o.get_absolute_url }}" class="offer-card">
+      {% if o.photo %}
+        <img class="offer-thumb" src="{{ o.photo.url }}" alt="{{ o.title }}" loading="lazy">
+      {% else %}
+        <div class="offer-thumb-ph">{% if o.category == 'give' %}🎁{% elif o.category == 'trade' %}🔄{% else %}🔍{% endif %}</div>
+      {% endif %}
+      <div class="offer-info">
+        <span class="offer-cat-dot dot-{{ o.category }}"></span><span class="offer-title-sm">{{ o.title }}</span>
+        <div class="offer-age">{{ o.created_at|timesince }} ago</div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  <a href="/board/give/new/?hood={{ hood.slug }}" style="font-size:.82em;color:#4caf50;text-decoration:none">+ Post something free or for trade →</a>
+</div>
+{% else %}
+<div class="section">
+  <div class="section-title">🎁 Free &amp; Trade</div>
+  <p class="empty-msg">Nothing posted yet for {{ hood.name }}. <a href="/board/give/new/?hood={{ hood.slug }}" style="color:#4caf50;text-decoration:none">Be the first →</a></p>
+</div>
+{% endif %}
 
 <!-- Community board -->
 <div class="section">

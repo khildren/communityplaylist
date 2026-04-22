@@ -20,6 +20,7 @@ CATEGORY_CHOICES = [
     ('aid',      'Aid & Mutual Aid'),
     ('announce', 'Announcement'),
     ('question', 'Question'),
+    ('offer',    'Free & Trade'),
 ]
 
 
@@ -64,3 +65,58 @@ class Reply(models.Model):
 
     def __str__(self):
         return f"Reply by {self.author_name} on '{self.topic.title}'"
+
+
+class Offering(models.Model):
+    CATEGORY_GIVE  = 'give'
+    CATEGORY_TRADE = 'trade'
+    CATEGORY_ISO   = 'iso'
+    CATEGORY_CHOICES = [
+        ('give',  'Free — Take It'),
+        ('trade', 'Trade / Swap'),
+        ('iso',   'In Search Of'),
+    ]
+
+    title        = models.CharField(max_length=200)
+    body         = models.TextField(blank=True, help_text='Describe the item — condition, size, pickup info…')
+    category     = models.CharField(max_length=10, choices=CATEGORY_CHOICES, default='give')
+    photo        = models.ImageField(upload_to='offerings/', null=True, blank=True)
+    contact_hint = models.CharField(max_length=200, blank=True,
+                                    help_text='How to reach you — e.g. "reply to this thread" or "DM on IG @handle"')
+    neighborhood = models.ForeignKey(
+        'events.Neighborhood', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='offerings',
+    )
+    author_name  = models.CharField(max_length=80)
+    poster_user  = models.ForeignKey(
+        'auth.User', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='offerings',
+    )
+    poster_ip    = models.GenericIPAddressField(null=True, blank=True)
+    is_claimed   = models.BooleanField(default=False)
+    claimed_at   = models.DateTimeField(null=True, blank=True)
+    board_topic  = models.OneToOneField(
+        Topic, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='offering',
+    )
+    active     = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'[{self.get_category_display()}] {self.title}'
+
+    def get_slug(self):
+        return slugify(self.title) or 'item'
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('give_detail', kwargs={'pk': self.pk, 'slug': self.get_slug()})
+
+    @property
+    def is_expired(self):
+        from django.utils import timezone
+        return timezone.now() > self.expires_at

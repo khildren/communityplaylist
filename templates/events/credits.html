@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+{% block title %}Open Source Credits — Community Playlist{% endblock %}
+{% block styles %}
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif}
+.page-wrap{max-width:720px;margin:0 auto;padding:20px 16px 48px}
+
+.hero{padding:28px 0 20px}
+.hero h1{color:#ff6b35;font-size:1.5em;font-weight:700;margin-bottom:6px}
+.hero p{color:#666;font-size:.88em;line-height:1.6;max-width:520px}
+
+.section{color:#ff6b35;font-size:.7em;text-transform:uppercase;letter-spacing:.12em;font-weight:700;
+  margin:36px 0 14px;padding-bottom:7px;border-bottom:1px solid #1e1e1e;
+  display:flex;align-items:center;gap:8px}
+
+.credit{display:flex;gap:14px;align-items:flex-start;padding:11px 0;border-bottom:1px solid #191919}
+.credit:last-child{border-bottom:none}
+.c-icon{font-size:1.25em;flex-shrink:0;width:30px;text-align:center;margin-top:1px}
+.c-body h3{font-size:.88em;color:#ddd;font-weight:600;margin-bottom:3px}
+.c-body p{font-size:.8em;color:#666;line-height:1.65}
+.c-body a{color:#ff6b35;text-decoration:none}
+.c-body a:hover{text-decoration:underline}
+.c-tag{display:inline-block;font-size:.62em;padding:2px 6px;border-radius:3px;
+  background:#1a1a1a;border:1px solid #2a2a2a;color:#666;margin-left:6px;
+  font-weight:700;text-transform:uppercase;letter-spacing:.04em;vertical-align:middle}
+
+.love-block{background:#161616;border:1px solid #2a2a2a;border-radius:10px;
+  padding:20px 22px;margin:36px 0 0;text-align:center}
+.love-block h2{color:#ff6b35;font-size:1.05em;margin-bottom:8px}
+.love-block p{font-size:.82em;color:#666;line-height:1.7}
+.love-block a{color:#ff6b35;text-decoration:none}
+.love-block a:hover{text-decoration:underline}
+
+.page-footer{margin-top:28px;padding-top:16px;border-top:1px solid #1a1a1a;
+  font-size:.75em;color:#444;text-align:center}
+.page-footer a{color:#555;text-decoration:none}
+.page-footer a:hover{color:#ff6b35}
+.page-footer .sep{margin:0 8px;color:#2a2a2a}
+</style>
+{% endblock %}
+{% block body %}
+<div class="page-wrap">
+
+<div class="hero">
+  <h1>Open Source Love</h1>
+  <p>Community Playlist is built on the shoulders of giants — open source projects, open data services, and community-maintained infrastructure. This page is our thank-you note.</p>
+</div>
+
+<!-- ── Backend ── -->
+<div class="section">Core Framework</div>
+
+<div class="credit">
+  <div class="c-icon">🐍</div>
+  <div class="c-body">
+    <h3>Django <span class="c-tag">Python</span></h3>
+    <p>The web framework that powers everything — models, views, migrations, auth, admin, and more. Community Playlist runs on Django 4.2. <a href="https://www.djangoproject.com/" target="_blank" rel="noopener">djangoproject.com →</a></p>
+  </div>
+</div>
+
+<div class="credit">
+  <div class="c-icon">🚀</div>
+  <div class="c-body">
+    <h3>Gunicorn <span class="c-tag">WSGI</span></h3>
+    <p>Python WSGI HTTP server — handles the traffic in production. <a href="https://gunicorn.org/" target="_blank" rel="noopener">gunicorn.org →</a></p>
+  </div>
+</div>
+
+<div class="credit">
+  <div class="c-icon">🐘</div>
+  <div class="c-body">
+    <h3>PostgreSQL</h3>
+    <p>Open source relational database — stores every event, artist, venue, profile, and track on the platform. <a href="https://www.postgresql.org/" target="_blank" rel="noopener">postgresql.org →</a></p>
+  </div>
+</div>
+
+<div class="credit">
+  <div class="c-icon">📦</div>
+  <div class="c-body">
+    <h3>Docker + Unraid</h3>
+    <p>Community Playlist runs in a Docker container on a self-hosted Unraid NAS in Portland, OR. Zero cloud, zero tracking, zero AWS bills. <a href="https://www.docker.com/" target="_blank" rel="noopener">docker.com →</a></p>
+  </div>
+</div>
+
+<!-- ── Maps ── -->
+<div class="section">Maps &amp; Geo</div>
+
+<div class="credit">
+  <div class="c-icon">🗺</div>
+  <div class="c-body">
+    <h3>Leaflet.js</h3>
+    <p>The lightweight, mobile-friendly interactive map library powering all map views — event markers, venue pins, autopilot routes, and neighborhood overlays. <a href="https://leafletjs.com/" target="_blank" rel="noopener">leafletjs.com →</a></p>
+  </div>
+</div>
+
+<div class="credit">
+  <div class="c-icon">🌍</div>
+  <div class="c-body">
+    <h3>OpenStreetMap &amp; Nominatim</h3>
+    <p>Community-built map data and geocoding. Every event address is geocoded via OSM Nominatim — no Google Maps, no tracking, fully open. <a href="https://www.openstreetmap.org/about" target="_blank" rel="noopener">About OSM →</a> · <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim →</a></p>
+  </div>
+</div>
+
+<div class="credit">
+  <div class="c-icon">🛣</div>
+  <div class="c-body">
+    <h3>OSRM (Open Source Routing Machine)</h3>
+    <p>Driving route computation for the map autopilot feature — real road routes between venues, no Google Directions API needed. <a href="http://project-osrm.org/" target="_blank" rel="noopener">project-osrm.org →</a></p>
+  </div>
+</div>
+
+<!-- ── Music & Data ── -->
+<div class="section">Music &amp; Data Services</div>
+
+<div class="credit">
+  <div class="c-icon">🎸</div>
+  <div class="c-body">
+    <h3>MusicBrainz / MetaBrainz</h3>
+    <p>Open music encyclopedia — artist search, tagging, and Portland concert data imports. 100% community-maintained, no ads, no paywall. <a href="https://musicbrainz.org/" target="_blank" rel="noopener">musicbrainz.org →</a> · <a href="https://metabrainz.org/donate" target="_blank" rel="noopener">Donate →</a></p>
+  </div>
+</div>
+
+<div class="credit">
+  <div class="c-icon">🎧</div>
+  <div class="c-body">
+    <h3>ListenBrainz</h3>
+    <p>Open scrobbling platform from MetaBrainz. Your recent listens display live on your profile and refresh every 30 seconds — fully open API, no key required, no tracking. <a href="https://listenbrainz.org/" target="_blank" rel="noopener">listenbrainz.org →</a></p>
+  </div>
+</div>
+
+<div class="credit">
+  <div class="c-icon">〜</div>
+  <div class="c-body">
+    <h3>Last.fm</h3>
+    <p>Music scrobbling and listening history. Your top tracks of the month appear as a playable card on your public profile. <a href="https://www.last.fm/" target="_blank" rel="noopener">last.fm →</a></p>
+  </div>
+</div>
+
+<div class="credit">
+  <div class="c-icon">💿</div>
+  <div class="c-body">
+    <h3>Discogs</h3>
+    <p>The world's largest music marketplace and database. Your public vinyl collection shows with cover art on your profile — click any record to search and play it via YouTube. <a href="https://www.discogs.com/" target="_blank" rel="noopener">discogs.com →</a></p>
+  </div>
+</div>
+
+<div class="credit">
+  <div class="c-icon">▶</div>
+  <div class="c-body">
+    <h3>YouTube Data API</h3>
+    <p>Powers the YouTube channel cards on profiles — playlists, video grids, and search-to-play. Quota-cached to stay well under daily limits. <a href="https://developers.google.com/youtube/v3" target="_blank" rel="noopener">YouTube API docs →</a></p>
+  </div>
+</div>
+
+<!-- ── Event Data ── -->
+<div class="section">Event Data Sources</div>
+
+<div class="credit">
+  <div class="c-icon">🎛</div>
+  <div class="c-body">
+    <h3>19hz.info — PNW Electronic Music Calendar</h3>
+    <p>The original Pacific Northwest rave and electronic music calendar, running since 1997. Oregon shows are imported automatically — raves, warehouse parties, club nights that never make Ticketmaster. <a href="https://19hz.info" target="_blank" rel="noopener">19hz.info →</a></p>
+  </div>
+</div>
+
+<div class="credit">
+  <div class="c-icon">📅</div>
+  <div class="c-body">
+    <h3>Calagator</h3>
+    <p>Portland's open-source community calendar since 2008 — tech meetups, civic events, workshops. <a href="https://calagator.org" target="_blank" rel="noopener">calagator.org →</a></p>
+  </div>
+</div>
+
+<div class="credit">
+  <div class="c-icon">📡</div>
+  <div class="c-body">
+    <h3>iCal / iCalendar (RFC 5545)</h3>
+    <p>The open standard for calendar data. Dozens of PDX venues publish iCal feeds — we import them all via the <code>icalendar</code> Python library. <a href="https://pypi.org/project/icalendar/" target="_blank" rel="noopener">icalendar on PyPI →</a></p>
+  </div>
+</div>
+
+<!-- ── Frontend ── -->
+<div class="section">Frontend &amp; Other Libraries</div>
+
+<div class="credit">
+  <div class="c-icon">🌤</div>
+  <div class="c-body">
+    <h3>Open-Meteo</h3>
+    <p>Free, open-source weather API — no key, no tracking. Powers real-time weather and PM2.5 air quality in the site header. <a href="https://open-meteo.com/" target="_blank" rel="noopener">open-meteo.com →</a></p>
+  </div>
+</div>
+
+<div class="credit">
+  <div class="c-icon">📆</div>
+  <div class="c-body">
+    <h3>rrule.js</h3>
+    <p>JavaScript library for recurring event rule parsing — powers "every 3rd Thursday", "weekly on Fridays", and all other recurrence patterns in the calendar. <a href="https://github.com/jakubroztocil/rrule" target="_blank" rel="noopener">github.com/jakubroztocil/rrule →</a></p>
+  </div>
+</div>
+
+<div class="credit">
+  <div class="c-icon">🔗</div>
+  <div class="c-body">
+    <h3>Traefik</h3>
+    <p>Reverse proxy and SSL termination — handles HTTPS, routing, and Let's Encrypt certificate renewal automatically. <a href="https://traefik.io/" target="_blank" rel="noopener">traefik.io →</a></p>
+  </div>
+</div>
+
+<div class="credit">
+  <div class="c-icon">⬡</div>
+  <div class="c-body">
+    <h3>Bandcamp, SoundCloud, Mixcloud, Spotify, Apple Music</h3>
+    <p>Embedded music players via official embed iframes — no tracking beyond what each platform's embed provides. Playable inline on artist and user profiles.</p>
+  </div>
+</div>
+
+<!-- ── Love block ── -->
+<div class="love-block">
+  <h2>🌹 Community Playlist is open source</h2>
+  <p>All code is public on GitHub. File bugs, suggest features, or fork the whole thing. Built by and for the Portland community — no ads, no tracking, no investors, no corporate agenda.<br><br>
+  <a href="https://github.com/khildren/communityplaylist" target="_blank" rel="noopener">github.com/khildren/communityplaylist →</a><br><br>
+  If any of the services above have a donate link, consider throwing them a few dollars. They're why we can build things like this for free.</p>
+</div>
+
+<div class="page-footer">
+  <a href="/features/">Features</a>
+  <span class="sep">·</span>
+  <a href="/">Calendar</a>
+  <span class="sep">·</span>
+  <a href="https://discord.gg/WHhxRPDdFV" target="_blank" rel="noopener">Discord</a>
+  <span class="sep">·</span>
+  <a href="https://github.com/khildren/communityplaylist" target="_blank" rel="noopener">GitHub</a>
+</div>
+
+</div>{# /page-wrap #}
+{% endblock %}

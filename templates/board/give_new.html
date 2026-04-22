@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% block title %}Post Something Free or Trade — Community Playlist{% endblock %}
+{% block styles %}
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif}
+.page-wrap{padding:20px;max-width:680px;margin:0 auto}
+.back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:20px}
+.back:hover{text-decoration:underline}
+h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
+.sub{color:#666;font-size:.82em;margin-bottom:22px;line-height:1.6}
+.card{background:#161616;border:1px solid #222;border-radius:10px;padding:20px;margin-bottom:16px}
+.card-title{color:#ff6b35;font-size:.75em;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:14px}
+.form-group{margin-bottom:14px}
+.form-group:last-child{margin-bottom:0}
+.form-group label{display:block;font-size:.82em;color:#888;margin-bottom:5px}
+.form-group input,.form-group textarea,.form-group select{width:100%;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:10px 12px;color:#eee;font-size:.9em;font-family:inherit}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:none;border-color:#ff6b35}
+.form-group input[type=file]{padding:8px;font-size:.82em;color:#888}
+.hint{font-size:.75em;color:#444;margin-top:5px;line-height:1.5}
+.hint a{color:#555;text-decoration:none}
+.hint a:hover{color:#ff6b35;text-decoration:underline}
+.contact-platforms{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.cp-tag{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:4px;padding:3px 9px;font-size:.72em;color:#666;white-space:nowrap}
+/* Neighborhood */
+.hood-new-wrap{display:none;margin-top:8px}
+.hood-new-wrap.open{display:block}
+.hood-new-inner{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:10px 12px}
+.hood-new-inner label{font-size:.78em;color:#666;margin-bottom:5px;display:block}
+.hood-geo-err{background:#1a0f08;border:1px solid #5a3010;border-radius:7px;padding:12px 14px;margin-bottom:14px;color:#ddaa33;font-size:.83em;line-height:1.6}
+/* Name module */
+.name-module{background:#141414;border:1px solid #1e1e1e;border-radius:7px;padding:12px 14px;margin-top:6px;font-size:.79em;color:#555;line-height:1.7}
+.name-module a{color:#ff6b35;text-decoration:none}
+.name-module a:hover{text-decoration:underline}
+.name-module .logged-in-note{color:#4caf50}
+/* Vendor CTA */
+.vendor-cta{background:#0f0f1a;border:1px solid #2a2a3a;border-radius:10px;padding:16px 18px;margin-top:6px}
+.vendor-cta h3{color:#9966dd;font-size:.85em;font-weight:600;margin-bottom:6px}
+.vendor-cta p{font-size:.79em;color:#555;line-height:1.65}
+.vendor-cta a{color:#9966dd;text-decoration:none}
+.vendor-cta a:hover{text-decoration:underline}
+.vendor-cta .coming-soon{display:inline-block;background:#161620;border:1px solid #442266;color:#9966dd;font-size:.72em;padding:3px 9px;border-radius:4px;margin-left:6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;cursor:default}
+/* Buttons */
+.btn{background:#ff6b35;color:#fff;border:none;padding:11px 28px;border-radius:7px;cursor:pointer;font-size:.9em;font-weight:600}
+.btn:hover{background:#e55a25}
+/* Errors */
+.err{background:#2a1010;border:1px solid #5a2020;border-radius:6px;padding:10px 14px;margin-bottom:14px;color:#ff6b6b;font-size:.85em}
+.geo-err{background:#1a0a0a;border:1px solid #6a1a1a;border-radius:8px;padding:14px 16px;margin-bottom:14px;color:#ff8888;font-size:.85em;line-height:1.7}
+.rules{background:#141414;border:1px solid #1e1e1e;border-radius:8px;padding:12px 14px;margin-bottom:18px;font-size:.79em;color:#555;line-height:1.8}
+.rules strong{color:#777}
+.banner{background:#0f1f0f;border:1px solid #1a3a1a;border-radius:6px;padding:8px 14px;margin-bottom:16px;color:#4caf50;font-size:.82em}
+</style>
+{% endblock %}
+{% block body %}
+<div class="page-wrap">
+<a href="/board/give/" class="back">← Free &amp; Trade</a>
+{% if banner %}<div class="banner">🌹 {{ banner.text }}</div>{% endif %}
+
+<h1>🎁 Post Something</h1>
+<p class="sub">Give away, trade, or search for something you need. Portland area only — posts expire after 30 days.</p>
+
+<div class="rules">
+  <strong>Community rules:</strong> No selling. No soliciting. No links to external shops.
+  Free / trade / ISO only. Keep it local. Keep it kind.
+</div>
+
+{% if rate_err %}<div class="err">Too many posts — please wait an hour before trying again.</div>{% endif %}
+{% if geo_err %}
+<div class="geo-err"><strong>This board is for the Portland area only.</strong><br>Your location appears to be outside the region. If you think this is an error, try again in a few minutes.</div>
+{% endif %}
+{% if hood_geo_err %}
+<div class="hood-geo-err">⚠ The neighborhood <strong>"{{ new_hood_name }}"</strong> couldn't be verified as being near Portland. Check the spelling or pick a closer area. <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener" style="color:#ddaa33">Verify on OSM →</a></div>
+{% endif %}
+{% if spam_err %}<div class="err">{{ spam_err }}</div>{% endif %}
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  {{ form.website }}
+
+  <div class="card">
+    <div class="card-title">What &amp; Why</div>
+
+    <div class="form-group">
+      <label>Category</label>
+      {{ form.category }}
+    </div>
+
+    <div class="form-group">
+      <label>Title <span style="color:#555">*</span></label>
+      {{ form.title }}
+      <p class="hint">Be specific — "Free blue IKEA KALLAX, SE Sellwood" beats "free shelf"</p>
+    </div>
+
+    <div class="form-group">
+      <label>Description</label>
+      {{ form.body }}
+    </div>
+
+    <div class="form-group">
+      <label>Photo <span style="color:#555">(optional but helps a lot)</span></label>
+      {{ form.photo }}
+      <p class="hint">Max 10 MB · PNG, JPG, HEIC · square or landscape</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Where &amp; How to Connect</div>
+
+    <div class="form-group">
+      <label>Neighborhood <span style="color:#5a3010">*</span></label>
+      {{ form.neighborhood }}
+      <p class="hint" style="margin-top:6px">
+        <a href="javascript:void(0)" id="hood-not-listed-toggle" style="color:#ff6b35">My neighborhood isn't listed →</a>
+      </p>
+      <div class="hood-new-wrap" id="hood-new-wrap">
+        <div class="hood-new-inner">
+          <label>Neighborhood name (will be added to the map)</label>
+          {{ form.new_neighborhood_name }}
+          <p class="hint" style="margin-top:5px">We'll verify it's in the Portland / Pacific NW area via OpenStreetMap before adding it. Mt. Hood to Tillamook, Salem to Longview all qualify.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>How to reach you</label>
+      {{ form.contact_hint }}
+      <p class="hint">We support these messaging methods on Community Playlist profiles:</p>
+      <div class="contact-platforms">
+        <span class="cp-tag">✈ Telegram @handle</span>
+        <span class="cp-tag">🔒 Signal username</span>
+        <span class="cp-tag">💬 Discord ID</span>
+        <span class="cp-tag">📷 Instagram DM</span>
+        <span class="cp-tag">💬 reply to thread</span>
+      </div>
+      <p class="hint" style="margin-top:7px"><a href="/profile/settings/">Set up your messaging handles on your profile →</a></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Who Are You?</div>
+
+    <div class="form-group">
+      <label>Your name or handle <span style="color:#555">*</span></label>
+      {{ form.author_name }}
+    </div>
+
+    <div class="name-module">
+      {% if user_handle %}
+      <span class="logged-in-note">✓ You're logged in as <strong>@{{ user_handle }}</strong> — your account will be linked to this post, enabling the direct message bridge for logged-in visitors.</span>
+      {% else %}
+      <strong>Posting as a guest?</strong> Your name here is temporary — it exists only on this post and its thread.<br><br>
+      If you post regularly or want to offer things ongoing (free box, recurring trades, barter etc.), <a href="/register/">create a free account</a> or <a href="/login/">log in</a> to tie your offerings to your profile. Your username becomes your identity across all posts — and visitors who are also logged in can message you directly through the platform.<br><br>
+      Guest names reset after 30 days when the post expires.
+      {% endif %}
+    </div>
+  </div>
+
+  <button type="submit" class="btn">Post It</button>
+</form>
+
+<div class="vendor-cta">
+  <h3>📦 Are you a vendor or maker?</h3>
+  <p>
+    If you sell records, zines, locally made goods, or run a small shop —
+    <a href="/register/">create an account</a> and set up a
+    <a href="/shop/">Record Shop</a> profile to list inventory with pricing in the community marketplace.<br><br>
+    General vendor / maker marketplace (clothing, art, handmade goods, food) <span class="coming-soon">Coming Soon</span> —
+    <a href="https://github.com/khildren/communityplaylist/issues/new?labels=enhancement&template=feature_request.md&title=Vendor+marketplace+interest" target="_blank" rel="noopener">click here to register interest</a> and your vote gets counted.
+  </p>
+</div>
+
+<script>
+var toggle = document.getElementById('hood-not-listed-toggle');
+var wrap   = document.getElementById('hood-new-wrap');
+var select = document.getElementById('id_neighborhood_select');
+var newInput = document.getElementById('id_new_hood');
+
+toggle && toggle.addEventListener('click', function() {
+  wrap.classList.toggle('open');
+  if (wrap.classList.contains('open')) {
+    toggle.textContent = 'Use the dropdown instead ↑';
+    if (select) select.value = '';
+    if (newInput) newInput.focus();
+  } else {
+    toggle.textContent = 'My neighborhood isn\'t listed →';
+    if (newInput) newInput.value = '';
+  }
+});
+
+// If a new hood was flagged bad, keep the field open
+{% if hood_geo_err %}
+wrap && wrap.classList.add('open');
+toggle && (toggle.textContent = 'Use the dropdown instead ↑');
+{% endif %}
+</script>
+</div>
+{% endblock %}

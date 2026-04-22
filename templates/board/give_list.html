@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}Free &amp; Trade — Community Playlist{% endblock %}
+{% block styles %}
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif}
+.bp{max-width:900px;margin:0 auto;padding:20px}
+.back{color:#ff6b35;text-decoration:none;font-size:.9em;display:inline-block;margin-bottom:20px}
+.back:hover{text-decoration:underline}
+h1{color:#ff6b35;font-size:1.5em;margin-bottom:6px}
+.sub{color:#666;font-size:.85em;margin-bottom:20px;line-height:1.6}
+.sub a{color:#ff6b35;text-decoration:none}
+.sub a:hover{text-decoration:underline}
+.top-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.new-btn{display:inline-flex;align-items:center;gap:6px;background:#ff6b35;color:#fff;padding:9px 18px;border-radius:7px;text-decoration:none;font-size:.85em;font-weight:600;white-space:nowrap;flex-shrink:0}
+.new-btn:hover{background:#e55a25}
+/* Filters */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.f-chip{padding:5px 13px;border-radius:20px;text-decoration:none;font-size:.79em;border:1px solid #2a2a2a;color:#888;transition:all .15s;white-space:nowrap}
+.f-chip:hover{border-color:#ff6b35;color:#ff6b35}
+.f-chip.active{background:#1a0c06;border-color:#ff6b35;color:#ff6b35;font-weight:600}
+.f-chip.cat-give.active{background:#0a1a0a;border-color:#4caf50;color:#4caf50}
+.f-chip.cat-trade.active{background:#101820;border-color:#4488cc;color:#6699dd}
+.f-chip.cat-iso.active{background:#1a1008;border-color:#ddaa33;color:#ddaa33}
+/* Grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.offer-card{background:#161616;border:1px solid #222;border-radius:12px;overflow:hidden;text-decoration:none;color:inherit;display:flex;flex-direction:row;align-items:stretch;transition:border-color .15s}
+.offer-card:hover{border-color:#ff6b35}
+.offer-card.claimed{opacity:.45;pointer-events:none}
+.offer-body{padding:12px 14px;flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}
+.offer-cat{display:inline-block;font-size:.65em;padding:2px 7px;border-radius:3px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;align-self:flex-start;margin-bottom:2px}
+.cat-give{background:#0a1a0a;color:#4caf50;border:1px solid #1a4a1a}
+.cat-trade{background:#101820;color:#6699dd;border:1px solid #224466}
+.cat-iso{background:#1a1008;color:#ddaa33;border:1px solid #4a3010}
+.offer-title{color:#ddd;font-size:.9em;font-weight:600;line-height:1.4}
+.offer-meta{font-size:.75em;color:#555;margin-top:auto}
+.offer-thumb{width:76px;flex-shrink:0;object-fit:cover;display:block;border-left:1px solid #1e1e1e}
+.offer-thumb-ph{width:76px;flex-shrink:0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:1.6em;border-left:1px solid #1e1e1e}
+.empty{text-align:center;padding:48px 20px;color:#444}
+.empty p{margin-bottom:12px;font-size:.9em}
+.banner{background:#0f1f0f;border:1px solid #1a3a1a;border-radius:6px;padding:10px 16px;margin-bottom:20px;color:#4caf50;font-size:.85em}
+@media(max-width:600px){.bp{padding:14px}.grid{grid-template-columns:1fr 1fr}}
+@media(max-width:380px){.grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block body %}
+<div class="bp">
+<a href="/board/" class="back">← Community Board</a>
+{% if banner %}<div class="banner">🌹 {{ banner.text }}</div>{% endif %}
+
+<h1>🎁 Free &amp; Trade</h1>
+<p class="sub">
+  Buy Nothing, offer up, trade, or search for something you need — Portland only.
+  Posts expire in 30 days. <a href="/board/give/new/">Post something →</a>
+</p>
+
+<div class="top-bar">
+  <div class="filters">
+    <a href="/board/give/{% if hood_slug %}?hood={{ hood_slug }}{% endif %}" class="f-chip{% if not category %} active{% endif %}">All</a>
+    {% for val, label in offer_categories %}
+    <a href="/board/give/?cat={{ val }}{% if hood_slug %}&amp;hood={{ hood_slug }}{% endif %}"
+       class="f-chip cat-{{ val }}{% if category == val %} active{% endif %}">{{ label }}</a>
+    {% endfor %}
+    {% if neighborhoods %}
+    <span style="color:#2a2a2a;padding:5px 4px">|</span>
+    {% for n in neighborhoods %}
+    <a href="/board/give/?hood={{ n.slug }}{% if category %}&amp;cat={{ category }}{% endif %}"
+       class="f-chip{% if hood_slug == n.slug %} active{% endif %}">📍 {{ n.name }}</a>
+    {% endfor %}
+    {% endif %}
+  </div>
+  <a href="/board/give/new/{% if hood_slug %}?hood={{ hood_slug }}{% endif %}" class="new-btn">+ Post</a>
+</div>
+
+{% if offerings %}
+<div class="grid">
+{% for o in offerings %}
+<a href="{{ o.get_absolute_url }}" class="offer-card{% if o.is_claimed %} claimed{% endif %}">
+  <div class="offer-body">
+    <span class="offer-cat cat-{{ o.category }}">{{ o.get_category_display }}</span>
+    <div class="offer-title">{{ o.title }}</div>
+    <div class="offer-meta">
+      {{ o.author_name }}
+      {% if o.neighborhood %} · {{ o.neighborhood.name }}{% endif %}
+      · {{ o.created_at|timesince }} ago
+    </div>
+  </div>
+  {% if o.photo %}
+    <img class="offer-thumb" src="{{ o.photo.url }}" alt="{{ o.title }}" loading="lazy">
+  {% else %}
+    <div class="offer-thumb-ph">
+      {% if o.category == 'give' %}🎁{% elif o.category == 'trade' %}🔄{% else %}🔍{% endif %}
+    </div>
+  {% endif %}
+</a>
+{% endfor %}
+</div>
+{% else %}
+<div class="empty">
+  <p>Nothing posted yet{% if hood_obj %} in {{ hood_obj.name }}{% endif %}{% if category %} in this category{% endif %}.</p>
+  <a href="/board/give/new/" style="color:#ff6b35;text-decoration:none;font-size:.85em">Be the first to post →</a>
+</div>
+{% endif %}
+
+</div>
+{% endblock %}

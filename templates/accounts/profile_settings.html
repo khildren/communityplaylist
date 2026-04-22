@@ -30,9 +30,12 @@ h1{color:#ff6b35;font-size:1.3em;margin-bottom:24px}
 .avatar-wrap{display:flex;align-items:center;gap:14px}
 .avatar-preview{width:60px;height:60px;border-radius:50%;object-fit:cover;background:#222;display:flex;align-items:center;justify-content:center;font-size:1.6em;flex-shrink:0;overflow:hidden}
 .avatar-preview img{width:100%;height:100%;object-fit:cover}
-.toggle-row{display:flex;align-items:center;gap:10px}
-.toggle-row input[type=checkbox]{width:auto;margin:0}
+.toggle-row{display:flex;flex-direction:column;gap:3px;padding:10px 0;border-bottom:1px solid #1e1e1e}
+.toggle-row:last-child{border-bottom:none;padding-bottom:0}
+.toggle-row:first-child{padding-top:0}
 .toggle-row label{font-size:.85em;color:#aaa;margin:0;display:flex;align-items:center;gap:8px;cursor:pointer}
+.toggle-row input[type=checkbox]{width:auto;margin:0;accent-color:#ff6b35}
+.toggle-hint{font-size:.74em;color:#444;margin-left:24px;line-height:1.4}
 .btn{background:#ff6b35;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:.88em}
 .btn:hover{background:#e55a25}
 .error{background:#2a1010;border:1px solid #5a2020;border-radius:6px;padding:10px 14px;margin-bottom:16px;color:#ff6b6b;font-size:.85em}
@@ -40,6 +43,12 @@ h1{color:#ff6b35;font-size:1.3em;margin-bottom:24px}
 .verify-bar{background:#1a1a10;border:1px solid #3a3010;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:.84em;color:#ddaa33;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .verify-bar a{color:#ff6b35;text-decoration:none}
 .verify-bar a:hover{text-decoration:underline}
+.hint-bar{background:#0a1a0a;border:1px solid #1a4a1a;border-radius:8px;padding:11px 15px;margin-bottom:16px;font-size:.8em;color:#4caf50;line-height:1.7}
+.hint-bar a{color:#66dd77;text-decoration:none}
+.hint-bar a:hover{text-decoration:underline}
+.field-hint{font-size:.75em;color:#2a6a2a;margin-top:4px;line-height:1.5}
+.field-hint a{color:#4caf50;text-decoration:none}
+.field-hint a:hover{text-decoration:underline}
 @media(max-width:600px){.page-wrap{padding:14px}.form-row{flex-direction:column}}
 </style>
 {% endblock %}
@@ -60,6 +69,11 @@ h1{color:#ff6b35;font-size:1.3em;margin-bottom:24px}
 </div>
 {% endif %}
 
+<div class="hint-bar">
+  💡 <strong>Your public profile</strong> is a shareable music EPK — it shows your bio, links, music services, and upcoming events in one place. Connect <strong>Last.fm</strong>, <strong>ListenBrainz</strong>, and <strong>Discogs</strong> below to unlock live music cards, then hit <strong>⇄ Shuffle All</strong> on your profile to queue everything in the player and save it as a playlist.
+  <a href="/features/">See all features →</a>
+</div>
+
 <form method="post" enctype="multipart/form-data">
 {% csrf_token %}
 
@@ -75,19 +89,44 @@ h1{color:#ff6b35;font-size:1.3em;margin-bottom:24px}
     <p class="hint">2–50 characters. Lowercase letters, numbers, underscores only. Used in your public URL: communityplaylist.com/u/@{{ profile.handle }}/</p>
   </div>
 
-  <div class="form-row">
-    <div class="form-group">
-      <label>Pronouns <span style="color:#444">(optional)</span></label>
-      <input type="text" name="pronouns" value="{{ profile.pronouns }}" maxlength="40" placeholder="they/them, she/her, he/him…">
+  <div class="form-group">
+    <label>Pronouns <span style="color:#444">(optional)</span></label>
+    <input type="text" name="pronouns" value="{{ profile.pronouns }}" maxlength="40" placeholder="they/them, she/her, he/him…">
+  </div>
+
+  <div class="form-group" style="margin-bottom:0">
+    <div class="toggle-row" style="padding-top:0;border-bottom:none">
+      <label>
+        <input type="checkbox" name="is_public" {% if profile.is_public %}checked{% endif %}>
+        Public profile page
+      </label>
+      <span class="toggle-hint">Your profile is visible at communityplaylist.com/u/@{{ profile.handle }}/</span>
     </div>
-    <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:2px">
-      <div class="toggle-row">
-        <label>
-          <input type="checkbox" name="is_public" {% if profile.is_public %}checked{% endif %}>
-          Public profile
-        </label>
-      </div>
-    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Privacy</div>
+  <div class="hint-bar" style="margin-bottom:12px">🔒 Each toggle controls what visitors see on your <a href="/u/@{{ profile.handle }}/">public profile</a>. Off by default = only you see it until you turn it on. <a href="/features/#privacy">What's shown where →</a></div>
+  <div class="toggle-row">
+    <label><input type="checkbox" name="show_embeds" {% if profile.show_embeds %}checked{% endif %}> Show music embeds publicly</label>
+    <span class="toggle-hint">On by default — Spotify, YouTube, Bandcamp players on your EPK</span>
+  </div>
+  <div class="toggle-row">
+    <label><input type="checkbox" name="show_rss_feed" {% if profile.show_rss_feed %}checked{% endif %}> Show RSS feed link</label>
+    <span class="toggle-hint">Off by default — exposes your event feed publicly</span>
+  </div>
+  <div class="toggle-row">
+    <label><input type="checkbox" name="show_following" {% if profile.show_following %}checked{% endif %}> Show following list publicly</label>
+    <span class="toggle-hint">Off by default — enable to share with promoters &amp; venues</span>
+  </div>
+  <div class="toggle-row">
+    <label><input type="checkbox" name="show_saved_tracks" {% if profile.show_saved_tracks %}checked{% endif %}> Show saved tracks publicly</label>
+    <span class="toggle-hint">Off by default — enable to share your taste with promoters</span>
+  </div>
+  <div class="toggle-row">
+    <label><input type="checkbox" name="show_upcoming_events" {% if profile.show_upcoming_events %}checked{% endif %}> Show upcoming events publicly</label>
+    <span class="toggle-hint">On by default — events you've submitted appear on your profile</span>
   </div>
 </div>
 
@@ -118,6 +157,7 @@ h1{color:#ff6b35;font-size:1.3em;margin-bottom:24px}
 
 <div class="card">
   <div class="card-title">Links <span style="color:#444;font-weight:400;text-transform:none;letter-spacing:0">(up to 5)</span></div>
+  <p class="field-hint" style="margin-bottom:10px">💡 Add a YouTube channel link to unlock the interactive <strong>Videos &amp; Playlists</strong> tab on your profile. Spotify, Bandcamp, Mixcloud, and Apple Music links auto-embed as players. <a href="/features/#embeds">Details →</a></p>
   <div id="link-list">
     {% for link in profile.links %}
     <div class="link-row">
@@ -128,6 +168,36 @@ h1{color:#ff6b35;font-size:1.3em;margin-bottom:24px}
     {% endfor %}
   </div>
   <button type="button" class="add-link-btn" id="add-link-btn">+ Add link</button>
+</div>
+
+<div class="card">
+  <div class="card-title">Music Services</div>
+  <p style="font-size:.8em;color:#555;margin-bottom:14px;line-height:1.6">Connect your listening profiles. ListenBrainz is open and shows recent plays live. Last.fm scrobbling integration coming soon.</p>
+  <div class="hint-bar" style="margin-bottom:14px">🎵 Each connected service adds a <strong>live card</strong> to your public profile — recent listens, top tracks, and vinyl collection with cover art. Visitors can play any track directly in the Community Playlist player without leaving the page. <a href="/features/#music-services">Learn more →</a></div>
+  <div class="form-group">
+    <label>ListenBrainz username</label>
+    <div class="handle-prefix">
+      <span style="font-size:.78em">listenbrainz.org/user/</span>
+      <input type="text" name="listenbrainz_username" value="{{ profile.listenbrainz_username }}" maxlength="100" placeholder="your-username">
+    </div>
+    <p class="hint">Your recent listens will appear as a card on your public profile.</p>
+  </div>
+  <div class="form-group">
+    <label>Last.fm username</label>
+    <div class="handle-prefix">
+      <span style="font-size:.78em">last.fm/user/</span>
+      <input type="text" name="lastfm_username" value="{{ profile.lastfm_username }}" maxlength="100" placeholder="your-username">
+    </div>
+    <p class="hint">Top tracks of the month shown on your profile. Full scrobble sync coming soon.</p>
+  </div>
+  <div class="form-group" style="margin-bottom:0">
+    <label>Discogs username</label>
+    <div class="handle-prefix">
+      <span style="font-size:.78em">discogs.com/user/</span>
+      <input type="text" name="discogs_username" value="{{ profile.discogs_username }}" maxlength="100" placeholder="your-username">
+    </div>
+    <p class="hint">Your 8 most recently added collection records shown with cover art.</p>
+  </div>
 </div>
 
 <button type="submit" class="btn">Save profile</button>

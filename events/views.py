@@ -155,7 +155,7 @@ def event_list(request):
         models.Q(end_date__isnull=True, start_date__gte=now - timedelta(hours=3))
     ).order_by('start_date')
 
-    return render(request, 'events/event_list.html', {
+    response = render(request, 'events/event_list.html', {
         'events': events_list,
         'neighborhoods': neighborhoods,
         'genres': genres,
@@ -176,6 +176,9 @@ def event_list(request):
         'selected_radius': radius,
         'neighborhood_pages': neighborhood_pages,
     })
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    response['Pragma'] = 'no-cache'
+    return response
 
 
 def api_genre_filter(request):
@@ -940,7 +943,7 @@ def dashboard(request):
 
     active_profiles = len(claimed_artists) + len(claimed_promoters) + len(claimed_venues)
 
-    return render(request, 'accounts/dashboard.html', {
+    response = render(request, 'accounts/dashboard.html', {
         'profile': profile,
         'events': events,
         'feeds': feeds,
@@ -959,6 +962,9 @@ def dashboard(request):
         'events_approved': events.filter(status='approved').count(),
         'active_profiles': active_profiles,
     })
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    response['Pragma'] = 'no-cache'
+    return response
 
 
 @login_required(login_url='/login/')
@@ -1103,6 +1109,33 @@ def calendar_subscribe(request):
 
 def features_page(request):
     return render(request, 'events/features.html')
+
+
+def credits_page(request):
+    return render(request, 'events/credits.html')
+
+
+@login_required
+def save_profile_playlist(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    import json as _json
+    try:
+        data = _json.loads(request.body)
+    except Exception:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    items = data.get('items', [])
+    if not items:
+        return JsonResponse({'error': 'No items'}, status=400)
+    from .models import UserPlaylist
+    profile = request.user.profile
+    name = f"@{profile.handle}'s Community Playlist"
+    pl, created = UserPlaylist.objects.update_or_create(
+        user=request.user,
+        name=name,
+        defaults={'items': items},
+    )
+    return JsonResponse({'ok': True, 'created': created, 'id': pl.pk, 'name': pl.name, 'count': len(items)})
 
 
 # ── Venue profiles ──
@@ -1311,6 +1344,12 @@ def neighborhood_detail(request, slug):
     # Board topics tagged to this neighborhood
     topics = Topic.objects.filter(neighborhood=hood).order_by('-pinned', '-created_at')[:20]
 
+    # Free & Trade offerings for this neighborhood
+    from board.models import Offering
+    offerings = Offering.objects.filter(
+        neighborhood=hood, active=True, is_claimed=False, expires_at__gt=now,
+    ).order_by('-created_at')[:12]
+
     # Handle new topic post
     post_error = None
     if request.method == 'POST':
@@ -1361,6 +1400,7 @@ def neighborhood_detail(request, slug):
         'hood': hood,
         'upcoming': upcoming,
         'topics': topics,
+        'offerings': offerings,
         'post_error': post_error,
         'now': now,
         'is_following': is_following,
@@ -1414,7 +1454,15 @@ def profile_settings(request):
             profile.handle   = handle
             profile.pronouns = request.POST.get('pronouns', '').strip()[:40]
             profile.bio      = request.POST.get('bio', '').strip()[:500]
-            profile.is_public = bool(request.POST.get('is_public'))
+            profile.is_public              = bool(request.POST.get('is_public'))
+            profile.lastfm_username        = request.POST.get('lastfm_username', '').strip()[:100]
+            profile.listenbrainz_username  = request.POST.get('listenbrainz_username', '').strip()[:100]
+            profile.discogs_username       = request.POST.get('discogs_username', '').strip()[:100]
+            profile.show_embeds          = bool(request.POST.get('show_embeds'))
+            profile.show_rss_feed        = bool(request.POST.get('show_rss_feed'))
+            profile.show_following       = bool(request.POST.get('show_following'))
+            profile.show_saved_tracks    = bool(request.POST.get('show_saved_tracks'))
+            profile.show_upcoming_events = bool(request.POST.get('show_upcoming_events'))
             # Links: up to 5 {label, url} pairs
             labels = request.POST.getlist('link_label')[:5]
             urls   = request.POST.getlist('link_url')[:5]
@@ -1672,11 +1720,13 @@ def public_profile(request, handle):
 
     saved_tracks = SavedTrack.objects.filter(user=profile.user).select_related(
         'track__genre', 'track__artist', 'track__promoter', 'track__venue'
-    ).order_by('-created_at')
+    ).order_by('-created_at') if profile.show_saved_tracks else []
+    public_follow_data   = follow_data if profile.show_following else []
+    public_events        = events if profile.show_upcoming_events else []
     return render(request, 'accounts/public_profile.html', {
         'profile': profile,
-        'events': events,
-        'follow_data': follow_data,
+        'events': public_events,
+        'follow_data': public_follow_data,
         'oembed_embeds': oembed_embeds,
         'saved_tracks': saved_tracks,
     })
@@ -3463,3 +3513,301 @@ def flyer_bg_drive(request):
         return JsonResponse({'ok': True, 'images': images})
     except Exception as e:
         return JsonResponse({'error': f'Drive API error: {e}'}, status=500)
+
+
+# ── Last.fm user proxy ────────────────────────────────────────────────────────
+
+def api_lastfm_proxy(request):
+    """Server-side proxy for Last.fm API (avoids CORS).
+    GET /api/lastfm/?username=X&method=user.gettoptracks&period=1month
+    """
+    from django.conf import settings as _s
+    api_key = getattr(_s, 'LASTFM_API_KEY', '')
+    if not api_key:
+        return JsonResponse({'error': 'Last.fm API key not configured'}, status=400)
+
+    username = request.GET.get('username', '').strip()
+    if not username:
+        return JsonResponse({'error': 'username required'}, status=400)
+
+    method = request.GET.get('method', 'user.gettoptracks')
+    period = request.GET.get('period', '1month')
+    limit  = min(int(request.GET.get('limit', '10')), 20)
+
+    allowed_methods = {'user.gettoptracks', 'user.getrecenttracks', 'user.gettopartists'}
+    if method not in allowed_methods:
+        return JsonResponse({'error': 'method not allowed'}, status=400)
+
+    try:
+        resp = requests.get(
+            'https://ws.audioscrobbler.com/2.0/',
+            params={
+                'method':  method,
+                'user':    username,
+                'api_key': api_key,
+                'format':  'json',
+                'period':  period,
+                'limit':   limit,
+            },
+            headers={'User-Agent': 'CommunityPlaylist/1.0 +https://communityplaylist.com'},
+            timeout=8,
+        )
+        resp.raise_for_status()
+        return JsonResponse(resp.json())
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ── Discogs collection proxy ──────────────────────────────────────────────────
+
+def api_discogs_proxy(request):
+    """Server-side proxy for Discogs user collection (avoids CORS).
+    GET /api/discogs/?username=X&page=1
+    """
+    from django.conf import settings as _s
+    consumer_key    = getattr(_s, 'DISCOGS_CONSUMER_KEY', '')
+    consumer_secret = getattr(_s, 'DISCOGS_CONSUMER_SECRET', '')
+    if not consumer_key:
+        return JsonResponse({'error': 'Discogs credentials not configured'}, status=400)
+
+    username = request.GET.get('username', '').strip()
+    if not username:
+        return JsonResponse({'error': 'username required'}, status=400)
+
+    page     = max(1, min(int(request.GET.get('page', '1')), 10))
+    per_page = 8
+
+    try:
+        resp = requests.get(
+            f'https://api.discogs.com/users/{username}/collection/folders/0/releases',
+            params={
+                'page':     page,
+                'per_page': per_page,
+                'sort':     'added',
+                'sort_order': 'desc',
+            },
+            headers={
+                'User-Agent':     'CommunityPlaylist/1.0 +https://communityplaylist.com',
+                'Authorization':  f'Discogs key={consumer_key}, secret={consumer_secret}',
+            },
+            timeout=10,
+        )
+        if resp.status_code == 403:
+            return JsonResponse({'releases': [], 'private': True}, status=200)
+        resp.raise_for_status()
+        data = resp.json()
+        # Slim down the response — client only needs cover, title, artist, year, url
+        releases = []
+        for item in data.get('releases', []):
+            bi = item.get('basic_information', {})
+            releases.append({
+                'id':      bi.get('id'),
+                'title':   bi.get('title', ''),
+                'artist':  ', '.join(a.get('name', '') for a in bi.get('artists', [])),
+                'year':    bi.get('year'),
+                'thumb':   bi.get('thumb', ''),
+                'cover':   bi.get('cover_image', ''),
+                'url':     f"https://www.discogs.com/release/{bi.get('id')}",
+            })
+        return JsonResponse({
+            'releases': releases,
+            'pages':    data.get('pagination', {}).get('pages', 1),
+            'page':     page,
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ── YouTube channel proxy ─────────────────────────────────────────────────────
+
+_yt_channel_cache: dict = {}
+_YT_CHANNEL_TTL = 3600  # 1h
+
+def api_youtube_channel_proxy(request):
+    """Resolve a YouTube channel handle → uploads playlist + public playlists.
+    GET /api/youtube-channel/?handle=binsky   (no @ prefix needed)
+    """
+    from django.conf import settings as _s
+    import time as _t
+    api_key = getattr(_s, 'YOUTUBE_API_KEY', '')
+    if not api_key:
+        return JsonResponse({'error': 'YouTube API key not configured'}, status=400)
+
+    handle = request.GET.get('handle', '').strip().lstrip('@')
+    if not handle:
+        return JsonResponse({'error': 'handle required'}, status=400)
+
+    now = _t.time()
+    cached = _yt_channel_cache.get(handle)
+    if cached and now - cached['ts'] < _YT_CHANNEL_TTL:
+        return JsonResponse(cached['data'])
+
+    try:
+        r1 = requests.get(
+            'https://www.googleapis.com/youtube/v3/channels',
+            params={'part': 'snippet,contentDetails', 'forHandle': handle, 'key': api_key},
+            headers={'User-Agent': 'CommunityPlaylist/1.0'},
+            timeout=8,
+        )
+        r1.raise_for_status()
+        items = r1.json().get('items', [])
+        if not items:
+            return JsonResponse({'error': 'channel not found'}, status=404)
+
+        ch = items[0]
+        channel_id    = ch['id']
+        channel_title = ch['snippet']['title']
+        uploads_id    = ch['contentDetails']['relatedPlaylists']['uploads']
+
+        r2 = requests.get(
+            'https://www.googleapis.com/youtube/v3/playlists',
+            params={'part': 'snippet', 'channelId': channel_id, 'maxResults': 12, 'key': api_key},
+            headers={'User-Agent': 'CommunityPlaylist/1.0'},
+            timeout=8,
+        )
+        r2.raise_for_status()
+        playlists = [
+            {
+                'id':    p['id'],
+                'title': p['snippet']['title'],
+                'thumb': (p['snippet'].get('thumbnails', {}).get('medium') or
+                          p['snippet'].get('thumbnails', {}).get('default') or {}).get('url', ''),
+            }
+            for p in r2.json().get('items', [])
+        ]
+
+        # Fetch recent videos from uploads playlist (individual video IDs are embeddable)
+        r3 = requests.get(
+            'https://www.googleapis.com/youtube/v3/playlistItems',
+            params={'part': 'snippet', 'playlistId': uploads_id, 'maxResults': 9, 'key': api_key},
+            headers={'User-Agent': 'CommunityPlaylist/1.0'},
+            timeout=8,
+        )
+        r3.raise_for_status()
+        videos = []
+        for item in r3.json().get('items', []):
+            sn = item.get('snippet', {})
+            vid = sn.get('resourceId', {}).get('videoId', '')
+            if not vid:
+                continue
+            thumbs = sn.get('thumbnails', {})
+            thumb = (thumbs.get('medium') or thumbs.get('high') or thumbs.get('default') or {}).get('url', '')
+            videos.append({'id': vid, 'title': sn.get('title', ''), 'thumb': thumb})
+
+        data = {
+            'channel_id':          channel_id,
+            'title':               channel_title,
+            'uploads_playlist_id': uploads_id,
+            'playlists':           playlists,
+            'videos':              videos,
+        }
+        _yt_channel_cache[handle] = {'data': data, 'ts': now}
+        return JsonResponse(data)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ── YouTube video search proxy ────────────────────────────────────────────────
+
+_yt_search_cache: dict = {}
+_YT_SEARCH_TTL = 86400  # 24h
+
+def api_youtube_search_proxy(request):
+    """Search YouTube for a query, return first video result.
+    GET /api/youtube-search/?q=Fanu+Neverending
+    Returns {video_id, title, thumb, channel}
+    """
+    from django.conf import settings as _s
+    import time as _t
+    api_key = getattr(_s, 'YOUTUBE_API_KEY', '')
+    if not api_key:
+        return JsonResponse({'error': 'YouTube API key not configured'}, status=400)
+
+    q = request.GET.get('q', '').strip()
+    if not q:
+        return JsonResponse({'error': 'q required'}, status=400)
+
+    now = _t.time()
+    cached = _yt_search_cache.get(q)
+    if cached and now - cached['ts'] < _YT_SEARCH_TTL:
+        return JsonResponse(cached['data'])
+
+    try:
+        resp = requests.get(
+            'https://www.googleapis.com/youtube/v3/search',
+            params={
+                'part':       'snippet',
+                'type':       'video',
+                'q':          q,
+                'maxResults': 1,
+                'key':        api_key,
+            },
+            headers={'User-Agent': 'CommunityPlaylist/1.0'},
+            timeout=8,
+        )
+        resp.raise_for_status()
+        items = resp.json().get('items', [])
+        if not items:
+            return JsonResponse({'error': 'no results'}, status=404)
+        it = items[0]
+        sn = it.get('snippet', {})
+        data = {
+            'video_id': it['id']['videoId'],
+            'title':    sn.get('title', ''),
+            'channel':  sn.get('channelTitle', ''),
+            'thumb':    (sn.get('thumbnails', {}).get('medium') or sn.get('thumbnails', {}).get('default') or {}).get('url', ''),
+        }
+        _yt_search_cache[q] = {'data': data, 'ts': now}
+        return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ── YouTube playlist items proxy ──────────────────────────────────────────────
+
+_yt_playlist_cache: dict = {}
+_YT_PLAYLIST_TTL = 3600  # 1h
+
+def api_youtube_playlist_proxy(request):
+    """Expand a YouTube playlist into video items.
+    GET /api/youtube-playlist/?id=PLxxx
+    Returns {items: [{video_id, title, thumb}]}
+    """
+    from django.conf import settings as _s
+    import time as _t
+    api_key = getattr(_s, 'YOUTUBE_API_KEY', '')
+    if not api_key:
+        return JsonResponse({'error': 'YouTube API key not configured'}, status=400)
+
+    playlist_id = request.GET.get('id', '').strip()
+    if not playlist_id:
+        return JsonResponse({'error': 'id required'}, status=400)
+
+    now = _t.time()
+    cached = _yt_playlist_cache.get(playlist_id)
+    if cached and now - cached['ts'] < _YT_PLAYLIST_TTL:
+        return JsonResponse(cached['data'])
+
+    try:
+        resp = requests.get(
+            'https://www.googleapis.com/youtube/v3/playlistItems',
+            params={'part': 'snippet', 'playlistId': playlist_id, 'maxResults': 50, 'key': api_key},
+            headers={'User-Agent': 'CommunityPlaylist/1.0'},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        items = []
+        for item in resp.json().get('items', []):
+            sn = item.get('snippet', {})
+            vid = sn.get('resourceId', {}).get('videoId', '')
+            if not vid:
+                continue
+            thumbs = sn.get('thumbnails', {})
+            thumb = (thumbs.get('medium') or thumbs.get('high') or thumbs.get('default') or {}).get('url', '')
+            items.append({'video_id': vid, 'title': sn.get('title', ''), 'thumb': thumb})
+        data = {'items': items}
+        _yt_playlist_cache[playlist_id] = {'data': data, 'ts': now}
+        return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

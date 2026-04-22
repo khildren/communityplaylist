@@ -300,7 +300,7 @@
 .site-header{background:#111;border-bottom:1px solid #1a1a1a;font-family:sans-serif;position:sticky;top:0;z-index:850}
 .sh-inner{display:flex;align-items:center;gap:8px;padding:6px 14px;min-height:50px}
 .sh-logo img{height:34px;width:auto;display:block;flex-shrink:0}
-.sh-weather{display:flex;align-items:center;gap:5px;font-size:.8em;color:#666;white-space:nowrap;flex:1;justify-content:center;padding:5px 12px;background:#1a1a1a;border:1px solid #222;border-radius:6px;margin:0 6px;cursor:pointer;transition:border-color .2s}
+.sh-weather{display:flex;align-items:center;gap:5px;font-size:.8em;color:#666;white-space:nowrap;flex:1;min-width:0;max-width:300px;justify-content:center;padding:5px 12px;background:#1a1a1a;border:1px solid #222;border-radius:6px;margin:0 6px;cursor:pointer;transition:border-color .2s}
 .sh-weather:hover{border-color:#ff6b35}
 .sh-weather.wx-alert{border-color:#ff8c00;animation:wx-pulse 2.5s ease-in-out infinite}
 @keyframes wx-pulse{0%,100%{border-color:#ff8c00;box-shadow:0 0 0 0 rgba(255,140,0,.4)}50%{border-color:#ffb347;box-shadow:0 0 0 5px rgba(255,140,0,0)}}
@@ -360,7 +360,7 @@
 .sh-accent{background:#1a1a1a;color:#ff6b35;border-color:#ff6b35}
 .sh-accent:hover{background:#ff6b35;color:#111}
 /* Unified icon strip */
-.sh-icons{display:flex;align-items:center;gap:1px;margin-left:auto;overflow-x:auto;scrollbar-width:none;flex-shrink:1}
+.sh-icons{display:flex;align-items:center;gap:1px;margin-left:auto;overflow-x:auto;scrollbar-width:none;flex-shrink:0}
 .sh-icons::-webkit-scrollbar{display:none}
 .sh-icon{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;color:#888;text-decoration:none;font-size:1.05em;flex-shrink:0;position:relative;background:transparent;border:none;cursor:pointer;transition:color .12s,background .12s;padding:0;line-height:1}
 .sh-icon:hover,.sh-icon.active{color:#ff6b35;background:#ff6b3515}

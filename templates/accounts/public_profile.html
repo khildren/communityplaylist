@@ -1,379 +1,808 @@
 {% extends 'base.html' %}
 {% block title %}@{{ profile.handle }} — Community Playlist{% endblock %}
+
 {% block head_extra %}
-<meta name="description" content="{% if profile.bio %}{{ profile.bio|truncatewords:20 }}{% else %}{{ profile.handle }} on Community Playlist{% endif %}">
+{# ── Open Graph / social sharing ── #}
+<meta property="og:type"        content="profile">
+<meta property="og:title"       content="@{{ profile.handle }}{% if profile.bio %} · {{ profile.bio|truncatewords:8 }}{% endif %}">
+<meta property="og:description" content="{% if profile.bio %}{{ profile.bio|truncatewords:25 }}{% else %}{{ profile.handle }} on Community Playlist · PDX{% endif %}">
+<meta property="og:url"         content="https://communityplaylist.com/u/@{{ profile.handle }}/">
+{% if profile.avatar %}<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ profile.avatar.url }}">{% endif %}
+<meta name="twitter:card"       content="summary">
+<meta name="twitter:title"      content="@{{ profile.handle }} on Community Playlist">
+<meta name="twitter:description" content="{% if profile.bio %}{{ profile.bio|truncatewords:20 }}{% else %}Portland music + events{% endif %}">
+{% if profile.avatar %}<meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{{ profile.avatar.url }}">{% endif %}
+<meta name="description"        content="{% if profile.bio %}{{ profile.bio|truncatewords:25 }}{% else %}{{ profile.handle }} on Community Playlist{% endif %}">
 {% endblock %}
+
+{# Strip the full site header and nav #}
+{% block site_header %}{% endblock %}
+{% block nav_strip %}{% endblock %}
+
 {% block styles %}
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#111;color:#eee;font-family:sans-serif;padding:20px;max-width:680px;margin:0 auto}
-.site-logo{text-align:center;padding:14px 0 22px}
-.site-logo img{max-width:120px;width:100%}
-.back{color:#ff6b35;text-decoration:none;font-size:.82em;display:inline-block;margin-bottom:22px}
-.back:hover{text-decoration:underline}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0e0e0e;color:#eee;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 0}
 
-/* ── Hero ─────────────────────────────────────────────────── */
-.hero{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:28px}
-.avatar{width:90px;height:90px;border-radius:50%;object-fit:cover;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:2.2em;flex-shrink:0;overflow:hidden;border:2px solid #2a2a2a;margin-bottom:12px}
-.avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
-.handle{color:#ff6b35;font-size:1.4em;font-weight:700;margin-bottom:3px}
-.pronouns{color:#555;font-size:.82em;font-weight:400}
-.bio{color:#aaa;font-size:.88em;line-height:1.7;margin:10px auto 0;max-width:480px;text-align:center}
-.verified-badge{display:inline-block;background:#1a2a1a;color:#4caf50;font-size:.65em;padding:2px 8px;border-radius:3px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;vertical-align:middle;margin-left:8px}
+/* ── page shell ───────────────────────────────────────── */
+.epk{width:100%;max-width:520px;display:flex;flex-direction:column;gap:12px;padding-bottom:60px}
 
-/* ── Link pills ───────────────────────────────────────────── */
-.links{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:14px}
-.link-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 13px;border-radius:20px;font-size:.8em;text-decoration:none;border:1px solid #2a2a2a;background:#1a1a1a;color:#aaa;transition:border-color .15s,color .15s,background .15s;white-space:nowrap}
-.link-pill:hover{border-color:#ff6b35;color:#ff6b35;background:#1a0f0a}
-.link-icon{font-size:1em;line-height:1;flex-shrink:0}
-/* Platform-specific pill colours on hover */
-.pill-spotify:hover{border-color:#1db954;color:#1db954;background:#0a1a0f}
-.pill-youtube:hover{border-color:#f00;color:#f00;background:#1a0a0a}
-.pill-soundcloud:hover{border-color:#ff5500;color:#ff5500;background:#1a0e08}
-.pill-bandcamp:hover{border-color:#1da0c3;color:#1da0c3;background:#081518}
-.pill-beatport:hover{border-color:#02ff6c;color:#02ff6c;background:#081208}
-.pill-mixcloud:hover{border-color:#52aad8;color:#52aad8;background:#08111a}
-.pill-applemusic:hover{border-color:#fc3c44;color:#fc3c44;background:#1a080a}
+/* ── card base ────────────────────────────────────────── */
+.card{background:#161616;border:1px solid #222;border-radius:14px;overflow:hidden}
 
-/* ── Embeds ───────────────────────────────────────────────── */
-.embeds{display:flex;flex-direction:column;gap:16px;margin:24px 0}
-.embed-wrap{border-radius:10px;overflow:hidden;background:#0a0a0a;border:1px solid #1a1a1a}
-.embed-wrap iframe{display:block;width:100%}
-.embed-label{font-size:.72em;color:#444;padding:6px 12px;text-align:right;border-top:1px solid #1a1a1a}
+/* ── hero card — ID card layout ───────────────────────── */
+.hero{padding:20px;display:grid;grid-template-columns:80px 1fr;gap:16px;align-items:start;text-align:left}
+.avatar-wrap{width:80px;height:80px;border-radius:50%;overflow:hidden;border:2px solid #2a2a2a;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:2em;flex-shrink:0}
+.avatar-wrap img{width:100%;height:100%;object-fit:cover}
+.hero-info{min-width:0;display:flex;flex-direction:column;gap:4px}
+.handle{font-size:1.2em;font-weight:700;color:#ff6b35;letter-spacing:-.01em;line-height:1.2}
+.pronouns{color:#555;font-size:.78em;font-weight:400;margin-left:5px}
+.verified-badge{display:inline-flex;align-items:center;gap:4px;background:#0d1f0d;color:#4caf50;font-size:.63em;padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.04em;align-self:flex-start}
+.bio{color:#888;font-size:.85em;line-height:1.7;margin-top:2px}
 
-/* ── Following pills ─────────────────────────────────────── */
-.follow-pills{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px}
+/* ── link pills ───────────────────────────────────────── */
+.links{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-start;margin-top:8px}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:.78em;text-decoration:none;border:1px solid #252525;background:#111;color:#888;transition:all .15s;white-space:nowrap}
+.pill:hover{border-color:#ff6b35;color:#ff6b35;background:#140a06}
+.pill-spotify:hover  {border-color:#1db954;color:#1db954;background:#071209}
+.pill-youtube:hover  {border-color:#f00;color:#f00;background:#120606}
+.pill-soundcloud:hover{border-color:#ff5500;color:#ff5500;background:#120800}
+.pill-bandcamp:hover {border-color:#1da0c3;color:#1da0c3;background:#060f12}
+.pill-beatport:hover {border-color:#02ff6c;color:#02ff6c;background:#050f07}
+.pill-mixcloud:hover {border-color:#52aad8;color:#52aad8;background:#060c10}
+.pill-applemusic:hover{border-color:#fc3c44;color:#fc3c44;background:#120508}
+.pill-lastfm:hover    {border-color:#d51007;color:#d51007;background:#180404}
+.pill-listenbrainz:hover{border-color:#eb743b;color:#eb743b;background:#180b04}
 
-/* ── Section ─────────────────────────────────────────────── */
-.section{margin-bottom:28px}
-.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;border-bottom:1px solid #1a1a1a;padding-bottom:8px}
-.section-title{color:#ff6b35;font-size:.8em;text-transform:uppercase;letter-spacing:.08em}
-.rss-link{color:#555;font-size:.75em;text-decoration:none;border:1px solid #222;padding:2px 8px;border-radius:4px}
-.rss-link:hover{color:#ff6b35;border-color:#ff6b35}
+/* ── MSG button + platform picker ────────────────────── */
+.msg-btn{background:transparent;border:1px solid #2a2a2a;color:#666;cursor:pointer;font-family:inherit;font-size:.78em;padding:5px 12px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;transition:all .15s}
+.msg-btn:hover{border-color:#ff6b35;color:#ff6b35}
+.msg-platforms{display:none;flex-wrap:wrap;gap:6px;margin-top:6px;padding:10px 12px;background:#111;border:1px solid #222;border-radius:10px;animation:fadeSlide .18s ease}
+.msg-platforms.open{display:flex}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 
-/* ── Event rows ──────────────────────────────────────────── */
-.event-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #1a1a1a;text-decoration:none;color:inherit}
+/* ── section label ────────────────────────────────────── */
+.section-label{font-size:.7em;text-transform:uppercase;letter-spacing:.1em;color:#444;padding:12px 16px 8px;border-bottom:1px solid #1e1e1e}
+
+/* ── embed cards ──────────────────────────────────────── */
+#embeds-section{display:flex;flex-direction:column;gap:12px}
+.embed-inner iframe{display:block;width:100%}
+.embed-source{font-size:.7em;color:#383838;padding:6px 12px;text-align:right;border-top:1px solid #1a1a1a}
+
+/* ── following pills ──────────────────────────────────── */
+.follow-wrap{padding:12px 16px 14px;display:flex;flex-wrap:wrap;gap:7px}
+
+/* ── event rows ───────────────────────────────────────── */
+.event-rows{padding:2px 0 4px}
+.event-row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #1a1a1a;text-decoration:none;color:inherit;transition:background .1s}
 .event-row:last-child{border-bottom:none}
-.event-row:hover .event-title{color:#ff6b35}
-.event-date{color:#555;font-size:.78em;white-space:nowrap;min-width:96px}
-.event-title{color:#ccc;font-size:.88em;flex:1}
-.free-tag{background:#1a3a1a;color:#4caf50;font-size:.65em;padding:1px 5px;border-radius:3px;flex-shrink:0}
-.empty{color:#555;font-size:.85em;padding:8px 0}
+.event-row:hover{background:#1a1a1a}
+.event-row:hover .ev-title{color:#ff6b35}
+.ev-date{color:#555;font-size:.76em;white-space:nowrap;min-width:90px}
+.ev-title{color:#ccc;font-size:.87em;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev-free{background:#0a1f0a;color:#4caf50;font-size:.62em;padding:2px 6px;border-radius:3px;flex-shrink:0;letter-spacing:.03em}
+.empty{color:#444;font-size:.84em;padding:14px 16px}
 
-@media(max-width:600px){
-  body{padding:14px}
+/* ── saved tracks ─────────────────────────────────────── */
+.track-row{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid #1a1a1a}
+.track-row:last-child{border-bottom:none}
+.track-play{background:transparent;border:1px solid #2a2a2a;color:#666;width:26px;height:26px;border-radius:4px;cursor:pointer;font-size:.68em;flex-shrink:0;font-family:monospace}
+.track-play:hover{border-color:#ff6b35;color:#ff6b35}
+.track-info{flex:1;min-width:0}
+.track-title{color:#ccc;font-size:.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track-meta{font-size:.73em;color:#484848;margin-top:2px}
+.track-dur{color:#383838;font-size:.72em;flex-shrink:0}
+
+/* ── profile play buttons ─────────────────────────────── */
+.pp-play{background:transparent;border:none;color:#333;cursor:pointer;font-size:.85em;padding:2px 5px;border-radius:4px;flex-shrink:0;transition:color .15s;line-height:1;font-family:monospace}
+.pp-play:hover{color:#ff6b35}
+.pp-play.pp-loading{color:#555;cursor:wait}
+.pp-play.pp-active{color:#ff6b35}
+.shuffle-btn{display:inline-flex;align-items:center;gap:6px;padding:5px 13px;border:1px solid #252525;border-radius:20px;background:transparent;color:#555;font-size:.76em;cursor:pointer;font-family:inherit;transition:all .15s;margin-top:8px}
+.shuffle-btn:hover{border-color:#ff6b35;color:#ff6b35}
+.save-pl-btn{display:none;align-items:center;gap:5px;padding:5px 13px;border:1px solid #1a3a1a;border-radius:20px;background:transparent;color:#3a8a3a;font-size:.76em;cursor:pointer;font-family:inherit;transition:all .15s;margin-top:8px}
+.save-pl-btn:hover{border-color:#4caf50;color:#4caf50}
+.save-pl-btn.visible{display:inline-flex}
+
+/* ── footer ───────────────────────────────────────────── */
+.epk-footer{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;padding:10px;background:linear-gradient(transparent,#0e0e0e 60%);pointer-events:none}
+.epk-footer a{pointer-events:auto;color:#333;font-size:.72em;text-decoration:none;letter-spacing:.04em;transition:color .15s}
+.epk-footer a:hover{color:#ff6b35}
+
+@media(max-width:480px){
+  body{padding:16px 12px 0}
+  .avatar-wrap{width:76px;height:76px}
   .handle{font-size:1.2em}
+  .hero{padding:22px 16px 18px}
 }
 </style>
 {% endblock %}
+
 {% block body %}
+<div class="epk">
 
-<!-- ── Profile hero ────────────────────────────────────────── -->
-<div class="hero">
-  <div class="avatar">
-    {% if profile.avatar %}
-      <img src="{{ profile.avatar.url }}" alt="@{{ profile.handle }}">
-    {% else %}
-      👤
-    {% endif %}
+  {# ── Hero card — ID card layout ─────────────────────────── #}
+  <div class="card hero">
+    {# left: avatar #}
+    <div class="avatar-wrap">
+      {% if profile.avatar %}<img src="{{ profile.avatar.url }}" alt="@{{ profile.handle }}">
+      {% else %}👤{% endif %}
+    </div>
+
+    {# right: all info #}
+    <div class="hero-info">
+      <div>
+        <span class="handle">@{{ profile.handle }}</span>{% if profile.pronouns %}<span class="pronouns">({{ profile.pronouns }})</span>{% endif %}
+      </div>
+      {% if profile.email_verified %}<span class="verified-badge">✓ Verified</span>{% endif %}
+      {% if profile.bio %}<p class="bio">{{ profile.bio }}</p>{% endif %}
+
+      {% if profile.links %}
+      <div class="links">
+        {% for link in profile.links %}{% if link.url %}
+        {% with url=link.url label=link.label|default:'' %}
+        {% if 'spotify.com' in url %}
+          <a href="{{ url }}" class="pill pill-spotify" target="_blank" rel="noopener"><span>♫</span>{{ label|default:'Spotify' }}</a>
+        {% elif 'youtube.com' in url or 'youtu.be' in url %}
+          <a href="{{ url }}" class="pill pill-youtube" target="_blank" rel="noopener"><span>▶</span>{{ label|default:'YouTube' }}</a>
+        {% elif 'soundcloud.com' in url %}
+          <a href="{{ url }}" class="pill pill-soundcloud" target="_blank" rel="noopener"><span>☁</span>{{ label|default:'SoundCloud' }}</a>
+        {% elif 'bandcamp.com' in url %}
+          <a href="{{ url }}" class="pill pill-bandcamp" target="_blank" rel="noopener"><span>⬡</span>{{ label|default:'Bandcamp' }}</a>
+        {% elif 'beatport.com' in url %}
+          <a href="{{ url }}" class="pill pill-beatport" target="_blank" rel="noopener"><span>◈</span>{{ label|default:'Beatport' }}</a>
+        {% elif 'mixcloud.com' in url %}
+          <a href="{{ url }}" class="pill pill-mixcloud" target="_blank" rel="noopener"><span>〰</span>{{ label|default:'Mixcloud' }}</a>
+        {% elif 'music.apple.com' in url %}
+          <a href="{{ url }}" class="pill pill-applemusic" target="_blank" rel="noopener"><span>♪</span>{{ label|default:'Apple Music' }}</a>
+        {% elif 'instagram.com' in url %}
+          <a href="{{ url }}" class="pill" target="_blank" rel="noopener"><span>📷</span>{{ label|default:'Instagram' }}</a>
+        {% elif 'bsky.app' in url %}
+          <a href="{{ url }}" class="pill" target="_blank" rel="noopener"><span>🦋</span>{{ label|default:'Bluesky' }}</a>
+        {% elif 'threads.net' in url %}
+          <a href="{{ url }}" class="pill" target="_blank" rel="noopener"><span>🧵</span>{{ label|default:'Threads' }}</a>
+        {% elif 'twitter.com' in url or 'x.com' in url %}
+          <a href="{{ url }}" class="pill" target="_blank" rel="noopener"><span>𝕏</span>{{ label|default:'Twitter' }}</a>
+        {% elif 'tiktok.com' in url %}
+          <a href="{{ url }}" class="pill" target="_blank" rel="noopener"><span>♪</span>{{ label|default:'TikTok' }}</a>
+        {% elif 'twitch.tv' in url %}
+          <a href="{{ url }}" class="pill" target="_blank" rel="noopener"><span>📡</span>{{ label|default:'Twitch' }}</a>
+        {% elif 'last.fm' in url or 'lastfm' in url %}
+          <a href="{{ url }}" class="pill pill-lastfm" target="_blank" rel="noopener"><span>〜</span>{{ label|default:'Last.fm' }}</a>
+        {% elif 'listenbrainz.org' in url %}
+          <a href="{{ url }}" class="pill pill-listenbrainz" target="_blank" rel="noopener"><span>🎧</span>{{ label|default:'ListenBrainz' }}</a>
+        {% else %}
+          <a href="{{ url }}" class="pill" target="_blank" rel="noopener"><span>🔗</span>{{ label|default:url|truncatechars:26 }}</a>
+        {% endif %}
+        {% endwith %}
+        {% endif %}{% endfor %}
+
+        {# Shuffle all — plays everything into the CP player #}
+        <button class="shuffle-btn" id="pp-shuffle-btn" onclick="ppShuffle()">⇄ Shuffle All</button>
+        <button class="save-pl-btn" id="pp-save-btn" onclick="ppSavePlaylist()">💾 Save Playlist</button>
+
+        {# MSG button — viewer authenticated, not own profile, profile owner verified #}
+        {% if request.user.is_authenticated and request.user != profile.user and profile.email_verified %}
+        <button class="msg-btn" onclick="this.nextElementSibling.classList.toggle('open')">💬 Message</button>
+        <div class="msg-platforms">
+          <span style="font-size:.7em;color:#444;width:100%;margin-bottom:4px">Reach out via:</span>
+          {% if profile.messenger_telegram %}<a href="https://t.me/{{ profile.messenger_telegram }}" class="pill" target="_blank" rel="noopener">✈ Telegram</a>{% endif %}
+          {% if profile.messenger_signal %}<a href="https://signal.me/#p/{{ profile.messenger_signal }}" class="pill" target="_blank" rel="noopener">🔒 Signal</a>{% endif %}
+          {% if profile.messenger_discord %}<a href="https://discord.com/users/{{ profile.messenger_discord }}" class="pill" target="_blank" rel="noopener">💬 Discord</a>{% endif %}
+          {% for link in profile.links %}{% if link.url %}{% with url=link.url %}
+          {% if 'instagram.com' in url %}<a href="{{ url }}" class="pill" target="_blank" rel="noopener"><span>📷</span>Instagram</a>
+          {% elif 'twitter.com' in url or 'x.com' in url %}<a href="{{ url }}" class="pill" target="_blank" rel="noopener"><span>𝕏</span>X / Twitter</a>
+          {% elif 'bsky.app' in url %}<a href="{{ url }}" class="pill" target="_blank" rel="noopener"><span>🦋</span>Bluesky</a>
+          {% elif 'threads.net' in url %}<a href="{{ url }}" class="pill" target="_blank" rel="noopener"><span>🧵</span>Threads</a>
+          {% endif %}
+          {% endwith %}{% endif %}{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
   </div>
-  <div class="handle">
-    @{{ profile.handle }}
-    {% if profile.pronouns %}<span class="pronouns">({{ profile.pronouns }})</span>{% endif %}
-    {% if profile.email_verified %}<span class="verified-badge">✓ Verified</span>{% endif %}
-  </div>
-  {% if profile.bio %}<p class="bio">{{ profile.bio }}</p>{% endif %}
 
-  {% if profile.links %}
-  <div class="links">
-    {% for link in profile.links %}{% if link.url %}
-    {% with url=link.url label=link.label|default:'' %}
-    {% comment %}Detect platform from URL for icon + colour class{% endcomment %}
-    {% if 'spotify.com' in url %}
-      <a href="{{ url }}" class="link-pill pill-spotify" target="_blank" rel="noopener">
-        <span class="link-icon">♫</span>{{ label|default:'Spotify' }}
-      </a>
-    {% elif 'youtube.com' in url or 'youtu.be' in url %}
-      <a href="{{ url }}" class="link-pill pill-youtube" target="_blank" rel="noopener">
-        <span class="link-icon">▶</span>{{ label|default:'YouTube' }}
-      </a>
-    {% elif 'soundcloud.com' in url %}
-      <a href="{{ url }}" class="link-pill pill-soundcloud" target="_blank" rel="noopener">
-        <span class="link-icon">☁</span>{{ label|default:'SoundCloud' }}
-      </a>
-    {% elif 'bandcamp.com' in url %}
-      <a href="{{ url }}" class="link-pill pill-bandcamp" target="_blank" rel="noopener">
-        <span class="link-icon">⬡</span>{{ label|default:'Bandcamp' }}
-      </a>
-    {% elif 'beatport.com' in url %}
-      <a href="{{ url }}" class="link-pill pill-beatport" target="_blank" rel="noopener">
-        <span class="link-icon">◈</span>{{ label|default:'Beatport' }}
-      </a>
-    {% elif 'mixcloud.com' in url %}
-      <a href="{{ url }}" class="link-pill pill-mixcloud" target="_blank" rel="noopener">
-        <span class="link-icon">〰</span>{{ label|default:'Mixcloud' }}
-      </a>
-    {% elif 'music.apple.com' in url %}
-      <a href="{{ url }}" class="link-pill pill-applemusic" target="_blank" rel="noopener">
-        <span class="link-icon">♪</span>{{ label|default:'Apple Music' }}
-      </a>
-    {% elif 'instagram.com' in url %}
-      <a href="{{ url }}" class="link-pill" target="_blank" rel="noopener">
-        <span class="link-icon">📷</span>{{ label|default:'Instagram' }}
-      </a>
-    {% elif 'bsky.app' in url %}
-      <a href="{{ url }}" class="link-pill" target="_blank" rel="noopener">
-        <span class="link-icon">🦋</span>{{ label|default:'Bluesky' }}
-      </a>
-    {% elif 'threads.net' in url %}
-      <a href="{{ url }}" class="link-pill" target="_blank" rel="noopener">
-        <span class="link-icon">🧵</span>{{ label|default:'Threads' }}
-      </a>
-    {% elif 'twitter.com' in url or 'x.com' in url %}
-      <a href="{{ url }}" class="link-pill" target="_blank" rel="noopener">
-        <span class="link-icon">𝕏</span>{{ label|default:'Twitter' }}
-      </a>
-    {% elif 'tiktok.com' in url %}
-      <a href="{{ url }}" class="link-pill" target="_blank" rel="noopener">
-        <span class="link-icon">♪</span>{{ label|default:'TikTok' }}
-      </a>
-    {% elif 'twitch.tv' in url %}
-      <a href="{{ url }}" class="link-pill" target="_blank" rel="noopener">
-        <span class="link-icon">📡</span>{{ label|default:'Twitch' }}
-      </a>
-    {% else %}
-      <a href="{{ url }}" class="link-pill" target="_blank" rel="noopener">
-        <span class="link-icon">🔗</span>{{ label|default:url|truncatechars:28 }}
-      </a>
-    {% endif %}
-    {% endwith %}
-    {% endif %}{% endfor %}
-  </div>
-  {% endif %}
-</div>
-
-<!-- ── Embedded players — rendered in link order ───────────── -->
-{% if profile.links %}
-<div class="embeds" id="embeds-section" style="display:none"></div>
-<script>
-(function() {
-  var links = {{ profile.links|safe }};
-  var container = document.getElementById('embeds-section');
-  var embeds = [];
-
-  links.forEach(function(link) {
-    if (!link.url) return;
-    var url = link.url;
-    var label = link.label || '';
-    var html = null;
-
-    // helper: only append label if it's not just the platform name
+  {# ── Embeds ─────────────────────────────────────────────── #}
+  {% if profile.links and profile.show_embeds %}
+  <div id="embeds-section"></div>
+  <script>
+  (function() {
+    var links = {{ profile.links|safe }};
+    var container = document.getElementById('embeds-section');
+    var embeds = [];
     function sublabel(platform, lbl) {
       if (!lbl || lbl.toLowerCase() === platform.toLowerCase()) return '';
-      return ' &middot; ' + lbl;
+      return ' · ' + lbl;
     }
-
-    // ── Spotify — track, album, playlist, artist, episode ────
-    var spMatch = url.match(/spotify\.com\/(track|album|playlist|artist|episode)\/([A-Za-z0-9]+)/);
-    if (spMatch) {
-      html = '<iframe src="https://open.spotify.com/embed/' + spMatch[1] + '/' + spMatch[2] +
-             '?utm_source=generator&theme=0" height="' + (spMatch[1]==='track'?'152':'352') +
-             '" frameborder="0" allowfullscreen allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>' +
-             '<div class="embed-label">&#9835; Spotify' + sublabel('Spotify', label||spMatch[1]) + '</div>';
-    }
-
-    // ── YouTube / YouTube Music ──────────────────────────────────
-    if (!html && (url.includes('youtube.com') || url.includes('youtu.be'))) {
-      // Channel / artist handle → rich card (server-cached) or fallback subscribe button
-      var ytHandle = url.match(/(?:www\.|music\.)?youtube\.com\/@([\w.-]+)/);
-      var ytChan   = url.match(/(?:www\.|music\.)?youtube\.com\/channel\/(UC[\w-]+)/);
-      if (ytHandle || ytChan) {
-        if (link.embed_html) {
-          // Server pre-fetched: avatar + subscriber count + latest video
-          html = link.embed_html +
-                 '<div class="embed-label">&#9654; YouTube' + sublabel('YouTube', label) + '</div>';
-        } else {
-          // Fallback: simple subscribe button (shown until profile is re-saved)
-          var chanDisplay = label || ('@' + (ytHandle ? ytHandle[1] : 'channel'));
-          var chanUrl = ytHandle
-            ? 'https://www.youtube.com/@' + ytHandle[1] + '?sub_confirmation=1'
-            : 'https://www.youtube.com/channel/' + ytChan[1] + '?sub_confirmation=1';
-          html = '<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 16px;background:#0f0f0f">' +
-                 '<span style="color:#aaa;font-size:.9em">&#9654; ' + chanDisplay + '</span>' +
-                 '<a href="' + chanUrl + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#f00;color:#fff;font-size:.8em;font-weight:700;padding:7px 14px;border-radius:4px;text-decoration:none;letter-spacing:.02em">&#9654; Subscribe</a>' +
-                 '</div>' +
-                 '<div class="embed-label">&#9654; YouTube</div>';
+    links.forEach(function(link) {
+      if (!link.url) return;
+      var url = link.url; var label = link.label || ''; var html = null;
+      var spM = url.match(/spotify\.com\/(track|album|playlist|artist|episode)\/([A-Za-z0-9]+)/);
+      if (spM) {
+        html = '<div class="embed-inner"><iframe src="https://open.spotify.com/embed/'+spM[1]+'/'+spM[2]+'?utm_source=generator&theme=0" height="'+(spM[1]==='track'?'152':'352')+'" frameborder="0" allowfullscreen allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div><div class="embed-source">♫ Spotify'+sublabel('Spotify',label||spM[1])+'</div>';
+      }
+      if (!html && (url.includes('youtube.com') || url.includes('youtu.be'))) {
+        var ytH = url.match(/(?:www\.|music\.)?youtube\.com\/@([\w.-]+)/);
+        var ytC = url.match(/(?:www\.|music\.)?youtube\.com\/channel\/(UC[\w-]+)/);
+        if (ytH || ytC) {
+          var ytHandle    = ytH ? ytH[1] : null;
+          var ytChannelId = ytC ? ytC[1] : null;
+          var ytBase      = ytHandle ? 'https://www.youtube.com/@'+ytHandle : 'https://www.youtube.com/channel/'+ytChannelId;
+          var ytName      = label || (ytHandle ? '@'+ytHandle : 'YouTube');
+          var cardId      = 'yt-ch-' + Math.random().toString(36).slice(2,8);
+          html = '<div id="' + cardId + '" data-yt-handle="' + (ytHandle||'') + '" data-yt-cid="' + (ytChannelId||'') + '" data-yt-name="' + ytName + '" data-yt-base="' + ytBase + '">'
+            + '<div style="padding:14px 16px 12px;background:#0f0f0f;display:flex;align-items:center;justify-content:space-between">'
+            + '<div style="display:flex;align-items:center;gap:8px"><span style="color:#f00">▶</span><span style="color:#ccc;font-size:.88em;font-weight:600">' + ytName + '</span></div>'
+            + '<div class="yt-tabs" style="display:flex;gap:6px">'
+            + '<button class="yt-tab" data-tab="playlists" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;padding:4px 11px;border-radius:12px;font-size:.75em;cursor:pointer;font-family:inherit">☰ Playlists</button>'
+            + '<button class="yt-tab" data-tab="videos" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;padding:4px 11px;border-radius:12px;font-size:.75em;cursor:pointer;font-family:inherit">▶ Videos</button>'
+            + '<a href="' + ytBase + '" target="_blank" rel="noopener" style="padding:4px 11px;border:1px solid #1a1a1a;border-radius:12px;color:#444;font-size:.75em;text-decoration:none">↗</a>'
+            + '</div>'
+            + '</div>'
+            + '<div class="yt-panel" style="min-height:0"></div>'
+            + '</div>'
+            + '<div class="embed-source">▶ YouTube</div>';
+        }
+        if (!html) {
+          var ytPl = url.match(/(?:www\.|music\.)?youtube\.com\/playlist\?(?:[^#]*&)?list=([\w-]+)/);
+          if (ytPl) html = '<div class="embed-inner"><iframe style="width:100%;aspect-ratio:16/9;height:auto" src="https://www.youtube.com/embed/videoseries?list='+ytPl[1]+'" frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen loading="lazy"></iframe></div><div class="embed-source">▶ YouTube Playlist'+sublabel('YouTube Playlist',label)+'</div>';
+        }
+        if (!html) {
+          var ytV = url.match(/(?:(?:www\.|music\.)?youtube\.com\/watch\?(?:[^#]*&)?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+          if (ytV) html = '<div class="embed-inner"><iframe style="width:100%;aspect-ratio:16/9;height:auto" src="https://www.youtube.com/embed/'+ytV[1]+'" frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen loading="lazy"></iframe></div><div class="embed-source">▶ YouTube'+sublabel('YouTube',label)+'</div>';
         }
       }
-      // Playlist (youtube.com or music.youtube.com)
+      if (!html && url.includes('beatport.com')) {
+        var bpT = url.match(/beatport\.com\/track\/[^/]+\/(\d+)/);
+        var bpR = url.match(/beatport\.com\/release\/[^/]+\/(\d+)/);
+        if (bpT) html = '<div class="embed-inner"><iframe style="width:100%;height:162px" src="https://embed.beatport.com/?id='+bpT[1]+'&type=track" frameborder="0" loading="lazy"></iframe></div><div class="embed-source">◈ Beatport'+sublabel('Beatport',label)+'</div>';
+        else if (bpR) html = '<div class="embed-inner"><iframe style="width:100%;height:350px" src="https://embed.beatport.com/?id='+bpR[1]+'&type=release" frameborder="0" loading="lazy"></iframe></div><div class="embed-source">◈ Beatport'+sublabel('Beatport',label)+'</div>';
+      }
+      if (!html && url.includes('mixcloud.com')) {
+        var mcP = url.replace(/^https?:\/\/(?:www\.)?mixcloud\.com/,'').replace(/\/$/,'');
+        if (mcP.split('/').filter(Boolean).length >= 2)
+          html = '<div class="embed-inner"><iframe width="100%" height="120" src="https://www.mixcloud.com/widget/iframe/?hide_cover=1&light=0&feed='+encodeURIComponent(mcP+'/')+'" frameborder="0" loading="lazy"></iframe></div><div class="embed-source">〰 Mixcloud'+sublabel('Mixcloud',label)+'</div>';
+      }
       if (!html) {
-        var ytPl = url.match(/(?:www\.|music\.)?youtube\.com\/playlist\?(?:[^#]*&)?list=([\w-]+)/);
-        if (ytPl) {
-          html = '<iframe style="width:100%;aspect-ratio:16/9;height:auto" src="https://www.youtube.com/embed/videoseries?list=' + ytPl[1] +
-                 '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>' +
-                 '<div class="embed-label" style="display:flex;justify-content:space-between;align-items:center">' +
-                 '<a href="' + url + '" target="_blank" rel="noopener" style="color:#f00;text-decoration:none">&#9654; Watch on YouTube</a>' +
-                 '<span>&#9654; YouTube Playlist' + sublabel('YouTube Playlist', label) + '</span></div>';
-        }
+        var amM = url.match(/music\.apple\.com\/([a-z]{2})\/(album|playlist|song)\/([^/]+)\/([0-9a-z.]+)/i);
+        if (amM) html = '<div class="embed-inner"><iframe allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write" frameborder="0" height="'+(amM[2]==='song'?'175':'450')+'" style="border-radius:0" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation" src="https://embed.music.apple.com/'+amM[1]+'/'+amM[2]+'/'+amM[3]+'/'+amM[4]+'" loading="lazy"></iframe></div><div class="embed-source">♪ Apple Music'+sublabel('Apple Music',label)+'</div>';
       }
-      // Video
-      if (!html) {
-        var ytVid = url.match(/(?:(?:www\.|music\.)?youtube\.com\/watch\?(?:[^#]*&)?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
-        if (ytVid) {
-          html = '<iframe style="width:100%;aspect-ratio:16/9;height:auto" src="https://www.youtube.com/embed/' + ytVid[1] +
-                 '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>' +
-                 '<div class="embed-label" style="display:flex;justify-content:space-between;align-items:center">' +
-                 '<a href="' + url + '" target="_blank" rel="noopener" style="color:#f00;text-decoration:none">&#9654; Watch on YouTube</a>' +
-                 '<span>&#9654; YouTube' + sublabel('YouTube', label) + '</span></div>';
-        }
+      if (!html && link.embed_html) {
+        var dLabel = url.includes('bandcamp.com')?'Bandcamp':'SoundCloud';
+        var dIcon  = url.includes('bandcamp.com')?'⬡':'☁';
+        html = '<div class="embed-inner">'+link.embed_html+'</div><div class="embed-source">'+dIcon+' '+dLabel+sublabel(dLabel,label)+'</div>';
       }
-    }
-
-    // ── Beatport — track or release pages ───────────────────────
-    if (!html && url.includes('beatport.com')) {
-      var bpTrack = url.match(/beatport\.com\/track\/[^/]+\/(\d+)/);
-      var bpRelease = url.match(/beatport\.com\/release\/[^/]+\/(\d+)/);
-      if (bpTrack) {
-        html = '<iframe style="width:100%;height:162px" src="https://embed.beatport.com/?id=' + bpTrack[1] + '&type=track" frameborder="0" loading="lazy"></iframe>' +
-               '<div class="embed-label">&#9670; Beatport' + sublabel('Beatport', label) + '</div>';
-      } else if (bpRelease) {
-        html = '<iframe style="width:100%;height:350px" src="https://embed.beatport.com/?id=' + bpRelease[1] + '&type=release" frameborder="0" loading="lazy"></iframe>' +
-               '<div class="embed-label">&#9670; Beatport' + sublabel('Beatport', label) + '</div>';
-      }
-    }
-
-    // ── Mixcloud — mixcloud.com/user/show/ (not profile pages) ─
-    if (!html && url.includes('mixcloud.com')) {
-      var mcPath = url.replace(/^https?:\/\/(?:www\.)?mixcloud\.com/, '').replace(/\/$/, '');
-      if (mcPath.split('/').filter(Boolean).length >= 2) {
-        html = '<iframe width="100%" height="120" src="https://www.mixcloud.com/widget/iframe/?hide_cover=1&light=0&feed=' +
-               encodeURIComponent(mcPath + '/') +
-               '" frameborder="0" loading="lazy"></iframe>' +
-               '<div class="embed-label">&#12316; Mixcloud' + sublabel('Mixcloud', label) + '</div>';
-      }
-    }
-
-    // ── Apple Music — song, album, playlist ──────────────────
-    if (!html) {
-      var amMatch = url.match(/music\.apple\.com\/([a-z]{2})\/(album|playlist|song)\/([^/]+)\/([0-9a-z.]+)/i);
-      if (amMatch) {
-        html = '<iframe allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write" frameborder="0" height="' +
-               (amMatch[2]==='song'?'175':'450') + '" ' +
-               'style="border-radius:10px" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation" ' +
-               'src="https://embed.music.apple.com/' + amMatch[1] + '/' + amMatch[2] + '/' + amMatch[3] + '/' + amMatch[4] + '" loading="lazy"></iframe>' +
-               '<div class="embed-label">&#9834; Apple Music' + sublabel('Apple Music', label) + '</div>';
-      }
-    }
-
-    // ── Bandcamp + SoundCloud — use server-cached embed_html ────
-    if (!html && link.embed_html) {
-      var domainLabel = url.includes('bandcamp.com') ? 'Bandcamp' : 'SoundCloud';
-      var domainIcon  = url.includes('bandcamp.com') ? '⬡' : '☁';
-      html = link.embed_html + '<div class="embed-label">' + domainIcon + ' ' + domainLabel + sublabel(domainLabel, label) + '</div>';
-    }
-
-    if (html) embeds.push({html: html, url: url, label: label});
-  });
-
-  if (embeds.length) {
-    container.style.display = 'flex';
-    embeds.forEach(function(e) {
-      var div = document.createElement('div');
-      div.className = 'embed-wrap';
-      div.innerHTML = e.html;
-      container.appendChild(div);
+      if (html) embeds.push(html);
     });
-
-    // YouTube IFrame API — init uploads-playlist players (gracefully skips blocked videos)
+    embeds.forEach(function(h) {
+      var d = document.createElement('div');
+      d.className = 'card';
+      d.innerHTML = h;
+      container.appendChild(d);
+    });
     var ytDivs = container.querySelectorAll('.yt-uploads-player');
     if (ytDivs.length) {
-      var ytIndex = 0;
+      var idx = 0;
       window._initYtUploads = function() {
-        ytDivs.forEach(function(el) {
-          var uid = 'yt-up-' + (ytIndex++);
-          el.id = uid;
-          new YT.Player(uid, {
-            width: '100%',
-            playerVars: { listType: 'playlist', list: el.dataset.uploads, rel: 0, modestbranding: 1 }
+        ytDivs.forEach(function(el){ var uid='yt-up-'+(idx++); el.id=uid; new YT.Player(uid,{width:'100%',playerVars:{listType:'playlist',list:el.dataset.uploads,rel:0,modestbranding:1}}); });
+      };
+      if (window.YT && window.YT.Player) window._initYtUploads();
+      else { var s=document.createElement('script'); s.src='https://www.youtube.com/iframe_api'; document.head.appendChild(s); window.onYouTubeIframeAPIReady=window._initYtUploads; }
+    }
+
+    // ── Interactive YouTube channel cards ──────────────────────
+    var ytCards = container.querySelectorAll('[data-yt-handle],[data-yt-cid]');
+    ytCards.forEach(function(card) {
+      var handle  = card.dataset.ytHandle;
+      var cid     = card.dataset.ytCid;
+      var ytName  = card.dataset.ytName;
+      var ytBase  = card.dataset.ytBase;
+      var panel   = card.querySelector('.yt-panel');
+      var tabs    = card.querySelectorAll('.yt-tab');
+      var activeTab = null;
+      var channelData = null;
+
+      function setTab(tab) {
+        tabs.forEach(function(b){
+          b.style.background = '#1a1a1a';
+          b.style.color      = '#888';
+          b.style.borderColor= '#2a2a2a';
+        });
+        tab.style.background  = '#f00';
+        tab.style.color       = '#fff';
+        tab.style.borderColor = '#f00';
+      }
+
+      function embedPlaylist(listId) {
+        panel.innerHTML = '<iframe style="width:100%;aspect-ratio:16/9;height:auto;display:block" '
+          + 'src="https://www.youtube.com/embed/videoseries?list=' + listId + '&rel=0&modestbranding=1" '
+          + 'frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen loading="lazy"></iframe>';
+      }
+
+      function embedVideo(videoId, title) {
+        // Route to CP player instead of in-card embed
+        if (window.cpVideo && window.cpVideo.load) {
+          window.cpVideo.load(videoId, title || '', '');
+        } else {
+          panel.innerHTML = '<iframe style="width:100%;aspect-ratio:16/9;height:auto;display:block" '
+            + 'src="https://www.youtube.com/embed/' + videoId + '?rel=0&modestbranding=1&autoplay=1" '
+            + 'frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen loading="lazy"></iframe>';
+        }
+      }
+
+      function showVideos(videos) {
+        if (!videos.length) {
+          panel.innerHTML = '<div style="padding:12px 16px;color:#444;font-size:.82em">No public videos found.</div>';
+          return;
+        }
+        panel.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 14px">'
+          + videos.map(function(v){
+            var thumb = v.thumb
+              ? '<img src="' + v.thumb + '" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:5px;background:#111;display:block" loading="lazy">'
+              : '<div style="width:100%;aspect-ratio:16/9;background:#1a1a1a;border-radius:5px;display:flex;align-items:center;justify-content:center;color:#f00;font-size:1.2em">▶</div>';
+            return '<button class="pp-yt-video" data-vid="' + v.id + '" data-vtitle="' + encodeURIComponent(v.title) + '" style="background:transparent;border:1px solid #1e1e1e;border-radius:6px;overflow:hidden;cursor:pointer;text-align:left;padding:0">'
+              + thumb
+              + '<div style="padding:5px 7px;color:#888;font-size:.72em;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + v.title + '</div>'
+              + '</button>';
+          }).join('')
+          + '</div>';
+        panel.addEventListener('click', function(e){
+          var b = e.target.closest('.pp-yt-video');
+          if (b) embedVideo(b.dataset.vid, decodeURIComponent(b.dataset.vtitle));
+        });
+      }
+
+      function showPlaylists(playlists) {
+        if (!playlists.length) {
+          panel.innerHTML = '<div style="padding:12px 16px;color:#444;font-size:.82em">No public playlists.</div>';
+          return;
+        }
+        panel.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 14px">'
+          + playlists.map(function(pl){
+            var thumb = pl.thumb
+              ? '<img src="' + pl.thumb + '" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:5px;background:#111;display:block" loading="lazy">'
+              : '<div style="width:100%;aspect-ratio:16/9;background:#1a1a1a;border-radius:5px;display:flex;align-items:center;justify-content:center;color:#333">☰</div>';
+            return '<button class="pp-yt-pl" data-plid="' + pl.id + '" style="background:transparent;border:1px solid #1e1e1e;border-radius:6px;overflow:hidden;cursor:pointer;text-align:left;padding:0">'
+              + thumb
+              + '<div style="padding:5px 7px;color:#888;font-size:.72em;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + pl.title + '</div>'
+              + '</button>';
+          }).join('')
+          + '</div>';
+        panel.addEventListener('click', function(e){
+          var b = e.target.closest('.pp-yt-pl');
+          if (b) window._ytEmbedPl(b.dataset.plid);
+        });
+        window._ytEmbedPl = function(plId) {
+          // Expand playlist into individual videos and queue them all in the player
+          fetch('/api/youtube-playlist/?id=' + encodeURIComponent(plId))
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+              var items = d.items || [];
+              if (!items.length) return;
+              if (window.cpVideo && window.cpVideo.queue) {
+                window.cpVideo.queue(items);
+              } else {
+                embedPlaylist(plId);  // fallback: in-card embed
+              }
+            })
+            .catch(function(){ embedPlaylist(plId); });
+        };
+      }
+
+      function loadChannel(then) {
+        if (channelData) { then(channelData); return; }
+        panel.innerHTML = '<div style="padding:12px 16px;color:#444;font-size:.8em">Loading…</div>';
+        var qs = handle ? '?handle=' + encodeURIComponent(handle) : '?channel_id=' + encodeURIComponent(cid);
+        fetch('/api/youtube-channel/' + qs)
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            channelData = d;
+            if (window._ppSeedFromChannel) window._ppSeedFromChannel(d.videos || []);
+            then(d);
+          })
+          .catch(function(){ panel.innerHTML = '<div style="padding:12px 16px;color:#444;font-size:.8em">Could not load channel.</div>'; });
+      }
+
+      tabs.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var tab = btn.dataset.tab;
+          if (activeTab === tab) {
+            activeTab = null;
+            panel.innerHTML = '';
+            tabs.forEach(function(b){ b.style.background='#1a1a1a'; b.style.color='#888'; b.style.borderColor='#2a2a2a'; });
+            return;
+          }
+          activeTab = tab;
+          setTab(btn);
+          loadChannel(function(d) {
+            if (tab === 'videos') {
+              showVideos(d.videos || []);
+            } else {
+              showPlaylists(d.playlists || []);
+            }
           });
         });
-      };
-      if (window.YT && window.YT.Player) {
-        window._initYtUploads();
-      } else {
-        var s = document.createElement('script');
-        s.src = 'https://www.youtube.com/iframe_api';
-        document.head.appendChild(s);
-        window.onYouTubeIframeAPIReady = window._initYtUploads;
-      }
+      });
+    });
+  })();
+  </script>
+  {% endif %}
+
+  {# ── ListenBrainz recent listens ────────────────────────── #}
+  {% if profile.listenbrainz_username and profile.show_embeds %}
+  <div class="card" id="lb-card">
+    <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+      <span>🎧 Recently Listened</span>
+      <a href="https://listenbrainz.org/user/{{ profile.listenbrainz_username }}/" target="_blank" rel="noopener" style="color:#eb743b;font-size:.75em;text-decoration:none">ListenBrainz ↗</a>
+    </div>
+    <div id="lb-tracks" style="padding:4px 0 6px">
+      <div style="padding:12px 16px;color:#444;font-size:.82em">Loading recent listens…</div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var username = '{{ profile.listenbrainz_username|escapejs }}';
+    var lastTs   = 0;
+
+    function renderLB(listens) {
+      var el = document.getElementById('lb-tracks');
+      if (!listens.length) { el.innerHTML = '<div style="padding:12px 16px;color:#444;font-size:.82em">No recent listens yet.</div>'; return; }
+      lastTs = listens[0].listened_at || 0;
+      el.innerHTML = listens.map(function(l){
+        var t      = l.track_metadata || {};
+        var artist = t.artist_name   || '';
+        var track  = t.track_name    || '';
+        var album  = t.release_name  || '';
+        var ts     = l.listened_at ? new Date(l.listened_at * 1000) : null;
+        var timeStr= ts ? ts.toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '';
+        var q      = encodeURIComponent((artist + ' ' + track).trim());
+        var btnId  = 'lb-play-' + l.listened_at;
+        var q = encodeURIComponent((artist + ' ' + track).trim());
+        return '<div class="pp-search-row" style="display:flex;align-items:center;gap:8px;padding:7px 16px;border-bottom:1px solid #1a1a1a"'
+          + ' data-q="' + q + '" data-title="' + encodeURIComponent(track) + '" data-artist="' + encodeURIComponent(artist) + '">'
+          + '<button class="pp-play" title="Play in player">▶</button>'
+          + '<div style="flex:1;min-width:0">'
+          + '<div style="color:#ccc;font-size:.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (track||'—') + '</div>'
+          + '<div style="font-size:.74em;color:#555;margin-top:1px">' + (artist||'') + (album ? ' · ' + album : '') + '</div>'
+          + '</div>'
+          + (timeStr ? '<span style="color:#333;font-size:.72em;flex-shrink:0">' + timeStr + '</span>' : '')
+          + '</div>';
+      }).join('');
     }
+
+    function loadLB() {
+      fetch('https://api.listenbrainz.org/1/user/' + encodeURIComponent(username) + '/listens?count=8')
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var listens = (d.payload && d.payload.listens) || [];
+          var newest  = listens[0] ? (listens[0].listened_at || 0) : 0;
+          if (newest > lastTs) renderLB(listens);
+        })
+        .catch(function(){
+          var el = document.getElementById('lb-tracks');
+          if (el && !lastTs) el.innerHTML = '<div style="padding:12px 16px;color:#444;font-size:.82em">Could not load listens.</div>';
+        });
+    }
+
+    document.getElementById('lb-tracks').addEventListener('click', function(e) {
+      var btn = e.target.closest('.pp-play');
+      if (!btn) return;
+      var row = btn.closest('.pp-search-row');
+      if (!row) return;
+      ppSearchPlay(decodeURIComponent(row.dataset.q), decodeURIComponent(row.dataset.title), decodeURIComponent(row.dataset.artist), btn);
+    });
+
+    loadLB();
+    setInterval(loadLB, 30000);  // live refresh every 30 s
+  })();
+  </script>
+  {% endif %}
+
+  {# ── Last.fm top tracks ──────────────────────────────────── #}
+  {% if profile.lastfm_username and profile.show_embeds %}
+  <div class="card" id="lfm-card">
+    <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+      <span>〜 Top Tracks · Last Month</span>
+      <a href="https://www.last.fm/user/{{ profile.lastfm_username }}" target="_blank" rel="noopener"
+         style="color:#d51007;font-size:.75em;text-decoration:none">Last.fm ↗</a>
+    </div>
+    <div id="lfm-tracks" style="padding:4px 0 6px">
+      <div style="padding:12px 16px;color:#444;font-size:.82em">Loading top tracks…</div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var username = '{{ profile.lastfm_username|escapejs }}';
+    fetch('/api/lastfm/?username=' + encodeURIComponent(username) + '&method=user.gettoptracks&period=1month&limit=8')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var el = document.getElementById('lfm-tracks');
+        var tracks = (d.toptracks && d.toptracks.track) || [];
+        if (!tracks.length) {
+          el.innerHTML = '<div style="padding:12px 16px;color:#444;font-size:.82em">No scrobbles yet — <a href="https://www.last.fm/user/' + encodeURIComponent(username) + '" target="_blank" rel="noopener" style="color:#d51007">view profile ↗</a></div>';
+          return;
+        }
+        el.addEventListener('click', function(e) {
+          var btn = e.target.closest('.pp-play');
+          if (!btn) return;
+          var row = btn.closest('.pp-search-row');
+          if (!row) return;
+          ppSearchPlay(decodeURIComponent(row.dataset.q), decodeURIComponent(row.dataset.title), decodeURIComponent(row.dataset.artist), btn);
+        });
+        el.innerHTML = tracks.map(function(t, i){
+          var name   = t.name   || '—';
+          var artist = (t.artist && t.artist.name) || '';
+          var plays  = t.playcount ? t.playcount + ' play' + (t.playcount == 1 ? '' : 's') : '';
+          var q = encodeURIComponent((artist + ' ' + name).trim());
+          return '<div class="pp-search-row" style="display:flex;align-items:center;gap:8px;padding:7px 16px;border-bottom:1px solid #1a1a1a"'
+            + ' data-q="' + q + '" data-title="' + encodeURIComponent(name) + '" data-artist="' + encodeURIComponent(artist) + '">'
+            + '<span style="color:#2a2a2a;font-size:.72em;width:14px;text-align:right;flex-shrink:0">' + (i+1) + '</span>'
+            + '<button class="pp-play" title="Play in player">▶</button>'
+            + '<div style="flex:1;min-width:0">'
+            + '<div style="color:#ccc;font-size:.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + '</div>'
+            + '<div style="font-size:.74em;color:#555;margin-top:1px">' + artist + '</div>'
+            + '</div>'
+            + (plays ? '<span style="color:#333;font-size:.72em;flex-shrink:0">' + plays + '</span>' : '')
+            + '</div>';
+        }).join('');
+      })
+      .catch(function(){ document.getElementById('lfm-tracks').innerHTML = '<div style="padding:12px 16px;color:#444;font-size:.82em">Could not load top tracks.</div>'; });
+  })();
+  </script>
+  {% endif %}
+
+  {# ── Discogs collection ───────────────────────────────────── #}
+  {% if profile.discogs_username and profile.show_embeds %}
+  <div class="card" id="discogs-card">
+    <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+      <span>💿 Collection</span>
+      <a href="https://www.discogs.com/user/{{ profile.discogs_username }}/collection" target="_blank" rel="noopener"
+         style="color:#555;font-size:.75em;text-decoration:none">Discogs ↗</a>
+    </div>
+    <div id="discogs-grid" style="padding:12px 14px 14px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+      <div style="grid-column:1/-1;color:#444;font-size:.82em">Loading collection…</div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var username = '{{ profile.discogs_username|escapejs }}';
+    fetch('/api/discogs/?username=' + encodeURIComponent(username))
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var grid = document.getElementById('discogs-grid');
+        var releases = d.releases || [];
+        if (d.private) {
+          grid.innerHTML = '<div style="grid-column:1/-1;color:#444;font-size:.82em">Collection is set to private on Discogs.</div>';
+          return;
+        }
+        if (!releases.length) {
+          grid.innerHTML = '<div style="grid-column:1/-1;color:#444;font-size:.82em">No records in collection yet.</div>';
+          return;
+        }
+        grid.innerHTML = releases.map(function(r){
+          var thumb  = r.thumb   || '';
+          var title  = r.title   || '';
+          var artist = r.artist  || '';
+          var year   = r.year    ? ' · ' + r.year : '';
+          var q      = encodeURIComponent((artist + ' ' + title).trim());
+          var img = thumb
+            ? '<img src="' + thumb + '" alt="" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;background:#111;display:block">'
+            : '<div style="width:100%;aspect-ratio:1;background:#1a1a1a;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#333;font-size:1.4em">💿</div>';
+          return '<button class="pp-search-row" style="background:transparent;border:none;padding:0;cursor:pointer;text-align:left"'
+            + ' data-q="' + q + '" data-title="' + encodeURIComponent(title) + '" data-artist="' + encodeURIComponent(artist) + '"'
+            + ' title="▶ ' + artist + ' — ' + title + year + '">'
+            + img + '</button>';
+        }).join('');
+        grid.addEventListener('click', function(e) {
+          var btn = e.target.closest('.pp-search-row');
+          if (!btn) return;
+          ppSearchPlay(decodeURIComponent(btn.dataset.q), decodeURIComponent(btn.dataset.title), decodeURIComponent(btn.dataset.artist), null);
+        });
+      })
+      .catch(function(){ document.getElementById('discogs-grid').innerHTML = '<div style="grid-column:1/-1;color:#444;font-size:.82em">Could not load collection.</div>'; });
+  })();
+  </script>
+  {% endif %}
+
+  {# ── Following ───────────────────────────────────────────── #}
+  {% if follow_data %}
+  <div class="card">
+    <div class="section-label">Following</div>
+    <div class="follow-wrap">
+      {% for item in follow_data %}
+      <a href="{% if item.follow.target_type == 'artist' %}/artists/{{ item.target.slug }}/{% elif item.follow.target_type == 'venue' %}/venues/{{ item.target.slug }}/{% else %}/neighborhoods/{{ item.target.slug }}/{% endif %}" class="pill">
+        {% if item.follow.target_type == 'artist' %}🎵{% elif item.follow.target_type == 'venue' %}🏛{% else %}📍{% endif %} {{ item.target.name }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Saved tracks ────────────────────────────────────────── #}
+  {% if saved_tracks %}
+  <div class="card">
+    <div class="section-label">♥ Saved Tracks</div>
+    {% for st in saved_tracks %}{% with t=st.track %}
+    <div class="track-row">
+      <button class="track-play" onclick="cpLoad('{{ t.stream_url|escapejs }}','{{ t.title|escapejs }}','{{ t.artist_name|default:t.source_label|escapejs }}','{{ t.artist.get_absolute_url|default:'' }}')">▶</button>
+      <div class="track-info">
+        <div class="track-title">{{ t.title }}</div>
+        <div class="track-meta">
+          {% if t.artist %}<a href="{{ t.artist.get_absolute_url }}" style="color:#aa6633;text-decoration:none">{{ t.artist.name }}</a>{% elif t.artist_name %}{{ t.artist_name }}{% endif %}{% if t.genre %} · {{ t.genre.name }}{% endif %}
+        </div>
+      </div>
+      {% if t.duration_display %}<span class="track-dur">{{ t.duration_display }}</span>{% endif %}
+    </div>
+    {% endwith %}{% endfor %}
+  </div>
+  {% endif %}
+
+  {# ── Upcoming events ─────────────────────────────────────── #}
+  {% if events %}
+  <div class="card">
+    <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+      <span>Upcoming Events</span>
+      {% if profile.show_rss_feed %}<a href="/u/@{{ profile.handle }}/feed/" style="color:#333;font-size:.9em;text-decoration:none;border:1px solid #1e1e1e;padding:2px 8px;border-radius:4px">📡</a>{% endif %}
+    </div>
+    <div class="event-rows">
+      {% for e in events %}
+      <a href="/events/{{ e.slug }}/" class="event-row">
+        <span class="ev-date">{{ e.start_date|date:"D, M j" }}</span>
+        <span class="ev-title">{{ e.title }}</span>
+        {% if e.is_free %}<span class="ev-free">FREE</span>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+{# ── Footer branding ─────────────────────────────────────── #}
+<div class="epk-footer">
+  <a href="/" title="Community Playlist · Portland">community playlist · pdx</a>
+</div>
+
+<script>
+// ── Profile-wide player helpers ───────────────────────────────────────────────
+
+window._ppYTVideos  = [];
+window._ppPending   = [];   // {q, title, artist} — tracks queued for YT resolution
+
+function _ppAdd(v) {
+  if (!window._ppYTVideos.find(function(x){ return x.video_id === v.video_id; }))
+    window._ppYTVideos.push(v);
+}
+
+// Seed from channel videos
+window._ppSeedFromChannel = function(videos) {
+  (videos || []).forEach(_ppAdd);
+};
+
+// Search YouTube for one track and play it immediately
+window.ppSearchPlay = function(query, title, artist, btn) {
+  if (btn) { btn.classList.add('pp-loading'); btn.textContent = '…'; }
+  fetch('/api/youtube-search/?q=' + encodeURIComponent(query))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (btn) { btn.classList.remove('pp-loading'); btn.classList.add('pp-active'); btn.textContent = '▶'; }
+      if (d.video_id) {
+        _ppAdd({video_id: d.video_id, title: title || d.title, artist: artist || d.channel});
+        if (window.cpVideo && window.cpVideo.load)
+          window.cpVideo.load(d.video_id, title || d.title, artist || d.channel);
+      }
+    })
+    .catch(function(){ if (btn) { btn.classList.remove('pp-loading'); btn.textContent = '▶'; } });
+};
+
+// Shuffle — resolves any pending tracks via YouTube search, then queues everything
+window.ppShuffle = function() {
+  var btn = document.getElementById('pp-shuffle-btn');
+  var pending = window._ppPending.slice();
+
+  if (!window._ppYTVideos.length && !pending.length) {
+    if (btn) { btn.textContent = '⇄ Nothing yet'; setTimeout(function(){ btn.textContent='⇄ Shuffle All'; }, 2000); }
+    return;
   }
+
+  if (btn) { btn.textContent = '⇄ Building…'; btn.disabled = true; }
+
+  // Resolve any unresolved tracks in parallel, then shuffle+queue
+  var resolves = pending.map(function(p){
+    return fetch('/api/youtube-search/?q=' + encodeURIComponent(p.q))
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if (d.video_id) _ppAdd({video_id: d.video_id, title: p.title, artist: p.artist}); })
+      .catch(function(){});
+  });
+  window._ppPending = [];
+
+  Promise.all(resolves).then(function(){
+    var all = window._ppYTVideos.slice();
+    if (!all.length) {
+      if (btn) { btn.textContent = '⇄ Shuffle All'; btn.disabled = false; }
+      return;
+    }
+    // Fisher-Yates
+    for (var i = all.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = all[i]; all[i] = all[j]; all[j] = tmp;
+    }
+    if (window.cpVideo && window.cpVideo.queue) window.cpVideo.queue(all);
+    var saveBtn = document.getElementById('pp-save-btn');
+    if (saveBtn) saveBtn.classList.add('visible');
+    if (btn) {
+      btn.textContent = '⇄ ' + all.length + ' tracks ▶';
+      btn.disabled = false;
+      setTimeout(function(){ btn.textContent = '⇄ Shuffle All'; }, 4000);
+    }
+  });
+};
+
+window.ppSavePlaylist = function() {
+  var saveBtn = document.getElementById('pp-save-btn');
+  if (!window._ppYTVideos.length) return;
+  {% if request.user.is_authenticated %}
+  if (saveBtn) { saveBtn.textContent = '💾 Saving…'; saveBtn.disabled = true; }
+  fetch('/api/save-playlist/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+    body: JSON.stringify({items: window._ppYTVideos})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if (saveBtn) {
+      saveBtn.textContent = '✓ Saved — ' + (d.count || '') + ' tracks';
+      saveBtn.disabled = false;
+      setTimeout(function(){ saveBtn.textContent = '💾 Save Playlist'; }, 3500);
+    }
+  })
+  .catch(function(){ if (saveBtn) { saveBtn.textContent = '💾 Save Playlist'; saveBtn.disabled = false; } });
+  {% else %}
+  window.location.href = '/login/?next=' + encodeURIComponent(window.location.pathname);
+  {% endif %}
+};
+
+// ── Auto-seed: fetch channel videos on page load + queue LFM/LB for shuffle ──
+(function(){
+  {% for link in profile.links %}{% if link.url %}
+  {% with url=link.url %}
+  {% if 'youtube.com/@' in url %}
+  var _ytH = '{{ url }}'.match(/youtube\.com\/@([\w.-]+)/);
+  if (_ytH) {
+    fetch('/api/youtube-channel/?handle=' + encodeURIComponent(_ytH[1]))
+      .then(function(r){ return r.json(); })
+      .then(function(d){ window._ppSeedFromChannel(d.videos || []); })
+      .catch(function(){});
+  }
+  {% endif %}
+  {% endwith %}
+  {% endif %}{% endfor %}
+
+  // Queue LFM top tracks as pending for shuffle resolution
+  {% if profile.lastfm_username and profile.show_embeds %}
+  fetch('/api/lastfm/?username={{ profile.lastfm_username|escapejs }}&method=user.gettoptracks&period=1month&limit=8')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      ((d.toptracks && d.toptracks.track) || []).forEach(function(t){
+        var n = t.name || ''; var a = (t.artist && t.artist.name) || '';
+        window._ppPending.push({q: (a+' '+n).trim(), title: n, artist: a});
+      });
+    }).catch(function(){});
+  {% endif %}
+
+  // Queue LB recent listens as pending for shuffle resolution
+  {% if profile.listenbrainz_username and profile.show_embeds %}
+  fetch('https://api.listenbrainz.org/1/user/{{ profile.listenbrainz_username|escapejs }}/listens?count=8')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      ((d.payload && d.payload.listens) || []).forEach(function(l){
+        var t = l.track_metadata || {};
+        var n = t.track_name || ''; var a = t.artist_name || '';
+        if (n) window._ppPending.push({q: (a+' '+n).trim(), title: n, artist: a});
+      });
+    }).catch(function(){});
+  {% endif %}
 })();
 </script>
-{% endif %}
-
-<!-- ── Following ──────────────────────────────────────────── -->
-{% if follow_data %}
-<div class="section">
-  <div class="section-header">
-    <div class="section-title">Following</div>
-  </div>
-  <div class="follow-pills">
-    {% for item in follow_data %}
-    <a href="{% if item.follow.target_type == 'artist' %}/artists/{{ item.target.slug }}/{% elif item.follow.target_type == 'venue' %}/venues/{{ item.target.slug }}/{% else %}/neighborhoods/{{ item.target.slug }}/{% endif %}"
-       class="link-pill">
-      {% if item.follow.target_type == 'artist' %}🎵{% elif item.follow.target_type == 'venue' %}🏛{% else %}📍{% endif %}
-      {{ item.target.name }}
-    </a>
-    {% endfor %}
-  </div>
-</div>
-{% endif %}
-
-<!-- ── Saved Tracks ────────────────────────────────────── -->
-{% if saved_tracks %}
-<div class="section">
-  <div class="section-header">
-    <div class="section-title">♥ Saved Tracks</div>
-  </div>
-  {% for st in saved_tracks %}
-  {% with t=st.track %}
-  <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #1a1a1a">
-    <button onclick="cpLoad('{{ t.stream_url|escapejs }}','{{ t.title|escapejs }}','{{ t.artist_name|default:t.source_label|escapejs }}','{{ t.artist.get_absolute_url|default:'' }}')"
-      style="background:transparent;border:1px solid #2a2a2a;color:#888;width:26px;height:26px;border-radius:3px;cursor:pointer;font-size:.7em;flex-shrink:0;font-family:monospace">▶</button>
-    <div style="flex:1;min-width:0">
-      <div style="color:#ccc;font-size:.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.title }}</div>
-      <div style="font-size:.74em;color:#555;margin-top:2px">
-        {% if t.artist %}<a href="{{ t.artist.get_absolute_url }}" style="color:#aa6633;text-decoration:none">{{ t.artist.name }}</a>{% elif t.promoter %}<a href="/promoters/{{ t.promoter.slug }}/" style="color:#aa6633;text-decoration:none">{{ t.promoter.name }}</a>{% elif t.artist_name %}{{ t.artist_name }}{% endif %}
-        {% if t.recorded_at %} · 📍 {{ t.recorded_at }}{% endif %}
-        {% if t.recorded_date %} · {{ t.recorded_date|date:"M j, Y" }}{% endif %}
-        {% if t.genre %} · <span style="color:#ff6b3566">{{ t.genre.name }}</span>{% endif %}
-      </div>
-    </div>
-    {% if t.duration_display %}<span style="color:#444;font-size:.74em;flex-shrink:0">{{ t.duration_display }}</span>{% endif %}
-  </div>
-  {% endwith %}
-  {% endfor %}
-</div>
-{% endif %}
-
-<!-- ── Upcoming events ────────────────────────────────────── -->
-<div class="section">
-  <div class="section-header">
-    <div class="section-title">Upcoming events</div>
-    <a href="/u/@{{ profile.handle }}/feed/" class="rss-link" title="RSS feed">📡 RSS</a>
-  </div>
-  {% if events %}
-    {% for e in events %}
-    <a href="/events/{{ e.slug }}/" class="event-row">
-      <span class="event-date">{{ e.start_date|date:"D, M j" }}</span>
-      <span class="event-title">{{ e.title }}</span>
-      {% if e.is_free %}<span class="free-tag">FREE</span>{% endif %}
-    </a>
-    {% endfor %}
-  {% else %}
-    <p class="empty">No upcoming events submitted by this member.</p>
-  {% endif %}
-</div>
-
 {% endblock %}

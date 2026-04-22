@@ -147,6 +147,16 @@ SPOTIFY_CLIENT_SECRET = config('SPOTIFY_CLIENT_SECRET', default='')
 BLUESKY_HANDLE       = config('BLUESKY_HANDLE', default='')
 BLUESKY_APP_PASSWORD = config('BLUESKY_APP_PASSWORD', default='')
 
+# Last.fm API — user top tracks / recent plays on public profiles
+# Register at: https://www.last.fm/api/account/create
+LASTFM_API_KEY    = config('LASTFM_API_KEY',    default='f20acc46f0492bbea83a73865f36a735')
+LASTFM_API_SECRET = config('LASTFM_API_SECRET', default='31118728f864c32cab4d8af55e5d14c5')
+
+# Discogs API — user collection on public profiles (read-only, no OAuth needed)
+# Register at: https://www.discogs.com/settings/developers
+DISCOGS_CONSUMER_KEY    = config('DISCOGS_CONSUMER_KEY',    default='NIIjwGGZHxtpGqVViANR')
+DISCOGS_CONSUMER_SECRET = config('DISCOGS_CONSUMER_SECRET', default='LuqJsKXktiCLKJYoynYSoikWuWKNyIWb')
+
 # Email — Plesk local SMTP with SASL auth
 # Uses communityplaylist/email_backend.py to skip self-signed cert verification
 EMAIL_BACKEND   = config('EMAIL_BACKEND', default='communityplaylist.email_backend.LocalSMTPBackend')
