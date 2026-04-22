@@ -1,14 +1,10 @@
-{% comment %}Nav strip: only the scrolling announcement banner remains. Icons/tagline/stats moved to unified header.{% endcomment %}
+{% comment %}Nav strip: scrolling announcement banner + welcome modal + page tour{% endcomment %}
 <div class="aid-marquee-wrap aid-marquee-always">
   <div class="aid-marquee-inner">
-    {# Tagline + stats always scroll as soft anchors #}
     <span class="aid-marquee-soft">Portland events · by the people, for the people</span><span class="aid-marquee-sep">✦</span>
     {% if visit_count %}<span class="aid-marquee-soft">👁 {{ visit_count }} unique visitors · {{ daily_count }} avg daily</span><span class="aid-marquee-sep">✦</span>{% endif %}
-    {# Board banner posts #}
     {% for b in banners %}<a href="/board/aid/">🌹 {{ b.text }}</a><span class="aid-marquee-sep">✦</span>{% endfor %}
-    {# Featured record from shop #}
     {% if featured_record %}<a href="/shop/" style="color:#ff6b35">🛒 {{ featured_record.artist }} — {{ featured_record.title }} · {{ featured_record.price_display }}</a><span class="aid-marquee-sep">✦</span>{% endif %}
-    {# Duplicate for seamless loop #}
     <span class="aid-marquee-soft">Portland events · by the people, for the people</span><span class="aid-marquee-sep">✦</span>
     {% if visit_count %}<span class="aid-marquee-soft">👁 {{ visit_count }} unique visitors · {{ daily_count }} avg daily</span><span class="aid-marquee-sep">✦</span>{% endif %}
     {% for b in banners %}<a href="/board/aid/">🌹 {{ b.text }}</a><span class="aid-marquee-sep">✦</span>{% endfor %}
@@ -16,7 +12,6 @@
   </div>
 </div>
 <script>
-// Set marquee speed based on content width so all pages feel consistent (~30px/s)
 (function(){
   var inner = document.querySelector('.aid-marquee-inner');
   if (!inner) return;
@@ -28,18 +23,41 @@
   });
 })();
 </script>
+
 <style>
-/* Tour overlay — was in nav strip, stays here */
-#cp-tour-overlay{position:fixed;bottom:66px;left:50%;transform:translateX(-50%);z-index:9500;width:min(460px,92vw);background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:18px 18px 14px;box-shadow:0 6px 28px rgba(0,0,0,.8);display:none;font-family:sans-serif}
+/* ── Welcome modal ─────────────────────────────────────────────────────────── */
+#cp-welcome-overlay{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:16px;font-family:sans-serif}
+#cp-welcome-overlay.open{display:flex}
+#cp-welcome-card{background:#141414;border:1px solid #2a2a2a;border-radius:16px;width:min(520px,96vw);max-height:92vh;overflow-y:auto;padding:28px 26px 22px;box-shadow:0 12px 48px rgba(0,0,0,.9);position:relative}
+#cp-welcome-card .wlc-logo{display:block;max-width:180px;margin:0 auto 20px;opacity:.95}
+#cp-welcome-card .wlc-tagline{text-align:center;color:#ff6b35;font-size:1.05em;font-weight:700;margin-bottom:4px}
+#cp-welcome-card .wlc-sub{text-align:center;color:#666;font-size:.82em;margin-bottom:22px;line-height:1.6}
+#cp-welcome-card .wlc-section{font-size:.65em;color:#444;text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:10px;border-bottom:1px solid #1e1e1e;padding-bottom:5px}
+#cp-welcome-card .wlc-icons{display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;margin-bottom:22px}
+#cp-welcome-card .wlc-row{display:flex;align-items:flex-start;gap:9px}
+#cp-welcome-card .wlc-icon{font-size:1.15em;flex-shrink:0;width:22px;text-align:center;margin-top:1px}
+#cp-welcome-card .wlc-desc{font-size:.78em;color:#888;line-height:1.5}
+#cp-welcome-card .wlc-desc b{color:#bbb;font-weight:600}
+#cp-welcome-card .wlc-account{background:#0f0f0f;border:1px solid #1e1e1e;border-radius:8px;padding:13px 14px;margin-bottom:20px;font-size:.8em;color:#666;line-height:1.7}
+#cp-welcome-card .wlc-account b{color:#aaa}
+#cp-welcome-card .wlc-account a{color:#ff6b35;text-decoration:none}
+#cp-welcome-card .wlc-account a:hover{text-decoration:underline}
+#cp-welcome-go{display:block;width:100%;background:#ff6b35;color:#fff;border:none;border-radius:8px;padding:13px;font-size:.95em;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s}
+#cp-welcome-go:hover{background:#e55a25}
+#cp-welcome-again{position:absolute;top:12px;right:14px;background:transparent;border:none;color:#333;cursor:pointer;font-size:.85em;padding:3px 6px;transition:color .15s}
+#cp-welcome-again:hover{color:#888}
+/* ── Tour overlay ──────────────────────────────────────────────────────────── */
+#cp-tour-overlay{position:fixed;bottom:66px;left:50%;transform:translateX(-50%);z-index:9500;width:min(480px,94vw);background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:20px 20px 15px;box-shadow:0 6px 32px rgba(0,0,0,.85);display:none;font-family:sans-serif}
 #cp-tour-overlay.open{display:block}
-#cp-tour-close{position:absolute;top:10px;right:10px;background:transparent;border:none;color:#444;cursor:pointer;font-size:.85em;padding:3px 6px;transition:color .15s;line-height:1}
+#cp-tour-close{position:absolute;top:11px;right:12px;background:transparent;border:none;color:#444;cursor:pointer;font-size:.85em;padding:3px 6px;transition:color .15s;line-height:1}
 #cp-tour-close:hover{color:#ff6b35}
 #cp-tour-step{font-size:.62em;color:#444;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
-#cp-tour-title{font-size:.95em;color:#ff6b35;font-weight:600;margin-bottom:9px}
-#cp-tour-body{font-size:.82em;color:#777;line-height:1.7;margin-bottom:16px}
-#cp-tour-body b{color:#bbb}
+#cp-tour-title{font-size:.95em;color:#ff6b35;font-weight:600;margin-bottom:10px}
+#cp-tour-body{font-size:.84em;color:#888;line-height:1.75;margin-bottom:18px}
+#cp-tour-body b{color:#ccc}
+#cp-tour-body .tip{display:block;margin-top:9px;padding:7px 10px;background:#0f0f0f;border-left:2px solid #ff6b35;border-radius:0 4px 4px 0;color:#777;font-size:.93em}
 #cp-tour-nav{display:flex;align-items:center;justify-content:space-between}
-.cp-tour-navbtn{background:#1a1a1a;border:1px solid #2a2a2a;color:#555;padding:5px 14px;border-radius:4px;cursor:pointer;font-size:.78em;transition:all .12s}
+.cp-tour-navbtn{background:#1a1a1a;border:1px solid #2a2a2a;color:#555;padding:6px 16px;border-radius:5px;cursor:pointer;font-size:.8em;transition:all .12s}
 .cp-tour-navbtn:hover:not(:disabled){border-color:#ff6b35;color:#ff6b35}
 .cp-tour-navbtn:disabled{opacity:.25;cursor:default}
 #cp-tour-dots{display:flex;gap:5px;align-items:center}
@@ -48,91 +66,397 @@
 .cp-tour-hi{outline:2px solid #ff6b35 !important;outline-offset:3px;border-radius:4px;animation:cpthi 1.5s ease-in-out infinite}
 @keyframes cpthi{0%,100%{outline-color:rgba(255,107,53,1)}50%{outline-color:rgba(255,107,53,.3)}}
 </style>
+
 <script>
+/* ── Welcome modal ─────────────────────────────────────────────────────────── */
+(function(){
+  var SEEN_KEY = 'cp_welcomed_v2';
+  var card = document.createElement('div');
+  card.id = 'cp-welcome-overlay';
+  card.innerHTML = [
+    '<div id="cp-welcome-card">',
+    '<button id="cp-welcome-again" title="Close">✕</button>',
+    '<img class="wlc-logo" src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="Community Playlist">',
+    '<div class="wlc-tagline">Welcome to Community Playlist</div>',
+    '<div class="wlc-sub">A free, community-run event calendar for Portland, Oregon.<br>No ads. No algorithms. No tracking.</div>',
+    '<div class="wlc-section">What the icons do</div>',
+    '<div class="wlc-icons">',
+      '<div class="wlc-row"><span class="wlc-icon">🎤</span><div class="wlc-desc"><b>Artists</b> — browse local artist profiles, music &amp; upcoming shows</div></div>',
+      '<div class="wlc-row"><span class="wlc-icon">📣</span><div class="wlc-desc"><b>Promoters</b> — crews, collectives &amp; sound systems</div></div>',
+      '<div class="wlc-row"><span class="wlc-icon">🛒</span><div class="wlc-desc"><b>Record Shop</b> — local shops listing new &amp; used vinyl</div></div>',
+      '<div class="wlc-row"><span class="wlc-icon">📅</span><div class="wlc-desc"><b>Subscribe</b> — add Portland events to your personal calendar app</div></div>',
+      '<div class="wlc-row"><span class="wlc-icon">✨</span><div class="wlc-desc"><b>Features</b> — full guide to everything on this site</div></div>',
+      '<div class="wlc-row"><span class="wlc-icon">📋</span><div class="wlc-desc"><b>Board</b> — community message board, open to everyone</div></div>',
+      '<div class="wlc-row"><span class="wlc-icon">🎁</span><div class="wlc-desc"><b>Free &amp; Trade</b> — give away, swap, or look for something you need</div></div>',
+      '<div class="wlc-row"><span class="wlc-icon">📍</span><div class="wlc-desc"><b>Neighborhoods</b> — browse events &amp; board posts by area</div></div>',
+      '<div class="wlc-row"><span class="wlc-icon">🌹</span><div class="wlc-desc"><b>Resources</b> — PDX shelter, warming centers &amp; hotlines</div></div>',
+      '<div class="wlc-row"><span class="wlc-icon">🌧</span><div class="wlc-desc"><b>Radar</b> — live precipitation radar overlay on the map</div></div>',
+      '<div class="wlc-row"><span class="wlc-icon">🧭</span><div class="wlc-desc"><b>Night Builder</b> — GPS mode: shows events happening near you right now</div></div>',
+      '<div class="wlc-row"><span class="wlc-icon">?</span><div class="wlc-desc"><b>Help</b> — step-by-step guide for whatever page you\'re on</div></div>',
+    '</div>',
+    '<div class="wlc-section">Do I need an account?</div>',
+    '<div class="wlc-account">',
+      '<b>Nope — no account required</b> to browse events, read the board, claim free items, or submit an event.<br><br>',
+      'Create a free account if you want to <b>post as yourself consistently</b>, save playlists, submit events linked to your profile, or set up a venue or artist page.<br><br>',
+      '<a href="/register/">Create a free account →</a> &nbsp;·&nbsp; <a href="/login/">Already have one? Sign in →</a>',
+    '</div>',
+    '<button id="cp-welcome-go">Got it — show me the events! 🎉</button>',
+    '</div>',
+  ].join('');
+  document.body.appendChild(card);
+
+  function closeWelcome(remember){
+    card.classList.remove('open');
+    if(remember) try{ localStorage.setItem(SEEN_KEY,'1'); }catch(e){}
+  }
+  document.getElementById('cp-welcome-go').addEventListener('click', function(){ closeWelcome(true); });
+  document.getElementById('cp-welcome-again').addEventListener('click', function(){ closeWelcome(false); });
+  card.addEventListener('click', function(e){ if(e.target===card) closeWelcome(false); });
+
+  window.cpShowWelcome = function(){ card.classList.add('open'); };
+
+  try{
+    if(!localStorage.getItem(SEEN_KEY)) card.classList.add('open');
+  }catch(e){ /* storage blocked — show anyway */ card.classList.add('open'); }
+})();
+</script>
+
+<script>
+/* ── Page-by-page help tour ────────────────────────────────────────────────── */
 (function(){
   var btn = document.getElementById('cpHelpBtn');
   if (!btn) return;
+
   var tours = {
     '/': [
-      {title:'Welcome to Community Playlist',body:'Portland events — submitted by the community, for the community. No ads, no tracking, no algorithms.'},
-      {title:'List · Map · Hybrid',body:'Switch views with the toolbar. <b>List</b> for quick scanning, <b>Map</b> for neighbourhood discovery, <b>Hybrid</b> for side-by-side research. Your preference is saved.',target:'.view-btns'},
-      {title:'Search &amp; Filters',body:'Filter by genre, category, neighbourhood, date range, or distance. Search matches titles, descriptions, and genre tags — try "techno" or "free".',target:'#search'},
-      {title:'Happening Now',body:'The gold strip shows events in progress right now. It auto-hides when they end — no refresh needed.',target:'.now-strip'},
-      {title:'Map Autopilot',body:'Leave the page idle for 8 seconds and the map takes over — real driving routes between venues, per-venue weather forecast, and a zoomed-in stop at each one. Touch anything to take back control.'},
-      {title:'Music &amp; Video Player',body:'The 🎵 button in the bottom bar opens the music player. Hit <b>📺 VIDEO</b> to tune in to the local artist video channel — Portland artists, venues, and crews like PDXTV — local only.',target:'.cp-player'},
-      {title:'Shelter &amp; Resources',body:'The 🌹 button in the header opens the PDX shelter and resource guide — warming centers, cooling centers, hotlines, and more. On extreme weather days the weather bubble pulses orange as an alert.'},
+      {
+        title: 'Welcome to Community Playlist',
+        body: 'Your free, ad-free, community-run event calendar for Portland, Oregon. Everything here was submitted by real people — no bots, no corporate listings, no tracking. <span class="tip">👆 Tap the <b>?</b> button anytime to get help on whatever page you\'re on.</span>'
+      },
+      {
+        title: 'The Icon Bar — Your Toolkit',
+        body: '<b>🎤 Artists</b> · <b>📣 Promoters</b> · <b>🛒 Record Shop</b> · <b>📅 Subscribe</b> · <b>✨ Features</b> · <b>📋 Board</b> · <b>🎁 Free &amp; Trade</b> · <b>📍 Neighborhoods</b><br><br>Each icon takes you to a different section. On a phone the icons are hidden in the <b>+</b> menu — tap it to open.',
+        target: '#sh-icons'
+      },
+      {
+        title: 'List · Map · Hybrid Views',
+        body: 'Use the three buttons at the top to switch how events are displayed.<br><br><b>≡ List</b> — scroll through events in order. Great for quick scanning.<br><b>⊙ Map</b> — see events as dots on a Portland map. Click any dot for details.<br><b>⊟ Hybrid</b> — map on one side, list on the other.',
+        target: '.view-btns'
+      },
+      {
+        title: 'Search &amp; Filters',
+        body: 'The search box matches event titles, descriptions, and genre tags. Try typing <b>jazz</b>, <b>free</b>, or a venue name.<br><br>Click the <b>⊕</b> button to open filters — narrow by genre, category (show, workshop, market…), neighborhood, or how far away you want to travel.',
+        target: '#search'
+      },
+      {
+        title: '🟡 Happening Right Now',
+        body: 'The gold strip near the top shows events that are <b>in progress at this moment</b>. Tap any one to see details and get directions. It disappears automatically when those events end — no need to refresh the page.',
+        target: '.now-strip'
+      },
+      {
+        title: '🧭 Night Builder — GPS Mode',
+        body: 'Tap the <b>🧭 Night Builder</b> button to turn on GPS. It finds your location and shows events happening near you right now, sorted by distance. A tray slides up from the bottom — tap any event to open it. Great for spontaneous nights out.'
+      },
+      {
+        title: '🌧 Live Radar',
+        body: 'Tap <b>🌧 Radar</b> to overlay live NEXRAD precipitation data on the map. Useful for deciding if that outdoor show is worth the drizzle. Tap again to turn it off.'
+      },
+      {
+        title: 'Map Autopilot',
+        body: 'Leave the page alone for about 8 seconds when the map is open and it goes on autopilot — the map drives a route between venues, shows the weather at each stop, and zooms into each one. <span class="tip">Touch anywhere on the map or scroll the list to take back control instantly.</span>'
+      },
+      {
+        title: '🎵 Music &amp; Video Player',
+        body: 'The <b>🎵</b> button in the bottom bar opens the music player. It queues up tracks from Portland artists.<br><br>Hit <b>📺 VIDEO</b> inside the player to switch to the local video channel — past sets, live streams, and music videos from PDX artists and venues. All local, all the time.'
+      },
+      {
+        title: '🌹 Shelter &amp; Resources',
+        body: 'The <b>🌹</b> button opens a guide to Portland shelter, warming and cooling centers, food resources, and hotlines — updated by the community.<br><br>On extreme weather days the <b>weather bubble</b> in the top bar will pulse orange as a heads-up.'
+      },
+      {
+        title: 'Do I Need an Account?',
+        body: '<b>No.</b> You can browse all events, read the board, and even submit events without signing up.<br><br>Create a free account if you want to:<br>• Submit events tied to your name<br>• Set up a venue or artist profile<br>• Save playlists<br>• Post in the board as yourself consistently<br><br><a href="/register/" style="color:#ff6b35">Create a free account →</a>'
+      },
     ],
+
     '/venues': [
-      {title:'Venue Directory',body:'Every active Portland venue has a public profile — address, neighbourhood, social links, and a live event feed.'},
-      {title:'Calendar Subscribe',body:'Each venue has an iCal feed. Subscribe in Google Calendar, Apple Calendar, or any app to get their shows in your calendar automatically.'},
-      {title:'Claim Your Venue',body:'Own or manage a space? Register and claim your venue to manage your calendar feed, edit details, and surface every event you host.'},
+      {
+        title: 'Venue Directory',
+        body: 'This is a list of every active Portland venue that has a profile on Community Playlist — clubs, bars, galleries, community centers, outdoor spaces, and more.'
+      },
+      {
+        title: 'What\'s on Each Venue Page',
+        body: 'Click any venue to see its full profile: address, neighborhood, social links, a map, and a live feed of all their upcoming events. You can also subscribe to their individual calendar.'
+      },
+      {
+        title: 'Calendar Subscribe',
+        body: 'Each venue has an <b>iCal feed</b>. If you use Google Calendar, Apple Calendar, Outlook, or any calendar app, you can subscribe to get a venue\'s shows added to your calendar automatically. Look for the <b>📅 Subscribe</b> button on their profile page.',
+      },
+      {
+        title: 'Claim Your Venue',
+        body: 'If you own or manage a venue, you can <b>claim it</b> to take control of the listing — edit details, manage events, and link your calendar. Create a free account and look for the <b>Claim this venue</b> button on your venue\'s page.'
+      },
     ],
+
     '/artists': [
-      {title:'Artist Profiles',body:'Every Portland artist has a public page — bio, genres, upcoming shows, social links, music, and video.'},
-      {title:'Music Player',body:'Artists can share tracks and mixes via Google Drive. The 🎵 player in the bottom bar queues their music automatically.'},
-      {title:'Video Channel',body:'Artists can connect a YouTube or Twitch channel. Their past sets, live streams, and VODs automatically join the <b>📺 VIDEO</b> channel.'},
+      {
+        title: 'Artist Profiles',
+        body: 'Every Portland artist in our database has a public page here. You\'ll find their bio, genres, links to their social accounts, and a list of their upcoming shows.'
+      },
+      {
+        title: 'Music Player',
+        body: 'Artists can share tracks and mixes via Google Drive. When you visit an artist\'s page, the <b>🎵 player</b> in the bottom bar automatically loads their music. Hit play and browse the rest of the site while it runs in the background.'
+      },
+      {
+        title: 'Shuffle All',
+        body: 'On an artist\'s profile, if they have music uploaded, you\'ll see a <b>🔀 Shuffle All</b> button. It randomizes their full catalog into a playlist. Hit <b>💾 Save Playlist</b> to save that queue to your account.'
+      },
+      {
+        title: 'Video Channel',
+        body: 'Artists can connect a YouTube or Twitch channel. Their past sets, live streams, and VODs are automatically pulled into the <b>📺 VIDEO</b> channel on the main events page. All Portland, all the time.'
+      },
+      {
+        title: 'Music Service Cards',
+        body: 'Artists can link their <b>Last.fm, ListenBrainz, Discogs, Bandcamp, SoundCloud</b>, and more. These show up as live cards on their profile — recently played tracks, crate digs, and active releases.'
+      },
     ],
+
     '/promoters': [
-      {title:'Crews &amp; Promoters',body:'Collectives, sound systems, and labels each have a public profile listing all their upcoming events.'},
-      {title:'Video Channel',body:'Connect a YouTube or Twitch channel and your streams, VODs, and past sets automatically feed into the <b>📺 MTV</b> channel.'},
+      {
+        title: 'Crews &amp; Promoters',
+        body: 'This is the directory of Portland collectives, sound systems, labels, and event crews — anyone who puts on shows regularly rather than performing themselves.'
+      },
+      {
+        title: 'Upcoming Events',
+        body: 'Each promoter page lists all of their upcoming events in one place. Great for keeping track of a crew you love without having to follow them on social media.'
+      },
+      {
+        title: 'Video Channel',
+        body: 'Promoters can connect a YouTube or Twitch channel. Their livestreams, VODs, and event recordings are automatically pulled into the <b>📺 VIDEO</b> channel on the main events page.'
+      },
+      {
+        title: 'Create a Promoter Profile',
+        body: 'If you run events or a crew, create a free account and set up a promoter profile. It\'s a permanent, searchable home for everything you put on — linked to every event you submit.'
+      },
     ],
+
     '/board': [
-      {title:'Community Board',body:'A lightweight message board for the PDX community. No account needed — just post a topic or reply to a thread.'},
-      {title:'Aid &amp; Mutual Aid',body:'The Aid section surfaces free breakfasts, community fridges, and mutual aid resources. The scrolling banner at the top of every page pulls from here.'},
-      {title:'Neighbourhood Boards',body:'Every major Portland neighbourhood has its own board at <b>/neighborhoods/NeighbourhoodName/</b> — for local notes, resources, and mutual aid scoped to your block.'},
+      {
+        title: 'Community Board',
+        body: 'A simple message board for the Portland community. Post a question, share a resource, start a conversation. <b>No account needed</b> — just type a name and a message.'
+      },
+      {
+        title: 'How to Post',
+        body: 'Click <b>+ New Topic</b> to start a new thread. Give it a title and write your message. Pick a category if it fits — Aid, General, Offer, etc. Anyone can reply to any post.'
+      },
+      {
+        title: '🌹 Aid &amp; Mutual Aid',
+        body: 'The <b>Aid</b> category is for community resources — free breakfasts, community fridges, clothing exchanges, mutual aid requests, and emergency info. Posts here also scroll across the banner at the top of every page on the site.'
+      },
+      {
+        title: '🎁 Free &amp; Trade',
+        body: 'Tap the <b>🎁</b> icon in the nav bar (or <a href="/board/give/" style="color:#ff6b35">click here</a>) to browse the Free &amp; Trade board — a Buy Nothing–style space for giving things away, trading, or searching for something you need. Portland area only.'
+      },
+      {
+        title: 'Neighborhood Boards',
+        body: 'Each Portland neighborhood has its own board scoped to that area. Go to <b>📍 Neighborhoods</b> in the nav bar, pick your neighborhood, and you\'ll find a local board just for that area — great for block-level mutual aid, lost pets, or local announcements.'
+      },
     ],
+
+    '/board/give': [
+      {
+        title: 'Free &amp; Trade — Buy Nothing for PDX',
+        body: 'This is a community space for <b>giving things away for free</b>, <b>trading or swapping</b>, or posting an <b>In Search Of</b> if you\'re looking for something. Portland area only. No selling, no spam.'
+      },
+      {
+        title: 'Browsing the Listings',
+        body: 'Each card shows the category (<b>Free</b>, <b>Trade</b>, or <b>ISO</b>), a title, the person\'s name, their neighborhood, and how long ago it was posted. A thumbnail photo shows on the right if one was uploaded. Click any card to see the full listing and thread.'
+      },
+      {
+        title: 'Filters',
+        body: 'Use the chips at the top to filter by category — <b>Free · Trade · ISO</b> — or by neighborhood. Combine them: e.g. "Free items in Sellwood." The filter bar also shows neighborhoods that currently have active listings.'
+      },
+      {
+        title: 'Claiming an Item',
+        body: 'On a listing page, if the item is still available, you\'ll see a <b>✓ Mark as Claimed</b> button. When someone taps it, the item is removed from the list automatically and a note is added to the thread. First come, first served — coordinate in the reply thread below.'
+      },
+      {
+        title: 'Posting a Listing',
+        body: 'Tap <b>+ Post</b> at the top right. You can post as a guest (temporary name, expires with the post in 30 days) or log into your account to link the post to your profile. A thread is created automatically so people can ask questions.'
+      },
+      {
+        title: 'Direct Messaging',
+        body: 'If both you and the poster have accounts and have set up messaging handles (Telegram, Signal, Discord, Instagram), those appear as direct-contact buttons on the listing page. If you\'re not logged in, you\'ll just see the reply thread — that works fine too.'
+      },
+      {
+        title: 'No Account Needed',
+        body: 'You can browse, reply to threads, and post listings without an account. Guest names are temporary and are tied only to that one post — they expire after 30 days when the listing does. <span class="tip">Create a free account for ongoing posting and to enable direct messaging.</span>'
+      },
+    ],
+
+    '/shop': [
+      {
+        title: 'Record Shop Directory',
+        body: 'Portland-area record shops with active profiles here can list their new arrivals, used finds, and curated picks. Browse by shop or dig through all current listings.'
+      },
+      {
+        title: 'Preview Tracks',
+        body: 'Many listings have a <b>▶ preview bar</b> — click it to start a 30-second clip right inside the card without leaving the page. The player in the bottom bar picks up full playback if the artist has music linked.'
+      },
+      {
+        title: 'Shop Profiles',
+        body: 'Each shop has its own profile page with their story, hours, social links, and a live feed of their listings. Great for keeping up with a shop\'s new stock without having to check their Instagram every day.'
+      },
+      {
+        title: 'For Shop Owners',
+        body: 'If you run a record shop in the Portland area, create a free account and set up a <b>Record Shop</b> profile. You can list new and used inventory, add track previews, and your featured record rotates through the scrolling banner on every page of the site.'
+      },
+    ],
+
     '/submit': [
-      {title:'Submit an Event',body:'Anyone can submit a PDX event — it goes live after a quick review. No account required.'},
-      {title:'Address &amp; Map Preview',body:'Type an address and it auto-geocodes with a live map preview. Neighbourhood is detected automatically.',target:'#id_location'},
-      {title:'Genre &amp; Artist Tags',body:'Genre tags are auto-detected from your title and description. Artist tags search our database and MusicBrainz — or type any name.'},
-      {title:'Recurring Events',body:'Check "Recurring" to set up a repeating schedule — weekly, monthly, every 3rd Thursday, annually, and more. Future dates generate automatically.'},
+      {
+        title: 'Submit an Event',
+        body: 'Anyone can submit a Portland event — it goes live after a quick review. <b>No account required.</b> If you have an account it will be linked to your profile, but a guest submission works just as well.'
+      },
+      {
+        title: 'Title &amp; Description',
+        body: 'Give the event a clear title — include the artist name if there is one. The description can include lineup, ticket info, age restrictions, anything you\'d want to know. Genre tags are detected automatically from what you write, but you can add or change them.'
+      },
+      {
+        title: 'Address &amp; Map Preview',
+        body: 'Start typing an address and a live map preview will appear to confirm the location. The neighborhood is detected automatically. <span class="tip">If the venue doesn\'t have an exact street address, the name of the venue is usually enough.</span>',
+        target: '#id_location'
+      },
+      {
+        title: 'Date &amp; Time',
+        body: 'Set the start date and time. An end time is optional but helpful. If the event runs past midnight, set the end time to the next day — the system handles it correctly.'
+      },
+      {
+        title: 'Recurring Events',
+        body: 'Check <b>Recurring</b> to set up a repeating schedule — every week, every month, every 3rd Thursday, annually, and more. Future dates generate automatically and all show up linked together on the site.'
+      },
+      {
+        title: 'Photos &amp; Flyer',
+        body: 'Upload an event photo or flyer — it appears on the event page and in map popups. The first photo uploaded becomes the main flyer. You can add multiple photos as a gallery.'
+      },
+      {
+        title: 'Artist &amp; Promoter Tags',
+        body: 'Type an artist or promoter name in the tags field. It searches our database and MusicBrainz automatically. If they\'re in the system, their profile gets linked to your event. If not, the tag is saved as text — no problem.'
+      },
     ],
+
     '/subscribe': [
-      {title:'Calendar Subscribe',body:'Build a custom filtered iCal feed — by genre, category, neighbourhood, or artist — then subscribe in any calendar app.'},
-      {title:'Personal Feed',body:'If you have an account, your personal feed at <b>/u/@handle/feed/</b> streams events from everything you follow — artists, venues, and neighbourhoods.'},
+      {
+        title: 'Calendar Subscribe',
+        body: 'Get Portland events directly in your calendar app — Google Calendar, Apple Calendar, Outlook, or any app that supports <b>iCal</b> (the standard calendar format). Once subscribed, new events show up automatically.'
+      },
+      {
+        title: 'Build a Custom Feed',
+        body: 'You don\'t have to subscribe to everything. Use the options to filter by <b>genre</b>, <b>category</b>, <b>neighborhood</b>, or <b>artist</b>. Your feed will only include events that match. Change your filters anytime — the link updates.'
+      },
+      {
+        title: 'How to Subscribe',
+        body: 'Copy the iCal link and paste it into your calendar app.<br><br><b>Google Calendar:</b> Other calendars → From URL → paste.<br><b>Apple Calendar:</b> File → New Calendar Subscription → paste.<br><b>Outlook:</b> Add Calendar → From internet → paste.<br><br>New events will sync automatically every day or so.'
+      },
+      {
+        title: 'Personal Feed (Account Holders)',
+        body: 'If you have an account and follow artists, venues, or neighborhoods, your personal feed at <b>/u/@yourname/feed/</b> pulls only their events — a private filtered calendar just for you.'
+      },
     ],
+
     '/features': [
-      {title:'Features',body:'Everything built into Community Playlist — open, community-maintained, no ads or tracking.'},
-      {title:'Always growing',body:'New features ship regularly. Found a bug? Hit the <b>🐛</b> in the nav bar. Have an idea? Hit <b>💡</b>. Both go straight to GitHub Issues — tracked, public, and versioned.'},
+      {
+        title: 'Features &amp; Changelog',
+        body: 'This page is the full guide to everything built into Community Playlist — what it does, how to use it, and when it was added. It\'s a living document — updated with every release.'
+      },
+      {
+        title: 'Finding What You Need',
+        body: 'The page is organized by section with anchor links at the top. Click any section heading to jump straight to it. Sections include: shuffle &amp; playlists, the map, embeds, event submission, privacy, and the community tools.'
+      },
+      {
+        title: 'Found a Bug? Have an Idea?',
+        body: 'Hit the <b>🐛 bug</b> button in the nav bar to file a bug report. Hit <b>💡</b> to request a feature. Both go straight to GitHub Issues — public, tracked, and responded to. You don\'t need a GitHub account to browse existing issues.'
+      },
     ],
+
     '/neighborhoods': [
-      {title:'Neighbourhood Pages',body:'Every major Portland neighbourhood has its own page — a wiki history blurb, upcoming events, and a community board scoped to that area.'},
-      {title:'Post without an account',body:'The neighbourhood board is open — just a name and a message. Great for pothole alerts, mutual aid, local notices, or just saying hi.'},
+      {
+        title: 'Portland Neighborhood Pages',
+        body: 'Every major Portland neighborhood has its own page here — a brief history, a map of the area, upcoming events happening in that neighborhood, and a community board scoped just to that area.'
+      },
+      {
+        title: 'Events in Your Area',
+        body: 'Each neighborhood page shows events happening within that area. You can also filter the main event list by neighborhood — use the <b>Filters</b> button on the home page and pick your area.'
+      },
+      {
+        title: 'Free &amp; Trade Near You',
+        body: 'Neighborhood pages also show active Free &amp; Trade listings in that area. If someone in your neighborhood is giving something away or looking for a trade, it shows up here.'
+      },
+      {
+        title: 'Local Board',
+        body: 'Each neighborhood has its own message board — for local announcements, mutual aid, lost pets, block events, whatever. <b>No account needed</b> — just type a name and post. It\'s for the block, not the whole city.'
+      },
+      {
+        title: 'Adding Your Neighborhood',
+        body: 'Don\'t see your neighborhood listed? When you post a Free &amp; Trade listing you can type in a neighborhood name and it gets added to the map automatically. It\'s verified against OpenStreetMap to make sure it\'s in the Portland area.'
+      },
     ],
   };
+
   function getTour(){
-    var p=(location.pathname.replace(/\/+$/,'')||'/');
-    if(tours[p])return tours[p];
-    var keys=Object.keys(tours);
-    for(var i=0;i<keys.length;i++){if(keys[i]!=='/'&&p.startsWith(keys[i]))return tours[keys[i]];}
-    return [{title:'Community Playlist',body:'Portland events by the community, for the community. No ads, no tracking, no drama. 🌹'}];
+    var p = (location.pathname.replace(/\/+$/, '') || '/');
+    if (tours[p]) return tours[p];
+    var keys = Object.keys(tours);
+    for (var i = 0; i < keys.length; i++){
+      if (keys[i] !== '/' && p.startsWith(keys[i])) return tours[keys[i]];
+    }
+    return [{title:'Community Playlist',body:'Portland events by the community, for the community. No ads, no tracking, no drama. Tap <b>?</b> on any main page for a full guide. 🌹'}];
   }
-  var ov=document.createElement('div');
-  ov.id='cp-tour-overlay';
-  ov.innerHTML='<button id="cp-tour-close" title="Close">\u2715</button><div id="cp-tour-step"></div><h3 id="cp-tour-title"></h3><p id="cp-tour-body"></p><div id="cp-tour-nav"><button class="cp-tour-navbtn" id="cp-tour-prev">\u2190 Back</button><div id="cp-tour-dots"></div><button class="cp-tour-navbtn" id="cp-tour-next">Next \u2192</button></div>';
+
+  var ov = document.createElement('div');
+  ov.id = 'cp-tour-overlay';
+  ov.innerHTML = '<button id="cp-tour-close" title="Close">✕</button><div id="cp-tour-step"></div><h3 id="cp-tour-title"></h3><p id="cp-tour-body"></p><div id="cp-tour-nav"><button class="cp-tour-navbtn" id="cp-tour-prev">← Back</button><div id="cp-tour-dots"></div><button class="cp-tour-navbtn" id="cp-tour-next">Next →</button></div>';
   document.body.appendChild(ov);
-  var steps=[],idx=0,hiEl=null;
-  function clearHi(){if(hiEl){hiEl.classList.remove('cp-tour-hi');hiEl=null;}}
-  function buildDots(){var dc=document.getElementById('cp-tour-dots');dc.innerHTML='';steps.forEach(function(_,i){var d=document.createElement('span');d.className='cp-tour-dot'+(i===idx?' on':'');dc.appendChild(d);});}
+
+  var steps = [], idx = 0, hiEl = null;
+  function clearHi(){ if(hiEl){ hiEl.classList.remove('cp-tour-hi'); hiEl = null; } }
+  function buildDots(){
+    var dc = document.getElementById('cp-tour-dots');
+    dc.innerHTML = '';
+    steps.forEach(function(_, i){
+      var d = document.createElement('span');
+      d.className = 'cp-tour-dot' + (i === idx ? ' on' : '');
+      dc.appendChild(d);
+    });
+  }
   function show(i){
-    steps=getTour();idx=Math.max(0,Math.min(i,steps.length-1));var s=steps[idx];
-    document.getElementById('cp-tour-step').textContent='Step '+(idx+1)+' of '+steps.length;
-    document.getElementById('cp-tour-title').innerHTML=s.title;
-    document.getElementById('cp-tour-body').innerHTML=s.body;
-    document.getElementById('cp-tour-prev').disabled=(idx===0);
-    var nb=document.getElementById('cp-tour-next');nb.textContent=(idx===steps.length-1)?'Done \u2713':'Next \u2192';nb.disabled=false;
-    buildDots();clearHi();
-    if(s.target){var el=document.querySelector(s.target);if(el){el.classList.add('cp-tour-hi');hiEl=el;}}
+    steps = getTour();
+    idx = Math.max(0, Math.min(i, steps.length - 1));
+    var s = steps[idx];
+    document.getElementById('cp-tour-step').textContent = 'Step ' + (idx + 1) + ' of ' + steps.length;
+    document.getElementById('cp-tour-title').innerHTML = s.title;
+    document.getElementById('cp-tour-body').innerHTML = s.body;
+    document.getElementById('cp-tour-prev').disabled = (idx === 0);
+    var nb = document.getElementById('cp-tour-next');
+    nb.textContent = (idx === steps.length - 1) ? 'Done ✓' : 'Next →';
+    nb.disabled = false;
+    buildDots(); clearHi();
+    if (s.target){ var el = document.querySelector(s.target); if(el){ el.classList.add('cp-tour-hi'); hiEl = el; } }
     ov.classList.add('open');
   }
-  function close(){ov.classList.remove('open');clearHi();}
-  btn.addEventListener('click',function(){show(0);});
-  document.getElementById('cp-tour-close').addEventListener('click',close);
-  document.getElementById('cp-tour-prev').addEventListener('click',function(){show(idx-1);});
-  document.getElementById('cp-tour-next').addEventListener('click',function(){if(idx>=steps.length-1)close();else show(idx+1);});
-  document.addEventListener('keydown',function(e){
-    if(!ov.classList.contains('open'))return;
-    if(e.key==='Escape')close();else if(e.key==='ArrowRight'&&idx<steps.length-1)show(idx+1);else if(e.key==='ArrowLeft'&&idx>0)show(idx-1);
+  function close(){ ov.classList.remove('open'); clearHi(); }
+
+  btn.addEventListener('click', function(){ show(0); });
+  document.getElementById('cp-tour-close').addEventListener('click', close);
+  document.getElementById('cp-tour-prev').addEventListener('click', function(){ show(idx - 1); });
+  document.getElementById('cp-tour-next').addEventListener('click', function(){
+    if (idx >= steps.length - 1) close(); else show(idx + 1);
+  });
+  document.addEventListener('keydown', function(e){
+    if (!ov.classList.contains('open')) return;
+    if (e.key === 'Escape') close();
+    else if (e.key === 'ArrowRight' && idx < steps.length - 1) show(idx + 1);
+    else if (e.key === 'ArrowLeft' && idx > 0) show(idx - 1);
   });
 })();
 </script>

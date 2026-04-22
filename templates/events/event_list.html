@@ -498,8 +498,6 @@ function initMap() {
     categoryBySlug[e.slug] = e.category;
   });
   mapInitialized = true;
-  // Auto-start radar after map is ready
-  setTimeout(function(){ if (window.cpRadarToggle) window.cpRadarToggle(); }, 800);
 }
 
 // ── Precipitation radar ──────────────────────────────────────────────────────
