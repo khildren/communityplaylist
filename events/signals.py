@@ -1,7 +1,9 @@
 """
 Event signals — auto-parse artists and build stubs when events are approved.
+Also auto-links new events to matching RecurringEvent records by title.
 """
 import re
+import unicodedata
 from collections import Counter
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -130,3 +132,55 @@ def event_approved_parse_artists(sender, instance, **kwargs):
         # If unclaimed and no real profile, refresh stub data
         if not artist.claimed_by_id and not any([artist.bio, artist.website, artist.instagram]):
             _build_stub(artist)
+
+
+# ── Auto-link new events to RecurringEvent by title ──────────────────────────
+
+_RECURRING_CACHE = {}  # {normalised_title: RecurringEvent pk} — refreshed per process
+
+def _norm(title):
+    """Normalise for fuzzy title matching: lowercase, strip accents + punctuation."""
+    t = unicodedata.normalize('NFKD', title).encode('ascii', 'ignore').decode()
+    return re.sub(r'[^a-z0-9 ]', '', t.lower()).strip()
+
+
+def _get_recurring_map():
+    """Return {normalised_title: RecurringEvent} — rebuilt whenever the cache is empty."""
+    from events.models import RecurringEvent
+    if not _RECURRING_CACHE:
+        for r in RecurringEvent.objects.all():
+            _RECURRING_CACHE[_norm(r.title)] = r
+    return _RECURRING_CACHE
+
+
+def invalidate_recurring_cache(**kwargs):
+    """Clear cache when a RecurringEvent is saved or deleted."""
+    _RECURRING_CACHE.clear()
+
+
+# Wire cache invalidation to RecurringEvent changes
+from django.db.models.signals import post_save, post_delete
+from events.models import RecurringEvent as _RE
+post_save.connect(invalidate_recurring_cache, sender=_RE)
+post_delete.connect(invalidate_recurring_cache, sender=_RE)
+
+
+@receiver(post_save, sender='events.Event')
+def auto_link_recurring(sender, instance, created, **kwargs):
+    """
+    When a new Event is saved without a recurring_event link,
+    check if its title matches a RecurringEvent and link it automatically.
+    Only runs on creation to avoid overriding manual assignments.
+    """
+    if not created:
+        return
+    if instance.recurring_event_id:
+        return  # already linked
+
+    rmap = _get_recurring_map()
+    key = _norm(instance.title)
+    match = rmap.get(key)
+
+    if match:
+        # Use update() to avoid re-triggering signals
+        sender.objects.filter(pk=instance.pk).update(recurring_event=match)
