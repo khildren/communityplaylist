@@ -185,3 +185,6 @@ SITE_URL = config('SITE_URL', default='https://communityplaylist.com')
 # Admin alert emails (500 errors, etc.)
 ADMINS = [('Binsky', 'andrew.jubinsky@proton.me')]
 SERVER_EMAIL = 'noreply@communityplaylist.com'
+
+# Worker API (Unraid pull-worker)
+WORKER_SECRET = config('WORKER_SECRET', default='')

@@ -1422,3 +1422,31 @@ class CronStatus(models.Model):
         verbose_name = 'Cron Status'
         verbose_name_plural = 'Cron Status'
         app_label = 'events'
+
+class WorkerTask(models.Model):
+    """Async task queue — processed by Unraid pull-worker, fallback on Plesk."""
+    TASK_TYPES = [
+        ("geocode_event", "Geocode Event"),
+        ("geocode_venue", "Geocode Venue"),
+        ("post_bluesky",  "Post to Bluesky"),
+    ]
+    STATUSES = [
+        ("queued",  "Queued"),
+        ("running", "Running"),
+        ("done",    "Done"),
+        ("error",   "Error"),
+    ]
+    task_type    = models.CharField(max_length=50, choices=TASK_TYPES, db_index=True)
+    payload      = models.JSONField(default=dict)
+    status       = models.CharField(max_length=20, choices=STATUSES, default="queued", db_index=True)
+    result       = models.JSONField(null=True, blank=True)
+    error_msg    = models.TextField(blank=True)
+    created_at   = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [models.Index(fields=["status", "task_type"])]
+
+    def __str__(self):
+        return f"{self.task_type} [{self.status}] #{self.pk}"

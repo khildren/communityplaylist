@@ -556,15 +556,19 @@ def event_submit(request):
         form = EventSubmitForm(request.POST, request.FILES)
         if form.is_valid():
             event = form.save(commit=False)
-            lat, lng = geocode_location(event.location)
-            event.latitude = lat
-            event.longitude = lng
             extra = [u.strip() for u in request.POST.getlist('extra_links') if u.strip()]
             event.extra_links = extra[:10]
             if request.user.is_authenticated:
                 event.submitted_user = request.user
             event.save()
             form.save_m2m()
+            # Queue geocoding async — Unraid worker fills lat/lng without blocking this request
+            from .models import WorkerTask
+            if event.location:
+                WorkerTask.objects.create(
+                    task_type="geocode_event",
+                    payload={"event_id": event.id, "address": event.location},
+                )
             genre_ids = request.POST.getlist('genre_ids')
             if genre_ids:
                 event.genres.set(Genre.objects.filter(id__in=genre_ids))

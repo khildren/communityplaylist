@@ -23,6 +23,7 @@ urlpatterns = [
     path('admin/dashboard/', admin_dashboard, name='admin_dashboard'),
     path('admin/compress-images/', admin_compress_images, name='admin_compress_images'),
     path('admin/', admin.site.urls),
+    path('api/worker/', include('events.worker_urls')),
     path('board/', include('board.urls')),
     path('', include('events.urls')),
     path('sitemap.xml', sitemap, {'sitemaps': SITEMAPS}, name='django.contrib.sitemaps.views.sitemap'),
