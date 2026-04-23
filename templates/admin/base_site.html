@@ -1,4 +1,15 @@
 {% extends "admin/base.html" %}
+
+{% block footer %}
+{{ block.super }}
+<div style="text-align:center;padding:10px 24px 14px;border-top:1px solid rgba(255,255,255,.06);font-size:.78em;color:#555;font-family:'Courier New',monospace">
+  <a href="https://hihi.communityplaylist.com/portfolio.html" target="_blank" style="color:#ff6b35;text-decoration:none;font-weight:700;font-size:1.1em" title="HiHi Labs Portfolio">◉</a>
+  &nbsp;Built by <a href="https://hihi.communityplaylist.com" target="_blank" style="color:#ff6b35;text-decoration:none;font-weight:600">HiHi Labs</a>
+  &nbsp;·&nbsp;
+  Hosted at <a href="https://communityplaylist.com" target="_blank" style="color:#555;text-decoration:none;transition:color .15s">Community Playlist</a>
+</div>
+{% endblock %}
+
 {% block branding %}
 <h1 id="site-name">
   <a href="{% url 'admin:index' %}">🎵 Community Playlist</a>

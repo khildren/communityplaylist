@@ -839,6 +839,107 @@ def import_19hz(feed, now, stdout, stderr):
     return created, skipped, ''
 
 
+def import_eael(feed, now, stdout, stderr):
+    """
+    Scrape an EAEL (Essential Addons for Elementor) WordPress Event Calendar.
+
+    The calendar widget embeds all upcoming events as JSON in a `data-events`
+    attribute on its container div.  We fetch the page, extract that JSON, and
+    import upcoming events.
+
+    Expected JSON shape per item:
+        {"id": 1, "title": "...", "start": "2026-04-23T18:00:00-07:00",
+         "end": "...", "location": "...", "description": "...", "url": "..."}
+    """
+    import re as _re
+    import json
+    import html as html_mod
+    from datetime import datetime as dt_class
+    from dateutil import parser as du_parser
+
+    try:
+        r = requests.get(
+            feed.url, timeout=20,
+            headers={'User-Agent': 'CommunityPlaylist/1.0 (communityplaylist.com)'},
+        )
+        r.raise_for_status()
+    except Exception as e:
+        return 0, 0, str(e)
+
+    # data-events='[{...}]'  or  data-events="[{...}]"
+    m = _re.search(r"data-events='([^']+)'", r.text)
+    if not m:
+        m = _re.search(r'data-events="([^"]+)"', r.text)
+    if not m:
+        return 0, 0, 'No data-events attribute found on page'
+
+    try:
+        events_data = json.loads(html_mod.unescape(m.group(1)))
+    except json.JSONDecodeError as e:
+        return 0, 0, f'JSON parse error: {e}'
+
+    created = skipped = 0
+    status = 'approved' if feed.auto_approve else 'pending'
+
+    for item in events_data:
+        try:
+            title = (item.get('title') or '').strip()
+            if not title:
+                skipped += 1
+                continue
+
+            start_raw = item.get('start') or ''
+            if not start_raw:
+                skipped += 1
+                continue
+
+            try:
+                dtstart = du_parser.parse(start_raw)
+                # Ensure timezone-aware
+                if dtstart.tzinfo is None:
+                    import pytz as _pytz
+                    dtstart = _pytz.timezone('America/Los_Angeles').localize(dtstart)
+            except Exception:
+                skipped += 1
+                continue
+
+            if dtstart < now:
+                skipped += 1
+                continue
+
+            location = (item.get('location') or '').strip() or feed.name or ''
+            description = (item.get('description') or '').strip()
+            website = (item.get('url') or '').strip()
+
+            # Dedup by title + date
+            event_date = dtstart.date()
+            slug_base = slugify(f"{title}-{event_date.strftime('%Y-%m-%d')}")
+            if Event.objects.filter(slug__startswith=slug_base).exists():
+                skipped += 1
+                continue
+
+            ev = Event.objects.create(
+                title           = title[:200],
+                description     = description[:2000],
+                location        = location[:300],
+                start_date      = dtstart,
+                submitted_by    = feed.name,
+                submitted_email = '',
+                status          = status,
+                category        = feed.default_category or 'music',
+                website         = website[:200] if website else '',
+            )
+            enrich_event(ev, geocode=False, save=True)
+            tag_feed_defaults(ev, feed)
+            created += 1
+
+        except Exception as e:
+            stderr.write(f'    skipping eael item: {e}')
+            continue
+
+    return created, skipped, ''
+
+
 class Command(BaseCommand):
     help = 'Import events from admin-managed venue/source feeds'
 
@@ -874,6 +975,11 @@ class Command(BaseCommand):
                 created, skipped, error = import_squarespace(feed, now, self.stdout, self.stderr)
             elif feed.source_type == VenueFeed.SOURCE_19HZ:
                 created, skipped, error = import_19hz(feed, now, self.stdout, self.stderr)
+            elif feed.source_type == VenueFeed.SOURCE_EAEL:
+                if not feed.url:
+                    self.stderr.write('  no URL — skipping')
+                    continue
+                created, skipped, error = import_eael(feed, now, self.stdout, self.stderr)
             else:
                 error = f'unsupported source_type: {feed.source_type}'
                 created = skipped = 0

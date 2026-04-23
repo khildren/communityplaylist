@@ -27,12 +27,14 @@ class VenueFeed(models.Model):
     SOURCE_MUSICBRAINZ  = 'musicbrainz'
     SOURCE_SQUARESPACE  = 'squarespace'
     SOURCE_19HZ         = '19hz'
+    SOURCE_EAEL         = 'eael'
     SOURCE_CHOICES = [
         (SOURCE_ICAL,         'iCal Feed'),
         (SOURCE_EVENTBRITE,   'Eventbrite API'),
         (SOURCE_MUSICBRAINZ,  'MusicBrainz API'),
         (SOURCE_SQUARESPACE,  'Squarespace Events JSON'),
         (SOURCE_19HZ,         '19hz.info PNW Listing'),
+        (SOURCE_EAEL,         'EAEL WordPress Calendar (data-events scrape)'),
     ]
 
     CATEGORY_CHOICES = [
