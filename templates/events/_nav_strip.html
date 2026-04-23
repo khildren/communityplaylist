@@ -38,6 +38,11 @@
 #cp-welcome-card .wlc-icon{font-size:1.15em;flex-shrink:0;width:22px;text-align:center;margin-top:1px}
 #cp-welcome-card .wlc-desc{font-size:.78em;color:#888;line-height:1.5}
 #cp-welcome-card .wlc-desc b{color:#bbb;font-weight:600}
+#cp-welcome-card .wlc-linktree{background:#0d180d;border:1px solid #1a3a1a;border-radius:8px;padding:14px 15px;margin-bottom:18px;font-size:.8em;color:#666;line-height:1.7}
+#cp-welcome-card .wlc-lt-hed{color:#4caf50;font-weight:700;margin-bottom:8px;font-size:1.02em}
+#cp-welcome-card .wlc-lt-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px 12px;margin-top:9px}
+#cp-welcome-card .wlc-lt-item{font-size:.92em;color:#666;line-height:1.5}
+#cp-welcome-card .wlc-lt-item b{color:#9ccc65}
 #cp-welcome-card .wlc-account{background:#0f0f0f;border:1px solid #1e1e1e;border-radius:8px;padding:13px 14px;margin-bottom:20px;font-size:.8em;color:#666;line-height:1.7}
 #cp-welcome-card .wlc-account b{color:#aaa}
 #cp-welcome-card .wlc-account a{color:#ff6b35;text-decoration:none}
@@ -94,10 +99,22 @@
       '<div class="wlc-row"><span class="wlc-icon">🧭</span><div class="wlc-desc"><b>Night Builder</b> — GPS mode: shows events happening near you right now</div></div>',
       '<div class="wlc-row"><span class="wlc-icon">?</span><div class="wlc-desc"><b>Help</b> — step-by-step guide for whatever page you\'re on</div></div>',
     '</div>',
+    '<div class="wlc-section">Your free mini-website</div>',
+    '<div class="wlc-linktree">',
+      '<div class="wlc-lt-hed">🌐 Free profiles for anyone in the PDX community</div>',
+      'Community Playlist profiles work like a <b>Linktree or personal mini-site</b> — but built for Portland locals and completely free.<br><br>',
+      '<div class="wlc-lt-grid">',
+        '<div class="wlc-lt-item"><b>🎤 Artists</b> — bio, music player, upcoming shows, social links, YouTube channel, Last.fm &amp; Discogs cards</div>',
+        '<div class="wlc-lt-item"><b>🏠 Venues</b> — address, map, event calendar, iCal subscribe link, social links</div>',
+        '<div class="wlc-lt-item"><b>📣 Crews &amp; Promoters</b> — profile, all your upcoming events in one place, video channel</div>',
+        '<div class="wlc-lt-item"><b>👤 Anyone local</b> — a public page, direct messaging handles, and a place to tie your board posts &amp; event submissions to your name</div>',
+      '</div>',
+      '<div style="margin-top:10px;font-size:.93em;color:#555">No subscription. No upsells. Just a permanent, searchable home in the Portland community.</div>',
+    '</div>',
     '<div class="wlc-section">Do I need an account?</div>',
     '<div class="wlc-account">',
       '<b>Nope — no account required</b> to browse events, read the board, claim free items, or submit an event.<br><br>',
-      'Create a free account if you want to <b>post as yourself consistently</b>, save playlists, submit events linked to your profile, or set up a venue or artist page.<br><br>',
+      'Create a free account if you want your own profile, to post as yourself consistently, save playlists, or set up a venue or artist page.<br><br>',
       '<a href="/register/">Create a free account →</a> &nbsp;·&nbsp; <a href="/login/">Already have one? Sign in →</a>',
     '</div>',
     '<button id="cp-welcome-go">Got it — show me the events! 🎉</button>',
