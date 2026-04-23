@@ -280,16 +280,6 @@ class PromoterProfile(models.Model):
         help_text='Open to record trades / partial trades',
     )
 
-    # Demo submissions
-    accept_demos = models.BooleanField(
-        default=False,
-        help_text='Allow logged-in users to upload MP3 demos/mixes directly to this profile',
-    )
-    demo_folder_url = models.URLField(
-        blank=True,
-        help_text='Optional: Google Drive folder for submitted demos (requires service account). If blank, files are stored locally.',
-    )
-
     admin_email = models.EmailField(
         blank=True,
         help_text='Internal contact email — used to send claim instructions. Not shown publicly.',
