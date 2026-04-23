@@ -249,8 +249,6 @@ def merge_promoters(modeladmin, request, queryset):
         # VenueFeed FK
         from events.models import VenueFeed
         VenueFeed.objects.filter(promoter=loser).update(promoter=winner)
-        # RecurringEvent FK
-        RecurringEvent.objects.filter(promoter=loser).update(promoter=winner)
         # Carry over missing profile fields
         for field in ('bio', 'photo', 'website', 'instagram', 'soundcloud',
                       'bandcamp', 'mixcloud', 'youtube', 'spotify', 'mastodon',
