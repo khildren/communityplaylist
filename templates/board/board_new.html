@@ -31,6 +31,8 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:6px}
 {% if spam_err %}<div style="background:#2a1010;border:1px solid #5a2020;border-radius:6px;padding:10px 14px;margin-bottom:16px;color:#ff6b6b;font-size:.85em">{{ spam_err }}</div>{% endif %}
 <form method="post">
   {% csrf_token %}
+  {{ form.website }}
+  {{ form._t }}
   <div class="form-group">
     <label>Title</label>
     {{ form.title }}
@@ -50,4 +52,7 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:6px}
   <button type="submit" class="btn">Post Topic</button>
 </form>
 </div>
+<script>
+(function(){ var f=document.getElementById('id__t_topic'); if(f) f.value=Date.now()/1000; })();
+</script>
 {% endblock %}

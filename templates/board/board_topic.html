@@ -49,6 +49,8 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:8px}
 {% if topic.recurring_event %}<a href="/?q={{ topic.recurring_event.title|urlencode }}" class="rec-link">🔁 See events in this series →</a>{% endif %}
 <p class="topic-body">{{ topic.body }}</p>
 
+{% include "partials/report_post.html" with target_type="topic" target_id=topic.pk %}
+
 <hr class="divider">
 <p class="section-title">{{ replies.count }} repl{{ replies.count|pluralize:"y,ies" }}</p>
 
@@ -69,6 +71,8 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:8px}
   {% if spam_err %}<div style="background:#2a1010;border:1px solid #5a2020;border-radius:6px;padding:10px 14px;margin-bottom:14px;color:#ff6b6b;font-size:.85em">{{ spam_err }}</div>{% endif %}
   <form method="post">
     {% csrf_token %}
+    {{ reply_form.website }}
+    {{ reply_form._t }}
     <div class="form-group">
       <label>Your name</label>
       {{ reply_form.author_name }}
@@ -81,4 +85,7 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:8px}
   </form>
 </div>
 </div>
+<script>
+(function(){ var f=document.getElementById('id__t_reply'); if(f) f.value=Date.now()/1000; })();
+</script>
 {% endblock %}

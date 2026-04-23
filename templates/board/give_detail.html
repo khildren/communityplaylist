@@ -132,6 +132,7 @@ h1{color:#eee;font-size:1.3em;font-weight:700;margin-bottom:8px;line-height:1.4}
       <a href="/login/?next={{ request.path }}" style="color:#ff6b35;text-decoration:none">Log in</a> to see direct message options if the poster has their account connected.
     </div>
     {% endif %}
+    {% include "partials/report_post.html" with target_type="offering" target_id=offering.pk %}
   </div>
 </div>
 

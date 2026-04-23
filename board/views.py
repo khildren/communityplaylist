@@ -4,9 +4,11 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.core.cache import cache
 from django.utils import timezone
 
-from .models import Topic, Reply, BannerMessage, Offering
+from django.http import JsonResponse
+
+from .models import Topic, Reply, BannerMessage, Offering, PostReport
 from .forms import TopicForm, ReplyForm, OfferingForm
-from .spam import check_post
+from .spam import check_post, check_timing
 
 # Rate limits
 _RATE_LIMIT        = 5    # board posts per IP
@@ -74,16 +76,22 @@ def board_new(request):
         else:
             form = TopicForm(request.POST)
             if form.is_valid():
-                ok, err = check_post(
-                    title=form.cleaned_data.get('title', ''),
-                    body=form.cleaned_data.get('body', ''),
-                    user=request.user,
-                )
-                if not ok:
-                    spam_err = err
+                # Timing honeypot
+                tok, terr = check_timing(form.cleaned_data.get('_t', ''))
+                if not tok:
+                    spam_err = terr
                 else:
-                    topic = form.save()
-                    return redirect(topic.get_absolute_url())
+                    ok, err = check_post(
+                        title=form.cleaned_data.get('title', ''),
+                        body=form.cleaned_data.get('body', ''),
+                        author_name=form.cleaned_data.get('author_name', ''),
+                        user=request.user,
+                    )
+                    if not ok:
+                        spam_err = err
+                    else:
+                        topic = form.save()
+                        return redirect(topic.get_absolute_url())
     else:
         form = TopicForm()
     return render(request, 'board/board_new.html', {
@@ -106,17 +114,22 @@ def board_topic(request, pk, slug):
         else:
             reply_form = ReplyForm(request.POST)
             if reply_form.is_valid():
-                ok, err = check_post(
-                    body=reply_form.cleaned_data.get('body', ''),
-                    user=request.user,
-                )
-                if not ok:
-                    spam_err = err
+                tok, terr = check_timing(reply_form.cleaned_data.get('_t', ''))
+                if not tok:
+                    spam_err = terr
                 else:
-                    reply = reply_form.save(commit=False)
-                    reply.topic = topic
-                    reply.save()
-                    return redirect(topic.get_absolute_url())
+                    ok, err = check_post(
+                        body=reply_form.cleaned_data.get('body', ''),
+                        author_name=reply_form.cleaned_data.get('author_name', ''),
+                        user=request.user,
+                    )
+                    if not ok:
+                        spam_err = err
+                    else:
+                        reply = reply_form.save(commit=False)
+                        reply.topic = topic
+                        reply.save()
+                        return redirect(topic.get_absolute_url())
 
     return render(request, 'board/board_topic.html', {
         'topic': topic,
@@ -184,63 +197,68 @@ def give_new(request):
         else:
             form = OfferingForm(request.POST, request.FILES)
             if form.is_valid():
-                ok, err = check_post(
-                    title=form.cleaned_data.get('title', ''),
-                    body=form.cleaned_data.get('body', ''),
-                    user=request.user,
-                )
-                if not ok:
-                    spam_err = err
+                tok, terr = check_timing(form.cleaned_data.get('_t', ''))
+                if not tok:
+                    spam_err = terr
                 else:
-                    offering = form.save(commit=False)
-
-                    # Resolve neighborhood — auto-create if "not listed"
-                    new_hood_name = form.cleaned_data.get('new_neighborhood_name', '').strip()
-                    if new_hood_name and not offering.neighborhood:
-                        hood_slug_new = slugify(new_hood_name)
-                        existing = Neighborhood.objects.filter(slug=hood_slug_new).first()
-                        if existing:
-                            offering.neighborhood = existing
-                        else:
-                            lat, lon = geocode_neighborhood(new_hood_name)
-                            if lat is None:
-                                hood_geo_err = True
-                            else:
-                                new_hood = Neighborhood.objects.create(
-                                    name=new_hood_name.title(),
-                                    slug=hood_slug_new,
-                                    latitude=lat,
-                                    longitude=lon,
-                                    active=True,
-                                )
-                                offering.neighborhood = new_hood
-
-                    if hood_geo_err:
-                        return render(request, 'board/give_new.html', {
-                            'form': form, 'banner': _banner(),
-                            'hood_geo_err': hood_geo_err, 'new_hood_name': new_hood_name,
-                        })
-
-                    offering.poster_ip = ip
-                    offering.expires_at = timezone.now() + timedelta(days=30)
-                    if request.user.is_authenticated:
-                        offering.poster_user = request.user
-                    offering.save()
-
-                    # Auto-create linked board thread
-                    cat_label = dict(Offering.CATEGORY_CHOICES).get(offering.category, 'Offering')
-                    contact_line = offering.contact_hint or 'reply to this thread'
-                    thread_body = (offering.body + f'\n\n— Contact: {contact_line}').strip()
-                    topic = Topic.objects.create(
-                        title=f'[{cat_label}] {offering.title}',
-                        body=thread_body,
-                        author_name=offering.author_name,
-                        category='offer',
-                        neighborhood=offering.neighborhood,
+                    ok, err = check_post(
+                        title=form.cleaned_data.get('title', ''),
+                        body=form.cleaned_data.get('body', ''),
+                        author_name=form.cleaned_data.get('author_name', ''),
+                        user=request.user,
                     )
-                    offering.board_topic = topic
-                    offering.save(update_fields=['board_topic'])
-                    return redirect(offering.get_absolute_url())
+                    if not ok:
+                        spam_err = err
+                    else:
+                        offering = form.save(commit=False)
+
+                        # Resolve neighborhood — auto-create if "not listed"
+                        new_hood_name = form.cleaned_data.get('new_neighborhood_name', '').strip()
+                        if new_hood_name and not offering.neighborhood:
+                            hood_slug_new = slugify(new_hood_name)
+                            existing = Neighborhood.objects.filter(slug=hood_slug_new).first()
+                            if existing:
+                                offering.neighborhood = existing
+                            else:
+                                lat, lon = geocode_neighborhood(new_hood_name)
+                                if lat is None:
+                                    hood_geo_err = True
+                                else:
+                                    new_hood = Neighborhood.objects.create(
+                                        name=new_hood_name.title(),
+                                        slug=hood_slug_new,
+                                        latitude=lat,
+                                        longitude=lon,
+                                        active=True,
+                                    )
+                                    offering.neighborhood = new_hood
+
+                        if hood_geo_err:
+                            return render(request, 'board/give_new.html', {
+                                'form': form, 'banner': _banner(),
+                                'hood_geo_err': hood_geo_err, 'new_hood_name': new_hood_name,
+                            })
+
+                        offering.poster_ip = ip
+                        offering.expires_at = timezone.now() + timedelta(days=30)
+                        if request.user.is_authenticated:
+                            offering.poster_user = request.user
+                        offering.save()
+
+                        # Auto-create linked board thread
+                        cat_label = dict(Offering.CATEGORY_CHOICES).get(offering.category, 'Offering')
+                        contact_line = offering.contact_hint or 'reply to this thread'
+                        thread_body = (offering.body + f'\n\n— Contact: {contact_line}').strip()
+                        topic = Topic.objects.create(
+                            title=f'[{cat_label}] {offering.title}',
+                            body=thread_body,
+                            author_name=offering.author_name,
+                            category='offer',
+                            neighborhood=offering.neighborhood,
+                        )
+                        offering.board_topic = topic
+                        offering.save(update_fields=['board_topic'])
+                        return redirect(offering.get_absolute_url())
     else:
         initial = {'neighborhood': hood_obj} if hood_obj else {}
         form = OfferingForm(initial=initial)
@@ -275,6 +293,56 @@ def give_detail(request, pk, slug):
         'poster_profile': poster_profile,
         'banner': _banner(),
     })
+
+
+def report_post(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    import json as _json
+    try:
+        body = _json.loads(request.body)
+    except Exception:
+        return JsonResponse({'error': 'invalid JSON'}, status=400)
+
+    target_type = body.get('target_type', '')
+    target_id   = body.get('target_id')
+    reason      = body.get('reason', '').strip()
+    note        = body.get('note', '').strip()[:500]
+
+    valid_types   = {t for t, _ in PostReport.TARGET_CHOICES}
+    valid_reasons = {r for r, _ in PostReport.REASON_CHOICES}
+
+    if target_type not in valid_types:
+        return JsonResponse({'error': 'invalid target_type'}, status=400)
+    if reason not in valid_reasons:
+        return JsonResponse({'error': 'Please select a reason.'}, status=400)
+    try:
+        target_id = int(target_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'invalid target_id'}, status=400)
+
+    ip = _get_ip(request)
+
+    # De-dupe: one report per IP per target per hour
+    from django.utils import timezone as tz
+    recent = PostReport.objects.filter(
+        target_type=target_type,
+        target_id=target_id,
+        reporter_ip=ip,
+        created_at__gte=tz.now() - timezone.timedelta(hours=1),
+    ).exists()
+    if recent:
+        return JsonResponse({'ok': True})  # silently succeed — don't reveal de-dupe
+
+    PostReport.objects.create(
+        target_type=target_type,
+        target_id=target_id,
+        reason=reason,
+        note=note,
+        reporter_ip=ip,
+        reporter_user=request.user if request.user.is_authenticated else None,
+    )
+    return JsonResponse({'ok': True})
 
 
 def give_claim(request, pk):

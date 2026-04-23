@@ -1,0 +1,99 @@
+{% comment %}
+  Usage: {% include "partials/report_post.html" with target_type="topic" target_id=topic.pk %}
+  target_type: "topic" | "reply" | "offering"
+{% endcomment %}
+<div class="rp-wrap" id="rp-wrap-{{ target_type }}-{{ target_id }}">
+  <button type="button" class="rp-toggle"
+    onclick="rpToggle('{{ target_type }}','{{ target_id }}')"
+    title="Report this post">⚑ Report</button>
+  <div class="rp-panel" id="rp-panel-{{ target_type }}-{{ target_id }}" style="display:none">
+    <p class="rp-hint">Something wrong with this post? Let us know — we review every report.</p>
+    <div class="rp-field">
+      <label class="rp-label">Reason</label>
+      <select class="rp-select" id="rp-reason-{{ target_type }}-{{ target_id }}">
+        <option value="">— pick one —</option>
+        <option value="spam">Spam or scam</option>
+        <option value="harmful">Inappropriate or harmful content</option>
+        <option value="wrong_section">Posted in the wrong section</option>
+        <option value="misinfo">Misinformation</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="rp-field">
+      <label class="rp-label">Note <span class="rp-opt">(optional)</span></label>
+      <textarea class="rp-textarea" id="rp-note-{{ target_type }}-{{ target_id }}"
+                rows="2" maxlength="500" placeholder="Any extra context…"></textarea>
+    </div>
+    <div class="rp-actions">
+      <button type="button" class="rp-submit"
+        onclick="rpSubmit('{{ target_type }}','{{ target_id }}')">Submit report</button>
+      <button type="button" class="rp-cancel"
+        onclick="rpToggle('{{ target_type }}','{{ target_id }}')">Cancel</button>
+      <span class="rp-msg" id="rp-msg-{{ target_type }}-{{ target_id }}" style="display:none"></span>
+    </div>
+  </div>
+</div>
+
+<style>
+.rp-wrap{margin-top:14px}
+.rp-toggle{background:transparent;border:none;color:#383838;font-size:.73em;cursor:pointer;padding:0;transition:color .15s;letter-spacing:.01em}
+.rp-toggle:hover{color:#888}
+.rp-panel{margin-top:10px;background:#141414;border:1px solid #222;border-radius:7px;padding:14px 16px;max-width:480px}
+.rp-hint{font-size:.77em;color:#555;line-height:1.55;margin-bottom:12px}
+.rp-field{margin-bottom:10px}
+.rp-label{display:block;font-size:.74em;color:#666;margin-bottom:4px}
+.rp-opt{color:#3a3a3a}
+.rp-select{width:100%;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:5px;padding:7px 9px;color:#ccc;font-size:.83em;font-family:inherit}
+.rp-select:focus{outline:none;border-color:#888}
+.rp-textarea{width:100%;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:5px;padding:7px 9px;color:#ccc;font-size:.83em;font-family:inherit;resize:vertical}
+.rp-textarea:focus{outline:none;border-color:#888}
+.rp-actions{display:flex;align-items:center;gap:10px;margin-top:12px}
+.rp-submit{background:#2a2a2a;color:#999;border:1px solid #333;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:.8em;transition:all .15s}
+.rp-submit:hover{border-color:#888;color:#ccc}
+.rp-cancel{background:transparent;border:none;color:#444;cursor:pointer;font-size:.79em;transition:color .15s}
+.rp-cancel:hover{color:#888}
+.rp-msg{font-size:.78em}
+</style>
+
+<script>
+function rpToggle(type, id) {
+  var panel = document.getElementById('rp-panel-' + type + '-' + id);
+  panel.style.display = panel.style.display === 'none' ? '' : 'none';
+}
+function rpSubmit(type, id) {
+  var reason  = document.getElementById('rp-reason-' + type + '-' + id).value;
+  var note    = document.getElementById('rp-note-'   + type + '-' + id).value.trim();
+  var msg     = document.getElementById('rp-msg-'    + type + '-' + id);
+  var btn     = document.querySelector('#rp-panel-' + type + '-' + id + ' .rp-submit');
+  if (!reason) {
+    msg.textContent = 'Please pick a reason.';
+    msg.style.color = '#ff8888';
+    msg.style.display = '';
+    setTimeout(function(){ msg.style.display = 'none'; }, 3000);
+    return;
+  }
+  btn.disabled = true;
+  function getCookie(n){ var v=document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)'); return v?v[2]:null; }
+  fetch('/board/report/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+    body: JSON.stringify({ target_type: type, target_id: parseInt(id), reason: reason, note: note })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    var panel  = document.getElementById('rp-panel-' + type + '-' + id);
+    var toggle = document.querySelector('#rp-wrap-' + type + '-' + id + ' .rp-toggle');
+    panel.style.display = 'none';
+    toggle.textContent  = '✓ Reported';
+    toggle.style.color  = '#555';
+    toggle.disabled     = true;
+  })
+  .catch(function(){
+    msg.textContent = 'Network error — try again.';
+    msg.style.color = '#ff8888';
+    msg.style.display = '';
+    btn.disabled = false;
+    setTimeout(function(){ msg.style.display='none'; }, 4000);
+  });
+}
+</script>

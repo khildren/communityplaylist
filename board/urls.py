@@ -11,4 +11,5 @@ urlpatterns = [
     path('give/new/',                  views.give_new,    name='give_new'),
     path('give/<int:pk>-<slug:slug>/', views.give_detail, name='give_detail'),
     path('give/<int:pk>/claim/',       views.give_claim,  name='give_claim'),
+    path('report/',                    views.report_post, name='report_post'),
 ]

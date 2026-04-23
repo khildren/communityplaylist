@@ -120,3 +120,89 @@ class Offering(models.Model):
     def is_expired(self):
         from django.utils import timezone
         return timezone.now() > self.expires_at
+
+
+class SocialQueue(models.Model):
+    """Pending social media posts. Processed by flush_social_queue management command."""
+    TARGET_TOPIC    = 'topic'
+    TARGET_OFFERING = 'offering'
+    TARGET_EVENT    = 'event'
+    TARGET_CHOICES  = [('topic','Topic'),('offering','Offering'),('event','Event')]
+
+    STATUS_QUEUED  = 'queued'
+    STATUS_POSTED  = 'posted'
+    STATUS_FAILED  = 'failed'
+    STATUS_SKIPPED = 'skipped'
+    STATUS_CHOICES = [
+        ('queued','Queued'),('posted','Posted'),
+        ('failed','Failed'),('skipped','Skipped'),
+    ]
+
+    target_type = models.CharField(max_length=20, choices=TARGET_CHOICES)
+    target_id   = models.PositiveIntegerField()
+    status      = models.CharField(max_length=10, choices=STATUS_CHOICES, default='queued')
+    post_after  = models.DateTimeField()
+    bluesky_uri = models.CharField(max_length=200, blank=True)
+    error       = models.TextField(blank=True)
+    created_at  = models.DateTimeField(auto_now_add=True)
+    posted_at   = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['post_after']
+
+    def __str__(self):
+        return f'SocialQueue {self.target_type}#{self.target_id} [{self.status}]'
+
+
+class PostReport(models.Model):
+    TARGET_TOPIC   = 'topic'
+    TARGET_REPLY   = 'reply'
+    TARGET_OFFERING = 'offering'
+    TARGET_CHOICES = [
+        ('topic',    'Topic'),
+        ('reply',    'Reply'),
+        ('offering', 'Offering'),
+    ]
+
+    REASON_SPAM    = 'spam'
+    REASON_HARMFUL = 'harmful'
+    REASON_WRONG   = 'wrong_section'
+    REASON_MISINFO = 'misinfo'
+    REASON_OTHER   = 'other'
+    REASON_CHOICES = [
+        ('spam',         'Spam or scam'),
+        ('harmful',      'Inappropriate or harmful content'),
+        ('wrong_section','Posted in the wrong section'),
+        ('misinfo',      'Misinformation'),
+        ('other',        'Other'),
+    ]
+
+    target_type  = models.CharField(max_length=20, choices=TARGET_CHOICES)
+    target_id    = models.PositiveIntegerField()
+    reason       = models.CharField(max_length=30, choices=REASON_CHOICES)
+    note         = models.TextField(blank=True, max_length=500)
+    reporter_ip  = models.GenericIPAddressField(null=True, blank=True)
+    reporter_user = models.ForeignKey(
+        'auth.User', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='post_reports',
+    )
+    resolved     = models.BooleanField(default=False)
+    created_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Report: {self.target_type} #{self.target_id} — {self.get_reason_display()}'
+
+    def get_target_url(self):
+        try:
+            if self.target_type == 'topic':
+                obj = Topic.objects.get(pk=self.target_id)
+                return obj.get_absolute_url()
+            if self.target_type == 'offering':
+                obj = Offering.objects.get(pk=self.target_id)
+                return obj.get_absolute_url()
+        except Exception:
+            pass
+        return None

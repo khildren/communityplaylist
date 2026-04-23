@@ -76,6 +76,7 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
 <form method="post" enctype="multipart/form-data">
   {% csrf_token %}
   {{ form.website }}
+  {{ form._t }}
 
   <div class="card">
     <div class="card-title">What &amp; Why</div>
@@ -170,6 +171,7 @@ h1{color:#ff6b35;font-size:1.4em;margin-bottom:6px}
 </div>
 
 <script>
+(function(){ var f=document.getElementById('id__t_offer'); if(f) f.value=Date.now()/1000; })();
 var toggle = document.getElementById('hood-not-listed-toggle');
 var wrap   = document.getElementById('hood-new-wrap');
 var select = document.getElementById('id_neighborhood_select');

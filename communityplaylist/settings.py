@@ -147,6 +147,19 @@ SPOTIFY_CLIENT_SECRET = config('SPOTIFY_CLIENT_SECRET', default='')
 BLUESKY_HANDLE       = config('BLUESKY_HANDLE', default='')
 BLUESKY_APP_PASSWORD = config('BLUESKY_APP_PASSWORD', default='')
 
+# Discord webhooks — configure in .env
+DISCORD_WEBHOOK_BOARD  = config('DISCORD_WEBHOOK_BOARD',  default='')  # board topics + Free & Trade
+DISCORD_WEBHOOK_EVENTS = config('DISCORD_WEBHOOK_EVENTS', default='')  # new approved events (text/forum)
+
+# Discord bot — needed for native Scheduled Events tab
+# Create bot at discord.com/developers, add to server with MANAGE_EVENTS permission
+DISCORD_BOT_TOKEN = config('DISCORD_BOT_TOKEN', default='')  # Bot token (not webhook)
+DISCORD_GUILD_ID  = config('DISCORD_GUILD_ID',  default='')  # Server/Guild ID (right-click server → Copy ID)
+
+# Social auto-posting limits
+SOCIAL_DAILY_POST_LIMIT  = 27  # max Bluesky posts/day; above this, events split by category
+SOCIAL_BOARD_DELAY_HOURS = 1   # hours after topic creation before auto-posting
+
 # Last.fm API — user top tracks / recent plays on public profiles
 # Register at: https://www.last.fm/api/account/create
 LASTFM_API_KEY    = config('LASTFM_API_KEY',    default='f20acc46f0492bbea83a73865f36a735')

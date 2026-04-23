@@ -1,23 +1,35 @@
-import re, unicodedata, requests, time
+"""
+management command: bluesky_digest
+
+Posts today's Portland events to Bluesky as a threaded digest.
+- Up to SOCIAL_DAILY_POST_LIMIT events: one thread (header + per-event posts)
+- Over the limit: splits into per-category threads, each with a link to
+  the pre-filtered homepage (e.g. /?cat=music)
+
+Each event post includes:
+  - Title, time, venue hashtag, title hashtags
+  - Direct link to event page
+  - Venue @mention if their Bluesky handle is in the Venue record
+
+Run daily via cron (example: 8 AM):
+    0 8 * * * docker exec cp-communityplaylist-1 python manage.py bluesky_digest
+"""
+import time
+import requests
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from django.utils.timezone import localtime
 from django.conf import settings
 from events.models import Event, Venue
+from board.social import (
+    _bsky_session, _bsky_create, _bsky_facets,
+    build_event_batch_posts, _bsky_upload_blob,
+    CP_BASE,
+)
 
 BSKY = 'https://bsky.social/xrpc'
-MAX_EVENTS = 12
 
-def location_hashtag(location):
-    """'Living Häus Beer Co, SE Hawthorne' → '#LivingHausBeerCo'"""
-    name = location.split(',')[0].strip()
-    # Normalize unicode (ä→a, ü→u, etc.)
-    name = unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode()
-    name = re.sub(r'[^a-zA-Z0-9 ]', '', name)
-    return '#' + ''.join(w.capitalize() for w in name.split())
 
 def resolve_handle(handle):
-    """Return DID for a Bluesky handle, or None on failure."""
     handle = handle.lstrip('@')
     try:
         r = requests.get(f'{BSKY}/com.atproto.identity.resolveHandle',
@@ -26,143 +38,122 @@ def resolve_handle(handle):
     except Exception:
         return None
 
+
 class Command(BaseCommand):
-    help = "Post today's events to Bluesky"
+    help = "Post today's PDX events to Bluesky (splits by category when > limit)"
 
-    def handle(self, *a, **k):
-        auth = requests.post(f'{BSKY}/com.atproto.server.createSession', json={
-            'identifier': settings.BLUESKY_HANDLE,
-            'password':   settings.BLUESKY_APP_PASSWORD,
-        }).json()
-        did     = auth['did']
-        headers = {'Authorization': f'Bearer {auth["accessJwt"]}'}
+    def add_arguments(self, parser):
+        parser.add_argument('--dry-run', action='store_true')
 
-        # Cache handle→DID lookups within this run
-        did_cache = {}
+    def handle(self, *args, **options):
+        dry_run = options['dry_run']
+        limit   = getattr(settings, 'SOCIAL_DAILY_POST_LIMIT', 27)
 
-        def get_did(handle):
-            handle = handle.lstrip('@')
-            if handle not in did_cache:
-                did_cache[handle] = resolve_handle(handle)
-            return did_cache[handle]
+        token, did = _bsky_session()
+        if not token:
+            self.stderr.write('[bluesky_digest] no credentials — set BLUESKY_HANDLE + BLUESKY_APP_PASSWORD')
+            return
 
         now         = timezone.now()
         today_start = now.replace(hour=0,  minute=0,  second=0,  microsecond=0)
         today_end   = now.replace(hour=23, minute=59, second=59, microsecond=0)
-        events = Event.objects.prefetch_related('promoters', 'genres').filter(
+        events = Event.objects.prefetch_related('genres', 'promoters').filter(
             status='approved',
             start_date__gte=today_start,
             start_date__lte=today_end,
         ).order_by('start_date')
 
-        # Build venue handle map: first word of venue name → bluesky handle
+        if not events.exists():
+            url = CP_BASE
+            text = f'📅 No events today — check upcoming at {url}\n\n#PDXEvents #Portland'
+            if not dry_run:
+                _bsky_create(token, did, text,
+                             facets=_bsky_facets(text, links=[url], hashtags=['#PDXEvents', '#Portland']))
+            else:
+                self.stdout.write(f'[DRY] no-events post')
+            return
+
+        # Build venue handle → DID cache
         venue_handles = {
-            v.name.split()[0].lower(): v.bluesky
+            v.name.split()[0].lower(): v.bluesky.lstrip('@')
             for v in Venue.objects.exclude(bluesky='')
         }
+        did_cache = {}
 
-        def venue_handle_for(location):
+        def get_venue_did(location):
             first = location.split(',')[0].strip().lower()
             for key, handle in venue_handles.items():
                 if key in first:
-                    return handle
-            return None
+                    if handle not in did_cache:
+                        did_cache[handle] = resolve_handle(handle)
+                    return handle, did_cache.get(handle)
+            return None, None
 
-        def build_facets(text_bytes, items):
-            """items = list of (substring, uri_or_None, did_or_None)"""
-            facets = []
-            for substr, uri, mention_did in items:
-                b = substr.encode('utf-8')
-                idx = text_bytes.find(b)
-                if idx < 0:
-                    continue
-                end = idx + len(b)
-                if uri:
-                    facets.append({
-                        '$type': 'app.bsky.richtext.facet',
-                        'index': {'byteStart': idx, 'byteEnd': end},
-                        'features': [{'$type': 'app.bsky.richtext.facet#link', 'uri': uri}],
-                    })
-                elif mention_did:
-                    facets.append({
-                        '$type': 'app.bsky.richtext.facet',
-                        'index': {'byteStart': idx, 'byteEnd': end},
-                        'features': [{'$type': 'app.bsky.richtext.facet#mention', 'did': mention_did}],
-                    })
-            return facets or None
+        # Get batch structure from social module
+        batches = build_event_batch_posts(events, daily_limit=limit)
 
-        def bsky_post(text, facet_items=None):
-            tb = text.encode('utf-8')
-            record = {
-                '$type':     'app.bsky.feed.post',
-                'text':      text,
-                'createdAt': timezone.now().strftime('%Y-%m-%dT%H:%M:%S.000Z'),
-                'langs':     ['en-US'],
-            }
-            if facet_items:
-                fs = build_facets(tb, facet_items)
-                if fs:
-                    record['facets'] = fs
-            return requests.post(f'{BSKY}/com.atproto.repo.createRecord', headers=headers, json={
-                'repo': did, 'collection': 'app.bsky.feed.post', 'record': record,
-            })
+        total_posted = 0
+        for (header_text, batch_link, event_texts) in batches:
+            if dry_run:
+                self.stdout.write(f'\n[DRY] HEADER: {header_text[:80]}')
+                for t, _, _ in event_texts:
+                    self.stdout.write(f'  [DRY] {t[:60]}')
+                continue
 
-        date_str = localtime(now).strftime('%A, %B %d')
-        cp_url   = 'https://communityplaylist.com'
-
-        if not events.exists():
-            bsky_post(f'📅 No events today — check upcoming at {cp_url}',
-                      [(cp_url, cp_url, None)])
-            return
-
-        bsky_post(f"🌹 Today's PDX Events — {date_str}\n{cp_url}",
-                  [(cp_url, cp_url, None)])
-        time.sleep(2)
-
-        for e in events[:MAX_EVENTS]:
-            genres = ', '.join(e.genres.values_list('name', flat=True)) or 'various'
-            cost   = 'FREE' if e.is_free else (e.price_info or 'Paid')
-            url    = f'{cp_url}/events/{e.slug}/'
-
-            # Venue: tag if handle known, else hashtag
-            v_handle = venue_handle_for(e.location)
-            if v_handle:
-                v_did    = get_did(v_handle)
-                at_venue = f'@{v_handle.lstrip("@")}'
-                venue_str = at_venue
-            else:
-                v_did    = None
-                at_venue = None
-                venue_str = location_hashtag(e.location)
-
-            # Promoters with Bluesky handles
-            promo_tags = []
-            for p in e.promoters.exclude(bluesky=''):
-                p_did = get_did(p.bluesky)
-                if p_did:
-                    promo_tags.append((f'@{p.bluesky.lstrip("@")}', p_did))
-
-            promo_str = '  '.join(t for t, _ in promo_tags)
-
-            location_line = e.location[:50]
-            text = (
-                f"{e.title}\n"
-                f"📅 {localtime(e.start_date).strftime('%I:%M %p')}  📍 {location_line}\n"
-                f"🎵 {genres[:35]}  {cost}\n"
-                f"{venue_str}"
-                + (f"  {promo_str}" if promo_str else '')
-                + f"\n{url}"
-            )
-            if len(text) > 300:
-                text = text[:297] + '...'
-
-            facet_items = [(url, url, None)]
-            if at_venue and v_did:
-                facet_items.append((at_venue, None, v_did))
-            for tag, p_did in promo_tags:
-                facet_items.append((tag, None, p_did))
-
-            bsky_post(text, facet_items)
+            # Post the header
+            htags = ['#PDXEvents', '#Portland', '#PDX']
+            hfacets = _bsky_facets(header_text, links=[batch_link], hashtags=htags)
+            h_uri, h_cid = _bsky_create(token, did, header_text, facets=hfacets)
+            self.stdout.write(f'  → header posted: {h_uri}')
             time.sleep(2)
 
-        self.stdout.write(f"Posted {min(events.count(), MAX_EVENTS)} events to Bluesky")
+            # Thread root ref
+            root_ref = reply_ref = {
+                'root':   {'uri': h_uri, 'cid': h_cid},
+                'parent': {'uri': h_uri, 'cid': h_cid},
+            }
+
+            # Post each event as a reply in the thread
+            for (text, eurl, tag_list) in event_texts:
+                # Check for venue @mention
+                e_slug = eurl.rstrip('/').split('/')[-1]
+                try:
+                    event = Event.objects.get(slug=e_slug)
+                    v_handle, v_did = get_venue_did(event.location)
+                except Event.DoesNotExist:
+                    v_handle, v_did = None, None
+
+                facet_links    = [eurl]
+                facet_hashtags = [t for t in tag_list if t.startswith('#')]
+
+                facets = _bsky_facets(text, links=facet_links, hashtags=facet_hashtags)
+
+                # Add venue @mention facet if we have a DID
+                if v_handle and v_did:
+                    tb = text.encode('utf-8')
+                    mention_str = f'@{v_handle}'
+                    mb = mention_str.encode('utf-8')
+                    idx = tb.find(mb)
+                    if idx >= 0:
+                        if facets is None:
+                            facets = []
+                        facets.append({
+                            '$type': 'app.bsky.richtext.facet',
+                            'index': {'byteStart': idx, 'byteEnd': idx + len(mb)},
+                            'features': [{'$type': 'app.bsky.richtext.facet#mention', 'did': v_did}],
+                        })
+
+                uri, cid = _bsky_create(token, did, text,
+                                        facets=facets, reply_ref=reply_ref)
+                reply_ref = {
+                    'root':   root_ref['root'],
+                    'parent': {'uri': uri, 'cid': cid},
+                }
+                total_posted += 1
+                time.sleep(2)
+
+            self.stdout.write(f'  ✓ batch posted ({len(event_texts)} events)')
+            if len(batches) > 1:
+                time.sleep(5)  # pause between category batches
+
+        self.stdout.write(f'[bluesky_digest] done — {total_posted} event posts')

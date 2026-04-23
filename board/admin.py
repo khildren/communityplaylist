@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import BannerMessage, Topic, Reply, Offering
+from django.utils import html as admin_html
+from .models import BannerMessage, Topic, Reply, Offering, PostReport, SocialQueue
 
 
 class ReplyInline(admin.TabularInline):
@@ -33,6 +34,45 @@ class ReplyAdmin(admin.ModelAdmin):
 class BannerMessageAdmin(admin.ModelAdmin):
     list_display  = ['text', 'active', 'created_at']
     list_editable = ['active']
+
+
+@admin.register(SocialQueue)
+class SocialQueueAdmin(admin.ModelAdmin):
+    list_display  = ['target_type', 'target_id', 'status', 'post_after', 'posted_at', 'error']
+    list_filter   = ['target_type', 'status']
+    readonly_fields = ['target_type', 'target_id', 'created_at', 'posted_at', 'bluesky_uri', 'error']
+    actions = ['requeue_failed']
+
+    def requeue_failed(self, request, queryset):
+        from django.utils import timezone
+        from datetime import timedelta
+        queryset.filter(status='failed').update(
+            status='queued',
+            post_after=timezone.now() + timedelta(minutes=15),
+            error='',
+        )
+    requeue_failed.short_description = 'Re-queue failed items (15 min)'
+
+
+@admin.register(PostReport)
+class PostReportAdmin(admin.ModelAdmin):
+    list_display  = ['target_type', 'target_id', 'reason', 'reporter_ip', 'resolved', 'created_at', 'view_link']
+    list_editable = ['resolved']
+    list_filter   = ['target_type', 'reason', 'resolved']
+    search_fields = ['note', 'reporter_ip']
+    readonly_fields = ['target_type', 'target_id', 'reason', 'note', 'reporter_ip', 'reporter_user', 'created_at']
+    actions = ['mark_resolved']
+
+    def view_link(self, obj):
+        url = obj.get_target_url()
+        if url:
+            return admin_html.format_html('<a href="{}" target="_blank">View →</a>', url)
+        return '—'
+    view_link.short_description = 'Post'
+
+    def mark_resolved(self, request, queryset):
+        queryset.update(resolved=True)
+    mark_resolved.short_description = 'Mark selected as resolved'
 
 
 @admin.register(Offering)
