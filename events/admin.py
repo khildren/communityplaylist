@@ -197,10 +197,11 @@ class ArtistAdmin(admin.ModelAdmin):
             for ev in artist.events.all():
                 ev.promoters.add(promoter)
 
-            # 4. Migrate recurring-event resident links
-            for rec in artist.resident_at.all():
+            # 4. Remove from recurring-event resident lists
+            for rec in artist.recurring_events.all():
                 rec.residents.remove(artist)
-                # PromoterProfile residents is a different M2M — skip silently if absent
+            for feed in artist.resident_feeds.all():
+                feed.residents.remove(artist)
 
             # 5. Delete the artist stub
             name = artist.name
