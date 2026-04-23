@@ -518,6 +518,14 @@ function initMap() {
     radarOn = !radarOn;
     if (!radarOn) {
       if (radarLayer && window.map) { window.map.removeLayer(radarLayer); radarLayer = null; }
+      document.getElementById('radar-btn').classList.remove('active');
+      return;
+    }
+    document.getElementById('radar-btn').classList.add('active');
+    if (!window.map) {
+      // Map not initialised yet — switch to hybrid view first, then show radar
+      setView('hybrid', false);
+      setTimeout(showRadar, 200);
       return;
     }
     showRadar();
