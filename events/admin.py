@@ -217,6 +217,63 @@ class ArtistAdmin(admin.ModelAdmin):
     retire_as_crew.short_description = '🪦 Retire selected as Crew (migrate events + delete Artist)'
 
 
+def _promoter_score(p):
+    """Rank promoter profiles for canonical merge: verified > most events > claimed > older pk."""
+    return (
+        p.is_verified * 1000 +
+        p.events.count() * 10 +
+        bool(p.claimed_by) * 5 +
+        bool(p.bio) * 2 +
+        (-p.pk)  # lower pk = created earlier = more canonical
+    )
+
+
+def merge_promoters(modeladmin, request, queryset):
+    """Merge selected PromoterProfiles into the most canonical one."""
+    promoters = list(queryset)
+    if len(promoters) < 2:
+        modeladmin.message_user(request, 'Select at least 2 promoters/crews to merge.', messages.WARNING)
+        return
+
+    winner = max(promoters, key=_promoter_score)
+    losers = [p for p in promoters if p.pk != winner.pk]
+
+    for loser in losers:
+        # Events M2M
+        for event in loser.events.all():
+            event.promoters.remove(loser)
+            event.promoters.add(winner)
+        # Artist linked_promoter FK
+        from events.models import Artist
+        Artist.objects.filter(linked_promoter=loser).update(linked_promoter=winner)
+        # VenueFeed FK
+        from events.models import VenueFeed
+        VenueFeed.objects.filter(promoter=loser).update(promoter=winner)
+        # RecurringEvent FK
+        RecurringEvent.objects.filter(promoter=loser).update(promoter=winner)
+        # Carry over missing profile fields
+        for field in ('bio', 'photo', 'website', 'instagram', 'soundcloud',
+                      'bandcamp', 'mixcloud', 'youtube', 'spotify', 'mastodon',
+                      'bluesky', 'tiktok', 'drive_folder_url', 'admin_email',
+                      'name_variants'):
+            if not getattr(winner, field, '') and getattr(loser, field, ''):
+                setattr(winner, field, getattr(loser, field))
+        if not winner.claimed_by and loser.claimed_by:
+            winner.claimed_by = loser.claimed_by
+        if not winner.is_verified and loser.is_verified:
+            winner.is_verified = True
+        loser.delete()
+
+    winner.save()
+    modeladmin.message_user(
+        request,
+        f'Merged {len(losers)} duplicate(s) into "{winner.name}" (pk={winner.pk}).',
+        messages.SUCCESS,
+    )
+
+merge_promoters.short_description = 'Merge selected crews into the most canonical one'
+
+
 class PromoterProfileAdminForm(forms.ModelForm):
     promoter_type = forms.MultipleChoiceField(
         choices=PromoterProfile.TYPE_CHOICES,
@@ -248,7 +305,7 @@ class PromoterProfileAdmin(admin.ModelAdmin):
     list_filter = ['is_verified', 'is_public']
     raw_id_fields = ['claimed_by']
     filter_horizontal = ['genres']
-    actions = ['send_claim_instructions', 'convert_to_artist']
+    actions = [merge_promoters, 'send_claim_instructions', 'convert_to_artist']
 
     def has_drive(self, obj):
         return bool(obj.drive_folder_url)
