@@ -3066,8 +3066,7 @@ def promoter_detail(request, slug):
     ) if request.user.is_authenticated else set()
     yt_embed_html = _get_yt_embed_cached(promoter.youtube) if _is_yt_channel(promoter.youtube) else ''
     twitch_clips = _get_twitch_clips_cached(promoter.twitch) if promoter.twitch and not promoter.is_live else []
-    from .models import TrackShare
-    shared_tracks = list(TrackShare.objects.filter(promoter=promoter, is_approved=True).select_related('submitted_by'))
+    shared_tracks = []  # TrackShare feature removed
 
     listings = list(promoter.record_listings.filter(is_available=True)) if promoter.shop_sheet_url else []
 
@@ -3282,56 +3281,14 @@ def promoter_edit(request, slug):
     return redirect('promoter_detail', slug=promoter.slug)
 
 
-_DEMO_MAX_MB = 300
-_DEMO_MAX_BYTES = _DEMO_MAX_MB * 1024 * 1024
-
 @login_required
 def submit_demo(request, slug):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST only'}, status=405)
-    promoter = get_object_or_404(PromoterProfile, slug=slug, is_public=True)
-    if not promoter.accept_demos:
-        return JsonResponse({'error': 'Demo submissions are not enabled for this profile.'}, status=403)
-    title = request.POST.get('title', '').strip()
-    note  = request.POST.get('note', '').strip()
-    f     = request.FILES.get('audio_file')
-    if not title:
-        return JsonResponse({'error': 'Title is required.'}, status=400)
-    if not f:
-        return JsonResponse({'error': 'No file attached.'}, status=400)
-    name_lower = f.name.lower()
-    if not name_lower.endswith('.mp3'):
-        return JsonResponse({'error': 'Only .mp3 files are accepted.'}, status=400)
-    if f.size > _DEMO_MAX_BYTES:
-        return JsonResponse({'error': f'File too large — max {_DEMO_MAX_MB} MB.'}, status=400)
-    from .models import TrackShare
-    share = TrackShare.objects.create(
-        promoter=promoter,
-        submitted_by=request.user,
-        title=title,
-        audio_file=f,
-        note=note,
-    )
-    return JsonResponse({
-        'ok': True,
-        'id': share.pk,
-        'title': share.title,
-        'url': share.audio_file.url,
-        'by': request.user.username,
-    })
+    return JsonResponse({'error': 'Demo submissions have been removed.'}, status=410)
 
 
 @login_required
 def delete_track_share(request, pk):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST only'}, status=405)
-    from .models import TrackShare
-    share = get_object_or_404(TrackShare, pk=pk)
-    if not (request.user == share.submitted_by or request.user.is_staff
-            or share.promoter.claimed_by == request.user):
-        return JsonResponse({'error': 'Not allowed.'}, status=403)
-    share.delete()
-    return JsonResponse({'ok': True})
+    return JsonResponse({'error': 'Demo submissions have been removed.'}, status=410)
 
 
 def api_event_detail(request, slug):

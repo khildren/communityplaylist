@@ -353,25 +353,6 @@ class PromoterProfile(models.Model):
         return reverse('promoter_detail', kwargs={'slug': self.slug})
 
 
-class TrackShare(models.Model):
-    """An MP3 mix/demo uploaded directly by a user to a promoter profile."""
-    promoter     = models.ForeignKey('PromoterProfile', on_delete=models.CASCADE, related_name='shared_tracks')
-    submitted_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, related_name='track_shares')
-    title        = models.CharField(max_length=300)
-    audio_file   = models.FileField(upload_to='demos/')
-    note         = models.CharField(max_length=200, blank=True)
-    created_at   = models.DateTimeField(auto_now_add=True)
-    is_approved  = models.BooleanField(default=True)
-
-    class Meta:
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f'{self.title} → {self.promoter}'
-
-    @property
-    def duration_display(self):
-        return ''
 
 
 class RecordListing(models.Model):
