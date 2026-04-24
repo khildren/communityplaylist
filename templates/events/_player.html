@@ -37,7 +37,7 @@
       <div class="cp-video-meta-artist">
         <span class="cp-ch-badge" id="cp-ch-badge-card">CH 4</span>
         <a id="cp-video-artist-card" href="#" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none"></a>
-        <a class="cp-show-soon" id="cp-show-soon" href="#" style="display:none">playing soon ↗</a>
+        <a class="cp-show-soon" id="cp-show-soon" href="#" style="display:none">playing soon →</a>
       </div>
       <div class="cp-video-meta-title" id="cp-video-title-card-text"></div>
     </div>
@@ -542,8 +542,8 @@
       showSoon.style.display = showIt ? 'inline-block' : 'none';
       if (showIt && v.show_soon_event_slug) {
         showSoon.href = '/events/' + v.show_soon_event_slug + '/';
-        showSoon.target = '_blank';
-        showSoon.rel = 'noopener noreferrer';
+        showSoon.removeAttribute('target');
+        showSoon.removeAttribute('rel');
       } else {
         showSoon.href = '#';
         showSoon.removeAttribute('target');
