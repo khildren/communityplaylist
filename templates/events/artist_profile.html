@@ -225,7 +225,7 @@ h1{color:#ff6b35;font-size:1.25em;font-weight:700;line-height:1.2}
   <div class="section-label">📺 Popular Clips &mdash; <a href="https://twitch.tv/{{ artist.twitch }}" target="_blank" rel="noopener" style="color:#6441a5">twitch.tv/{{ artist.twitch }}</a></div>
   <div class="twitch-clips">
     {% for clip in twitch_clips %}
-    <a class="clip-card" href="#" onclick="openClip('{{ clip.id|escapejs }}');return false" title="{{ clip.title|escapejs }}">
+    <a class="clip-card" href="#" onclick="openClip('{{ clip.id|escapejs }}','{{ clip.type|escapejs }}');return false" title="{{ clip.title|escapejs }}">
       <img class="clip-thumb" src="{{ clip.thumbnail }}" alt="{{ clip.title|escapejs }}" loading="lazy">
       <div class="clip-overlay"><div class="clip-play">▶</div></div>
       <div class="clip-info">
@@ -452,11 +452,14 @@ function cpPlay(btn) {
 }
 
 // ── Twitch clip modal ──
-function openClip(id) {
+function openClip(id, type) {
   var modal = document.getElementById('clip-modal');
   var iframe = document.getElementById('clip-iframe');
   if (!modal || !iframe) return;
-  iframe.src = 'https://clips.twitch.tv/embed?clip=' + id + '&parent=communityplaylist.com&autoplay=true';
+  var src = (type === 'vod')
+    ? 'https://player.twitch.tv/?video=' + id + '&parent=communityplaylist.com&autoplay=true'
+    : 'https://clips.twitch.tv/embed?clip=' + id + '&parent=communityplaylist.com&autoplay=true';
+  iframe.src = src;
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
 }

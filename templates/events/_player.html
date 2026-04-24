@@ -37,7 +37,7 @@
       <div class="cp-video-meta-artist">
         <span class="cp-ch-badge" id="cp-ch-badge-card">CH 4</span>
         <a id="cp-video-artist-card" href="#" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none"></a>
-        <span class="cp-show-soon" id="cp-show-soon" style="display:none">playing soon ↗</span>
+        <a class="cp-show-soon" id="cp-show-soon" href="#" style="display:none">playing soon ↗</a>
       </div>
       <div class="cp-video-meta-title" id="cp-video-title-card-text"></div>
     </div>
@@ -537,7 +537,18 @@
       artistCard.textContent = v.artist || '';
       artistCard.href = v.source_url || '#';
     }
-    if (showSoon)   showSoon.style.display = (!isLive && v.has_show_soon) ? 'inline-block' : 'none';
+    if (showSoon) {
+      var showIt = !isLive && v.has_show_soon;
+      showSoon.style.display = showIt ? 'inline-block' : 'none';
+      if (showIt && v.show_soon_event_slug) {
+        showSoon.href = '/events/' + v.show_soon_event_slug + '/';
+        showSoon.target = '_blank';
+        showSoon.rel = 'noopener noreferrer';
+      } else {
+        showSoon.href = '#';
+        showSoon.removeAttribute('target');
+      }
+    }
 
     // Badge in title card
     var badge = document.getElementById('cp-ch-badge-card');

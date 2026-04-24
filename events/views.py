@@ -1724,6 +1724,7 @@ def _get_twitch_clips_cached(channel):
     return clips
 
 def _fetch_twitch_clips(channel):
+    """Return up to 4 clips for a channel; falls back to past VODs if no clips."""
     from django.conf import settings as _s
     cid = getattr(_s, 'TWITCH_CLIENT_ID', '')
     csec = getattr(_s, 'TWITCH_CLIENT_SECRET', '')
@@ -1747,6 +1748,8 @@ def _fetch_twitch_clips(channel):
         if not users:
             return []
         broadcaster_id = users[0]['id']
+
+        # Try clips first
         clips_r = requests.get(
             'https://api.twitch.tv/helix/clips',
             params={'broadcaster_id': broadcaster_id, 'first': 4},
@@ -1761,7 +1764,36 @@ def _fetch_twitch_clips(channel):
                 'views':     c['view_count'],
                 'duration':  int(c.get('duration', 0)),
                 'url':       c['url'],
+                'type':      'clip',
             })
+
+        # Fall back to past VODs (archives) if no clips
+        if not clips:
+            vods_r = requests.get(
+                'https://api.twitch.tv/helix/videos',
+                params={'user_id': broadcaster_id, 'first': 4, 'type': 'archive'},
+                headers=hdrs, timeout=5,
+            )
+            for v in vods_r.json().get('data', []):
+                # VOD thumbnail URL needs resolution substitution
+                thumb = v.get('thumbnail_url', '').replace('%{width}', '320').replace('%{height}', '180')
+                # Parse duration string like "1h23m45s" → seconds
+                dur_str = v.get('duration', '0s')
+                dur = 0
+                import re as _re
+                for unit, mult in [('h', 3600), ('m', 60), ('s', 1)]:
+                    m = _re.search(r'(\d+)' + unit, dur_str)
+                    if m:
+                        dur += int(m.group(1)) * mult
+                clips.append({
+                    'id':        v['id'],
+                    'title':     v['title'],
+                    'thumbnail': thumb,
+                    'views':     v.get('view_count', 0),
+                    'duration':  dur,
+                    'url':       v['url'],
+                    'type':      'vod',
+                })
         return clips
     except Exception:
         return []
@@ -2820,14 +2852,25 @@ def api_video_queue(request):
     now = timezone.now()
     upcoming_cutoff = now + timedelta(days=30)
 
-    # Artist IDs with shows coming up
-    upcoming_artist_ids = set(
-        Artist.objects.filter(
-            events__start_date__gte=now,
-            events__start_date__lte=upcoming_cutoff,
-            events__status='approved',
-        ).values_list('pk', flat=True)
+    # Artist IDs with shows coming up → map to first event slug for the badge link
+    from django.db.models import Min
+    _upcoming_events = (
+        Event.objects.filter(
+            artists__isnull=False,
+            start_date__gte=now,
+            start_date__lte=upcoming_cutoff,
+            status='approved',
+        )
+        .order_by('start_date')
+        .values('artists', 'slug', 'start_date')
     )
+    upcoming_artist_ids = set()
+    upcoming_artist_slug: dict = {}  # artist_id → first event slug
+    for row in _upcoming_events:
+        aid = row['artists']
+        upcoming_artist_ids.add(aid)
+        if aid not in upcoming_artist_slug:
+            upcoming_artist_slug[aid] = row['slug']
 
     all_videos = list(
         VideoTrack.objects.filter(is_active=True)
@@ -2877,7 +2920,8 @@ def api_video_queue(request):
             'source_url':    source_url(v),
             'is_live':       v.is_live,
             'viewer_count':  v.live_viewer_count,
-            'has_show_soon': bool(v.artist_id and v.artist_id in upcoming_artist_ids),
+            'has_show_soon':         bool(v.artist_id and v.artist_id in upcoming_artist_ids),
+            'show_soon_event_slug':  upcoming_artist_slug.get(v.artist_id, '') if v.artist_id else '',
         }
         for v in queue
     ]})
