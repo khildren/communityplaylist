@@ -798,6 +798,80 @@ def dedup_by_title_date(modeladmin, request, queryset):
 dedup_by_title_date.short_description = 'Auto-remove duplicates (same title + date, keep best)'
 
 
+def fill_address_and_geocode(modeladmin, request, queryset):
+    """
+    For each selected event:
+      1. If location is just a venue name (no street number), replace it with the
+         matched Venue's full address.
+      2. Copy lat/lng from the matched venue if the event has none.
+      3. Geocode via Nominatim/Photon if still no coordinates.
+      4. Reverse-geocode neighbourhood from new coordinates if blank.
+    """
+    import re
+    from events.models import Venue
+    from events.geocode import geocode_location, reverse_geocode_neighborhood
+
+    addr_filled = coord_copied = geocoded = errors = 0
+
+    for ev in queryset:
+        changed = False
+        save_fields = []
+
+        venue = Venue.for_location(ev.location)
+        if venue:
+            # Fill address only when location looks like a name, not a street address
+            if venue.address and not re.search(r'\d+\s+\w', ev.location):
+                ev.location = venue.address
+                save_fields.append('location')
+                addr_filled += 1
+                changed = True
+            # Copy venue coordinates if event has none
+            if venue.latitude and venue.longitude and not ev.latitude:
+                ev.latitude = venue.latitude
+                ev.longitude = venue.longitude
+                save_fields += ['latitude', 'longitude']
+                coord_copied += 1
+                changed = True
+
+        # Geocode if still no coordinates
+        if not ev.latitude and ev.location and not ev.location.startswith(('http', 'www')):
+            try:
+                lat, lng = geocode_location(ev.location)
+                if lat and lng:
+                    ev.latitude, ev.longitude = lat, lng
+                    save_fields += ['latitude', 'longitude']
+                    geocoded += 1
+                    changed = True
+            except Exception:
+                errors += 1
+
+        # Reverse-geocode neighbourhood if we have fresh coordinates and none set
+        if changed and ev.latitude and not ev.neighborhood:
+            try:
+                hood = reverse_geocode_neighborhood(ev.latitude, ev.longitude)
+                if hood:
+                    ev.neighborhood = hood
+                    save_fields.append('neighborhood')
+            except Exception:
+                pass
+
+        if changed:
+            ev.save(update_fields=list(set(save_fields)))
+
+    parts = []
+    if addr_filled:  parts.append(f'{addr_filled} address{"es" if addr_filled != 1 else ""} filled from venue')
+    if coord_copied: parts.append(f'{coord_copied} coords copied from venue')
+    if geocoded:     parts.append(f'{geocoded} geocoded')
+    if errors:       parts.append(f'{errors} geocode failed')
+    modeladmin.message_user(
+        request,
+        ' · '.join(parts) if parts else 'Nothing to update — all selected events already have full addresses and coordinates.',
+        messages.SUCCESS if (addr_filled or coord_copied or geocoded) else messages.WARNING,
+    )
+
+fill_address_and_geocode.short_description = 'Fill address from venue + geocode coordinates'
+
+
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
     list_display = ['title', 'start_date', 'location', 'neighborhood', 'status', 'is_free', 'submitted_by']
@@ -808,7 +882,7 @@ class EventAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('title',)}
     autocomplete_fields = ['genres', 'artists']
     inlines = [EventPhotoInline]
-    actions = [merge_events, dedup_by_title_date]
+    actions = [merge_events, dedup_by_title_date, fill_address_and_geocode]
 
     def save_model(self, request, obj, form, change):
         old_status = None
