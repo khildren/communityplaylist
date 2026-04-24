@@ -541,12 +541,22 @@
       var showIt = !isLive && v.has_show_soon;
       showSoon.style.display = showIt ? 'inline-block' : 'none';
       if (showIt && v.show_soon_event_slug) {
-        showSoon.href = '/events/' + v.show_soon_event_slug + '/';
+        var _slug = v.show_soon_event_slug;
+        showSoon.href = '/events/' + _slug + '/';
         showSoon.removeAttribute('target');
         showSoon.removeAttribute('rel');
+        showSoon.onclick = function(e) {
+          // On the map/events page: stay in place, snap rotator + pan map
+          var onMapPage = !!document.querySelector('.hybrid-wrap');
+          if (onMapPage && window.cpRotatorFocus && window.cpRotatorFocus(_slug)) {
+            e.preventDefault();
+          }
+          // Off map page: let Turbo navigate normally
+        };
       } else {
         showSoon.href = '#';
         showSoon.removeAttribute('target');
+        showSoon.onclick = null;
       }
     }
 
@@ -975,6 +985,19 @@
     for (var i = 0; i < events.length; i++) {
       if (events[i].slug === slug) { showCard(i, false); return; }
     }
+  };
+  // Focus an event by slug: snap rotator, expand detail panel, show rotator
+  window.cpRotatorFocus = function(slug) {
+    for (var i = 0; i < events.length; i++) {
+      if (events[i].slug === slug) {
+        rotator.style.display = '';
+        showCard(i, true);
+        expanded = true;
+        if (erDetail) erDetail.classList.add('open');
+        return true;
+      }
+    }
+    return false;
   };
 
   // Re-check artist when track changes
