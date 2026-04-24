@@ -19,6 +19,15 @@
       <span class="hw-alert" id="hw-alert" style="display:none"></span>
     </div>
 
+    <!-- Global search — hidden on full map view -->
+    <div class="sh-search" id="sh-search" data-turbo-permanent>
+      <input id="sh-search-input" class="sh-search-input" type="search"
+             placeholder="Search events, artists, crews…"
+             autocomplete="off" autocorrect="off" spellcheck="false"
+             aria-label="Search" aria-autocomplete="list" aria-controls="sh-search-results">
+      <div id="sh-search-results" class="sh-search-results" role="listbox" aria-label="Search results"></div>
+    </div>
+
     <!-- Desktop: scrollable icon strip -->
     <div class="sh-icons" id="sh-icons">
       <a href="/artists/"    class="sh-icon" title="Artists">🎤</a>
@@ -57,6 +66,15 @@
 
   <!-- Icon drawer — slides down inside the sticky nav on mobile -->
   <div id="sh-icon-drawer" class="sh-icon-drawer" aria-hidden="true">
+    <!-- Mobile search row -->
+    <div class="sh-search-mobile" id="sh-search-mobile">
+      <div class="sh-search" style="max-width:100%;margin:0;flex:1" id="sh-search-mob">
+        <input id="sh-search-input-mob" class="sh-search-input" type="search"
+               placeholder="Search events, artists, crews…"
+               autocomplete="off" autocorrect="off" spellcheck="false">
+        <div id="sh-search-results-mob" class="sh-search-results"></div>
+      </div>
+    </div>
     <div class="sh-icon-drawer-inner">
       <a href="/artists/"    class="sh-icon" title="Artists">🎤</a>
       <a href="/promoters/"  class="sh-icon" title="Crews &amp; Promoters">📣</a>
@@ -139,5 +157,156 @@
   // Sync on load and Turbo navigation
   document.addEventListener('turbo:load', updateFilterSticky);
   updateFilterSticky();
+})();
+</script>
+
+<script>
+// ── Global header search ──────────────────────────────────────────────────────
+(function() {
+  if (window._cpSearchInit) return;
+  window._cpSearchInit = true;
+
+  function initSearch(inputEl, resultsEl) {
+    if (!inputEl || !resultsEl) return;
+    var debounce = null;
+    var activeIdx = -1;
+    var items = [];
+
+    function getItems() {
+      return Array.from(resultsEl.querySelectorAll('.sh-sr-item'));
+    }
+
+    function setActive(idx) {
+      items = getItems();
+      items.forEach(function(el, i) { el.classList.toggle('active', i === idx); });
+      activeIdx = idx;
+    }
+
+    function close() {
+      resultsEl.classList.remove('open');
+      activeIdx = -1;
+    }
+
+    function navigate(href) {
+      close();
+      inputEl.value = '';
+      if (window.Turbo) { Turbo.visit(href); } else { location.href = href; }
+    }
+
+    function render(data) {
+      var html = '';
+      var hasAny = false;
+
+      if (data.events && data.events.length) {
+        hasAny = true;
+        html += '<div class="sh-sr-section"><div class="sh-sr-label">Events</div>';
+        data.events.forEach(function(e) {
+          var sub = e.date + (e.loc ? ' · ' + e.loc : '');
+          html += '<a class="sh-sr-item" href="/events/' + e.slug + '/" data-href="/events/' + e.slug + '/">'
+               + '<span class="sh-sr-item-title">' + escHtml(e.title) + '</span>'
+               + (sub ? '<span class="sh-sr-item-sub">' + escHtml(sub) + '</span>' : '')
+               + '</a>';
+        });
+        html += '</div>';
+      }
+
+      if (data.artists && data.artists.length) {
+        if (hasAny) html += '<hr class="sh-sr-divider">';
+        hasAny = true;
+        html += '<div class="sh-sr-section"><div class="sh-sr-label">Artists</div>';
+        data.artists.forEach(function(a) {
+          html += '<a class="sh-sr-item" href="/artists/' + a.slug + '/" data-href="/artists/' + a.slug + '/">'
+               + '<span class="sh-sr-item-title">🎤 ' + escHtml(a.name) + '</span></a>';
+        });
+        html += '</div>';
+      }
+
+      if (data.crews && data.crews.length) {
+        if (hasAny) html += '<hr class="sh-sr-divider">';
+        hasAny = true;
+        html += '<div class="sh-sr-section"><div class="sh-sr-label">Crews &amp; Promoters</div>';
+        data.crews.forEach(function(p) {
+          html += '<a class="sh-sr-item" href="/promoters/' + p.slug + '/" data-href="/promoters/' + p.slug + '/">'
+               + '<span class="sh-sr-item-title">📣 ' + escHtml(p.name) + '</span></a>';
+        });
+        html += '</div>';
+      }
+
+      if (!hasAny) {
+        html = '<div class="sh-sr-empty">No results</div>';
+      }
+
+      resultsEl.innerHTML = html;
+      resultsEl.classList.add('open');
+      activeIdx = -1;
+
+      resultsEl.querySelectorAll('.sh-sr-item').forEach(function(el) {
+        el.addEventListener('mousedown', function(e) {
+          e.preventDefault();
+          navigate(el.getAttribute('data-href'));
+        });
+      });
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function search(q) {
+      if (q.length < 2) { close(); return; }
+      fetch('/api/search/?q=' + encodeURIComponent(q))
+        .then(function(r) { return r.json(); })
+        .then(render)
+        .catch(function() { close(); });
+    }
+
+    inputEl.addEventListener('input', function() {
+      clearTimeout(debounce);
+      var q = inputEl.value.trim();
+      debounce = setTimeout(function() { search(q); }, 280);
+    });
+
+    inputEl.addEventListener('keydown', function(e) {
+      items = getItems();
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActive(Math.min(activeIdx + 1, items.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActive(Math.max(activeIdx - 1, -1));
+      } else if (e.key === 'Enter') {
+        if (activeIdx >= 0 && items[activeIdx]) {
+          navigate(items[activeIdx].getAttribute('data-href'));
+        } else if (inputEl.value.trim()) {
+          navigate('/?q=' + encodeURIComponent(inputEl.value.trim()));
+        }
+      } else if (e.key === 'Escape') {
+        close();
+        inputEl.blur();
+      }
+    });
+
+    inputEl.addEventListener('focus', function() {
+      if (inputEl.value.trim().length >= 2) resultsEl.classList.add('open');
+    });
+
+    document.addEventListener('click', function(e) {
+      if (!inputEl.contains(e.target) && !resultsEl.contains(e.target)) close();
+    });
+
+    document.addEventListener('turbo:before-visit', function() {
+      close();
+      inputEl.value = '';
+    });
+  }
+
+  initSearch(
+    document.getElementById('sh-search-input'),
+    document.getElementById('sh-search-results')
+  );
+  initSearch(
+    document.getElementById('sh-search-input-mob'),
+    document.getElementById('sh-search-results-mob')
+  );
 })();
 </script>

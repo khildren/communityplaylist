@@ -460,6 +460,42 @@ def api_parse_lineup(request):
     })
 
 
+def api_global_search(request):
+    """GET /api/search/?q=<query> — search events, artists, and crews for the header search bar."""
+    from django.db.models import Q
+    q = request.GET.get('q', '').strip()
+    if len(q) < 2:
+        return JsonResponse({'events': [], 'artists': [], 'crews': []})
+
+    events = (
+        Event.objects
+        .filter(Q(title__icontains=q) | Q(location__icontains=q), status='approved')
+        .order_by('-start_date')
+        .only('title', 'slug', 'start_date', 'location')[:6]
+    )
+    artists = (
+        Artist.objects
+        .filter(name__icontains=q)
+        .only('name', 'slug')[:5]
+    )
+    crews = (
+        PromoterProfile.objects
+        .filter(Q(name__icontains=q), is_public=True)
+        .only('name', 'slug')[:4]
+    )
+
+    return JsonResponse({
+        'events': [
+            {'title': e.title, 'slug': e.slug,
+             'date': e.start_date.strftime('%-m/%-d/%y'),
+             'loc':  (e.location or '')[:40]}
+            for e in events
+        ],
+        'artists': [{'name': a.name, 'slug': a.slug} for a in artists],
+        'crews':   [{'name': p.name, 'slug': p.slug} for p in crews],
+    })
+
+
 def api_route_proxy(request):
     """
     GET /api/route/?from=lat,lng&to=lat,lng
