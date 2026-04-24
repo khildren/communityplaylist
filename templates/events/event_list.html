@@ -713,11 +713,11 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
 
     pendingRoutes[key] = cb ? [cb] : [];
 
-    const url = 'https://router.project-osrm.org/route/v1/driving/'
-      + from.lng+','+from.lat+';'+to.lng+','+to.lat+'?overview=full&geometries=geojson';
+    // Use server-side proxy — caches routes on Unraid, shared across all users
+    const url = '/api/route/?from='+from.lat+','+from.lng+'&to='+to.lat+','+to.lng;
 
     const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const tId  = setTimeout(function() { if (ctrl) ctrl.abort(); }, 8000);
+    const tId  = setTimeout(function() { if (ctrl) ctrl.abort(); }, 10000);
 
     function resolve(pts) {
       clearTimeout(tId);
@@ -730,9 +730,7 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
     fetch(url, ctrl ? { signal: ctrl.signal } : {})
       .then(function(r) { return r.json(); })
       .then(function(d) {
-        resolve((d.routes && d.routes[0])
-          ? d.routes[0].geometry.coordinates.map(function(c){ return [c[1], c[0]]; })
-          : straightPath(from, to));
+        resolve(d.pts || straightPath(from, to));
       })
       .catch(function() {
         clearTimeout(tId);
@@ -890,6 +888,8 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
         return;
       }
     }
+    // No route drawn — clear any leftover line so it doesn't stick on the map
+    clearRoute();
     arrive(false);
   }
 

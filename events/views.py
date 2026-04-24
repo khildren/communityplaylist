@@ -460,6 +460,45 @@ def api_parse_lineup(request):
     })
 
 
+def api_route_proxy(request):
+    """
+    GET /api/route/?from=lat,lng&to=lat,lng
+    Server-side OSRM proxy with long-lived cache. Offloads external API calls
+    from the browser to Unraid and shares the cache across all users/sessions.
+    Returns {pts: [[lat,lng], ...]} or {pts: null} on failure.
+    """
+    from django.core.cache import cache as _cache
+    import re as _re
+
+    coord_re = _re.compile(r'^-?\d+(\.\d+)?,-?\d+(\.\d+)?$')
+    frm = request.GET.get('from', '').strip()
+    to  = request.GET.get('to', '').strip()
+    if not coord_re.match(frm) or not coord_re.match(to):
+        return JsonResponse({'pts': None}, status=400)
+
+    cache_key = f'osrm:{frm}:{to}'
+    cached = _cache.get(cache_key)
+    if cached is not None:
+        return JsonResponse({'pts': cached})
+
+    try:
+        flat, flng = frm.split(',')
+        tlat, tlng = to.split(',')
+        url = (f'https://router.project-osrm.org/route/v1/driving/'
+               f'{flng},{flat};{tlng},{tlat}?overview=full&geometries=geojson')
+        r = requests.get(url, timeout=8)
+        d = r.json()
+        if d.get('routes'):
+            pts = [[c[1], c[0]] for c in d['routes'][0]['geometry']['coordinates']]
+        else:
+            pts = None
+    except Exception:
+        pts = None
+
+    _cache.set(cache_key, pts, timeout=86400 * 7)  # cache 7 days
+    return JsonResponse({'pts': pts})
+
+
 def api_artist_lookup(request):
     """
     GET /api/artist-lookup/?q=<name>
