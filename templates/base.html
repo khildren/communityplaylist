@@ -860,5 +860,69 @@
   }).catch(function(){});
 })();
 </script>
+
+<!-- ── HiHi Labs credit + easter egg ── -->
+<div style="text-align:center;padding:18px 0 24px;font-size:.68em;color:#2a2a2a;font-family:'Courier New',monospace;letter-spacing:.06em">
+  built by <a href="https://hihi.communityplaylist.com/portfolio.html" id="hihi-logo" target="_blank" rel="noopener"
+    style="color:#2a2a2a;text-decoration:none;font-weight:700;transition:color .2s"
+    title="HiHi Labs — 17 years of Portland web work">HiHi <em style="font-style:normal;color:#2a2a2a;transition:color .2s" id="hihi-labs-em">Labs</em></a>
+</div>
+
+<!-- Konami egg overlay -->
+<div id="hihi-egg" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);align-items:center;justify-content:center">
+  <div style="background:#111;border:1px solid #ff6b35;border-radius:12px;padding:36px 40px;max-width:400px;text-align:center;font-family:'Courier New',monospace">
+    <div style="font-size:1.6em;color:#ff6b35;font-weight:700;margin-bottom:12px">◉ you found it.</div>
+    <div style="color:#ccc;font-size:.88em;line-height:1.7;margin-bottom:20px">
+      Built by <strong>HiHi Labs</strong> — 17 years of underground web work.<br>
+      Portland-based. No algorithm. No ads.<br><br>
+      <span style="color:#666;font-size:.85em">Community Playlist is one of ours.</span>
+    </div>
+    <a href="https://hihi.communityplaylist.com/portfolio.html" target="_blank" rel="noopener"
+      style="display:inline-block;background:#ff6b35;color:#111;font-weight:700;padding:10px 22px;border-radius:6px;text-decoration:none;font-size:.88em;margin-bottom:16px">See the portfolio →</a>
+    <br>
+    <button onclick="document.getElementById('hihi-egg').style.display='none'"
+      style="background:transparent;border:none;color:#444;font-family:'Courier New',monospace;font-size:.75em;cursor:pointer">← close</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var logo = document.getElementById('hihi-logo');
+  var logoEm = document.getElementById('hihi-labs-em');
+  if (!logo) return;
+
+  // 7-click = purple mode. Double-click = reset.
+  var n = 0, t;
+  logo.addEventListener('click', function(e){
+    e.preventDefault(); n++; clearTimeout(t);
+    if (n >= 7) {
+      document.documentElement.style.setProperty('--cp-accent', '#cc88ff');
+      logo.style.color = '#cc88ff';
+      if (logoEm) logoEm.style.color = '#cc88ff';
+      n = 0;
+    } else { t = setTimeout(function(){ n = 0; }, 2800); }
+  });
+  logo.addEventListener('dblclick', function(){
+    document.documentElement.style.removeProperty('--cp-accent');
+    logo.style.color = '#2a2a2a'; if (logoEm) logoEm.style.color = '#2a2a2a';
+  });
+
+  // Konami code → show egg
+  var seq = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+  var ki = 0;
+  document.addEventListener('keydown', function(e){
+    if (e.key === seq[ki]) { ki++; if (ki === seq.length){ document.getElementById('hihi-egg').style.display='flex'; ki=0; } }
+    else { ki = e.key === seq[0] ? 1 : 0; }
+  });
+
+  // Close egg on backdrop click
+  document.getElementById('hihi-egg').addEventListener('click', function(e){
+    if (e.target === this) this.style.display = 'none';
+  });
+
+  // Console hint
+  console.log('%c◉ HiHi Labs%c — built this. Try: ↑↑↓↓←→←→ B A', 'color:#ff6b35;font-weight:bold', 'color:#666');
+})();
+</script>
 </body>
 </html>
