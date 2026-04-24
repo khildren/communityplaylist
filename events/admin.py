@@ -96,6 +96,17 @@ class ArtistAdmin(admin.ModelAdmin):
                        'latitude', 'longitude', 'last_enriched_at']
     raw_id_fields = ['claimed_by', 'linked_promoter']
     change_form_template = 'admin/events/artist/change_form.html'
+    fieldsets = [
+        (None, {'fields': ['name', 'slug', 'photo', 'bio', 'website']}),
+        ('Social links', {'fields': ['instagram', 'soundcloud', 'bandcamp', 'mixcloud',
+                                     'youtube', 'spotify', 'mastodon', 'bluesky',
+                                     'tiktok', 'twitch', 'beatport', 'discogs'], 'classes': ['collapse']}),
+        ('Music folder', {'fields': ['drive_folder_url']}),
+        ('Claim & verification', {'fields': ['admin_email', 'claimed_by', 'is_verified', 'is_live',
+                                              'youtube_channel_id', 'view_count', 'linked_promoter']}),
+        ('Auto-generated', {'fields': ['is_stub', 'auto_bio', 'home_neighborhood', 'city',
+                                        'latitude', 'longitude', 'last_enriched_at'], 'classes': ['collapse']}),
+    ]
 
     def get_urls(self):
         from django.urls import path as _path

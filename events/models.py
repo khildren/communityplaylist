@@ -161,6 +161,11 @@ class Artist(models.Model):
         help_text='Public Google Drive folder URL — live sets, DJ sessions, mixes',
     )
 
+    admin_email = models.EmailField(
+        blank=True,
+        help_text='Internal contact email — used to send claim instructions. Not shown publicly.',
+    )
+
     claimed_by = models.ForeignKey(
         'auth.User', null=True, blank=True, on_delete=models.SET_NULL,
         related_name='claimed_artists',
