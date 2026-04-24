@@ -6,7 +6,7 @@ from django.urls import path
 from django.http import HttpResponseRedirect
 from django.contrib import messages
 from django import forms
-from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile, PromoterProfile, PlaylistTrack, RecordListing, RecordReservation, VideoTrack, Shelter, InstagramAccount, InstagramPost
+from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile, PromoterProfile, PlaylistTrack, RecordListing, RecordReservation, VideoTrack, Shelter, InstagramAccount, InstagramPost, WorkerTask
 import os
 import datetime
 import subprocess
@@ -1276,6 +1276,34 @@ _COMMAND_APP = {
     'check_live_streams':        'events',
     'sweep_spam_topics':         'board',
 }
+
+
+@admin.register(WorkerTask)
+class WorkerTaskAdmin(admin.ModelAdmin):
+    list_display  = ['task_type', 'status', 'payload_summary', 'created_at', 'completed_at', 'error_msg']
+    list_filter   = ['task_type', 'status']
+    ordering      = ['-created_at']
+    readonly_fields = ['task_type', 'payload', 'status', 'result', 'error_msg', 'created_at', 'completed_at']
+    actions       = ['retry_errored', 'clear_done']
+
+    def payload_summary(self, obj):
+        if 'address' in obj.payload:
+            return obj.payload['address'][:60]
+        return str(obj.payload)[:60]
+    payload_summary.short_description = 'Address / Payload'
+
+    def has_add_permission(self, request):
+        return False
+
+    def retry_errored(self, request, queryset):
+        n = queryset.filter(status='error').update(status='queued', error_msg='')
+        self.message_user(request, f'{n} task(s) re-queued.')
+    retry_errored.short_description = 'Re-queue errored tasks'
+
+    def clear_done(self, request, queryset):
+        n, _ = queryset.filter(status='done').delete()
+        self.message_user(request, f'{n} completed task(s) deleted.')
+    clear_done.short_description = 'Delete completed tasks'
 
 
 @admin.register(CronStatus)
