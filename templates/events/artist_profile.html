@@ -184,12 +184,13 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
 </div>
 {% endif %}
 
-{# ── Embeds — Spotify / YouTube / Mixcloud / Beatport / Apple Music ── #}
-{% if artist.spotify or artist.youtube or artist.mixcloud or artist.bandcamp or artist.twitch %}
+{# ── Embeds — Spotify / YouTube / Mixcloud / SoundCloud / Bandcamp / Twitch ── #}
+{% if artist.spotify or artist.youtube or artist.mixcloud or artist.soundcloud or artist.bandcamp or artist.twitch %}
 <script>
 window.cpEmbedLinks = [
   {% if artist.spotify %}{"url":"{{ artist.spotify|escapejs }}","label":"Spotify"},{% endif %}
   {% if artist.youtube %}{"url":"{{ artist.youtube|escapejs }}","label":"YouTube"{% if yt_embed_html %},"embed_html":"{{ yt_embed_html|escapejs }}"{% endif %}},{% endif %}
+  {% if artist.soundcloud %}{"url":"https://soundcloud.com/{{ artist.soundcloud|escapejs }}","label":"SoundCloud"},{% endif %}
   {% if artist.twitch %}{"url":"https://twitch.tv/{{ artist.twitch|escapejs }}","label":"Twitch"},{% endif %}
   {% if artist.mixcloud %}{"url":"https://www.mixcloud.com/{{ artist.mixcloud|escapejs }}/","label":"Mixcloud"},{% endif %}
   {% if artist.bandcamp %}{"url":"{{ artist.bandcamp|escapejs }}","label":"Bandcamp"},{% endif %}
