@@ -152,9 +152,12 @@ html.is-hybrid #map{flex:1;height:auto!important;display:block!important}
 .leaflet-control-attribution{background:rgba(17,17,17,.7)!important;color:#444!important}
 .leaflet-control-attribution a{color:#555!important}
 /* ── Dark popup ── */
-.leaflet-popup-content-wrapper{background:#1e1e1e!important;color:#ccc!important;border:1px solid #333!important;box-shadow:0 4px 20px rgba(0,0,0,.8)!important;border-radius:8px!important}
+.leaflet-popup-content-wrapper{background:#1e1e1e!important;color:#ccc!important;border:1px solid #333!important;box-shadow:0 4px 20px rgba(0,0,0,.8)!important;border-radius:8px!important;transform-origin:bottom center;animation:cp-popup-in .3s ease-out}
 .leaflet-popup-tip{background:#1e1e1e!important}
 .leaflet-popup-content{color:#ccc!important}
+.leaflet-popup-content-wrapper.cp-popup-closing{animation:cp-popup-out .35s ease-in forwards!important}
+@keyframes cp-popup-in{from{opacity:0;transform:scale(.82) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes cp-popup-out{from{opacity:1;transform:scale(1) translateY(0)}to{opacity:0;transform:scale(.82) translateY(10px)}}
 
 /* ── Night Builder ──────────────────────────────────── */
 .cp-near-pill{display:inline-flex;align-items:center;gap:5px;background:#1a1a1a;border:1px solid #2a2a2a;color:#aaa;padding:4px 10px;border-radius:20px;cursor:pointer;font-size:.78em;white-space:nowrap;transition:border-color .15s,color .15s}
@@ -549,7 +552,7 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
 (function() {
   const IDLE_START_MS   = 120000;
   const IDLE_RESUME_MS  = 120000;
-  const PER_EVENT_MS    = 1800;   // brief card read before route begins
+  const PER_EVENT_MS    = 5000;   // dwell time at each event before route begins
   const ROUTE_TRAVEL_MS = 8000;   // dot travel time — slow and deliberate
   const FLY_DURATION    = 3.5;    // seconds for flyTo zoom-into-event
   const FIT_DURATION    = 4.0;    // seconds for fitBounds zoom-to-route
@@ -558,6 +561,7 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
   let idleTimer  = null;
   let cycleIdx   = 0;
   let cycling    = false;
+  let activeHighlightSlug = null;
 
   // ── Route animation state ──
   let routeLayer = null;
@@ -805,6 +809,7 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
   }
 
   function highlightEvent(slug, skipFly) {
+    activeHighlightSlug = slug;
     document.querySelectorAll('.event.highlighted').forEach(function(c) {
       const pm = markersBySlug[c.dataset.slug];
       if (pm) { pm.setIcon(makeIcon(false, categoryBySlug[c.dataset.slug])); if(pm._icon) pm._icon.style.zIndex=''; }
@@ -822,6 +827,7 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
       if (map && !skipFly) {
         map.flyTo(m.getLatLng(), 15, { animate: true, duration: FLY_DURATION, easeLinearity: 0.12 });
         map.once('moveend', function() {
+          if (activeHighlightSlug !== slug) return;  // cycle moved on — don't re-pulse old marker
           m.setIcon(makeIcon(true, categoryBySlug[slug], true));
           if (m._icon) m._icon.style.zIndex = 1000;
         });
@@ -846,15 +852,20 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
       }
       cycleIdx++;
 
-      // Open popup briefly while card is shown, close before route begins
+      // Open popup, hold, then animate retract before route begins
       const m = markersBySlug[slug];
       const popupOpen = setTimeout(function() {
         if (!cycling || !m) return;
         m.openPopup();
       }, 400);
+      // Begin retract animation 400ms before actual close
+      const popupRetract = setTimeout(function() {
+        const pw = document.querySelector('.leaflet-popup-content-wrapper');
+        if (pw) pw.classList.add('cp-popup-closing');
+      }, PER_EVENT_MS - 750);
       const popupClose = setTimeout(function() {
         if (m) m.closePopup();
-      }, 1500);
+      }, PER_EVENT_MS - 350);
 
       // Pre-fetch route to the NEXT event while dwelling on this one
       const nextCard = cards[cycleIdx < cards.length ? cycleIdx : 0];
@@ -872,6 +883,7 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
       const capturedEvData = evData;
       cycleTimer = setTimeout(function() {
         clearTimeout(popupOpen);
+        clearTimeout(popupRetract);
         clearTimeout(popupClose);
         if (m) m.closePopup();
         cycleStep(capturedEvData);
@@ -902,6 +914,7 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
   function stopCycle() {
     if (!cycling) return;
     cycling = false; window._cpCycling = false;
+    activeHighlightSlug = null;
     clearTimeout(cycleTimer);
     clearRoute();
     if (map) map.closePopup();
@@ -931,6 +944,7 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
   // Clean up before Turbo navigates away — prevents listener accumulation
   function cleanupAutopilot() {
     cycling = false; window._cpCycling = false;
+    activeHighlightSlug = null;
     clearTimeout(idleTimer);
     clearTimeout(cycleTimer);
     clearRoute();
@@ -1117,7 +1131,15 @@ function setView(v, persist) {
         document.documentElement.style.setProperty('--top-h', top + 'px');
       }
       if (map) map.invalidateSize({animate: false});
-    }, 150);
+      // On mobile: if autopilot is running, snap map to current highlighted event
+      if (map && window._cpCycling) {
+        var hi = document.querySelector('.event.highlighted');
+        if (hi && window.markersBySlug) {
+          var hm = window.markersBySlug[hi.dataset.slug];
+          if (hm) map.setView(hm.getLatLng(), 15, {animate: false});
+        }
+      }
+    }, 200);
   }
 
   if (persist !== false) localStorage.setItem('cp_view', v);

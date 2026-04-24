@@ -70,6 +70,7 @@ class Command(BaseCommand):
             by_norm[_norm(ev.title)].append(ev)
 
         merged = deleted = 0
+        deleted_pks = set()
 
         for norm_title, group in by_norm.items():
             if len(group) < 2:
@@ -80,8 +81,14 @@ class Command(BaseCommand):
 
             i = 0
             while i < len(group):
+                if group[i].id in deleted_pks:
+                    i += 1
+                    continue
                 j = i + 1
                 while j < len(group):
+                    if group[j].id in deleted_pks:
+                        j += 1
+                        continue
                     a, b = group[i], group[j]
                     if abs(a.start_date - b.start_date) <= window:
                         # Duplicate pair found
@@ -117,9 +124,9 @@ class Command(BaseCommand):
                             dupe_ev.delete()
                             deleted += 1
 
-                        # Remove dupe from remaining candidates in group
-                        group.pop(j)
+                        deleted_pks.add(dupe.id)
                         merged += 1
+                        j += 1
                     else:
                         j += 1
                 i += 1

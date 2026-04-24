@@ -153,7 +153,7 @@ def import_ical(feed, now, stdout, stderr):
             # in website but that caused broken links; slug dedup is sufficient.
             existing = None
             if not existing:
-                slug_base = slugify(f"{summary}-{dtstart.strftime('%Y-%m-%d')}")
+                slug_base = slugify(f"{re.sub(r'\\s*&\\s*', ' and ', summary)}-{dtstart.strftime('%Y-%m-%d')}")
                 existing = Event.objects.filter(slug__startswith=slug_base).first()
             if not existing:
                 existing = _same_day_title_exists(summary, dtstart)
@@ -301,7 +301,7 @@ def import_musicbrainz(feed, now, stdout, stderr):
                 mb_url = f"https://musicbrainz.org/event/{ev.get('id', '')}"
                 display_title = title[:200]
 
-                slug_base = slugify(f"{display_title}-{dtstart.strftime('%Y-%m-%d')}")
+                slug_base = slugify(f"{re.sub(r'\\s*&\\s*', ' and ', display_title)}-{dtstart.strftime('%Y-%m-%d')}")
                 if Event.objects.filter(slug__startswith=slug_base).exists():
                     skipped += 1
                     continue
@@ -499,7 +499,7 @@ def import_squarespace(feed, now, stdout, stderr):
             if event_url:
                 existing = Event.objects.filter(website=event_url[:200]).first()
             if not existing:
-                slug_base = slugify(f"{title}-{dtstart.strftime('%Y-%m-%d')}")
+                slug_base = slugify(f"{re.sub(r'\\s*&\\s*', ' and ', title)}-{dtstart.strftime('%Y-%m-%d')}")
                 existing = Event.objects.filter(slug__startswith=slug_base).first()
 
             if existing:
@@ -622,7 +622,7 @@ def import_eventbrite(feed, now, stdout, stderr):
 
                 is_free = ev.get('is_free', False)
 
-                slug_base = slugify(f"{title}-{dtstart.strftime('%Y-%m-%d')}")
+                slug_base = slugify(f"{re.sub(r'\\s*&\\s*', ' and ', title)}-{dtstart.strftime('%Y-%m-%d')}")
                 if Event.objects.filter(slug__startswith=slug_base).exists():
                     skipped += 1
                     continue
@@ -786,7 +786,7 @@ def import_19hz(feed, now, stdout, stderr):
             organiser = nested_tds[2].get_text(strip=True) if len(nested_tds) > 2 else ''
 
             # ── Dedup ─────────────────────────────────────────────────────────
-            slug_base = slugify(f"{title}-{event_date.strftime('%Y-%m-%d')}")
+            slug_base = slugify(f"{re.sub(r'\\s*&\\s*', ' and ', title)}-{event_date.strftime('%Y-%m-%d')}")
             if Event.objects.filter(slug__startswith=slug_base).exists():
                 skipped += 1
                 continue
@@ -915,7 +915,7 @@ def import_eael(feed, now, stdout, stderr):
 
             # Dedup by title + date
             event_date = dtstart.date()
-            slug_base = slugify(f"{title}-{event_date.strftime('%Y-%m-%d')}")
+            slug_base = slugify(f"{re.sub(r'\\s*&\\s*', ' and ', title)}-{event_date.strftime('%Y-%m-%d')}")
             if Event.objects.filter(slug__startswith=slug_base).exists():
                 skipped += 1
                 continue
