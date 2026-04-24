@@ -903,6 +903,57 @@ def fill_address_and_geocode(modeladmin, request, queryset):
 fill_address_and_geocode.short_description = 'Fill address from venue + queue geocoding'
 
 
+def link_twitch_location_artists(modeladmin, request, queryset):
+    """
+    For events whose location is a twitch.tv URL, extract the handle,
+    find or create an Artist with that Twitch handle, and link them to the event.
+    """
+    import re
+    from django.utils.text import slugify as _slugify
+
+    TWITCH_RE = re.compile(r'https?://(?:www\.)?twitch\.tv/([A-Za-z0-9_]+)/?', re.I)
+
+    created = linked = already = skipped = 0
+
+    for ev in queryset:
+        m = TWITCH_RE.match((ev.location or '').strip())
+        if not m:
+            skipped += 1
+            continue
+        handle = m.group(1).lower()
+
+        artist = Artist.objects.filter(twitch__iexact=handle).first()
+        if not artist:
+            # Humanise handle → name (beersandsbeatspdx → Beersandsbeatspdx)
+            name = handle.replace('_', ' ').title()
+            base_slug = _slugify(name) or handle
+            slug = base_slug
+            n = 1
+            while Artist.objects.filter(slug=slug).exists():
+                slug = f'{base_slug}-{n}'; n += 1
+            artist = Artist.objects.create(name=name, slug=slug, twitch=handle)
+            created += 1
+
+        if ev.artists.filter(pk=artist.pk).exists():
+            already += 1
+        else:
+            ev.artists.add(artist)
+            linked += 1
+
+    parts = []
+    if created:  parts.append(f'{created} artist stub{"s" if created != 1 else ""} created')
+    if linked:   parts.append(f'{linked} event{"s" if linked != 1 else ""} linked')
+    if already:  parts.append(f'{already} already linked')
+    if skipped:  parts.append(f'{skipped} skipped (no Twitch URL)')
+    modeladmin.message_user(
+        request,
+        ' · '.join(parts) if parts else 'No Twitch location URLs found in selection.',
+        messages.SUCCESS if (created or linked) else messages.WARNING,
+    )
+
+link_twitch_location_artists.short_description = 'Auto-create/link artists from Twitch location URLs'
+
+
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
     list_display = ['title', 'start_date', 'location', 'neighborhood', 'status', 'is_free', 'submitted_by']
@@ -913,7 +964,7 @@ class EventAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('title',)}
     autocomplete_fields = ['genres', 'artists']
     inlines = [EventPhotoInline]
-    actions = [merge_events, dedup_by_title_date, fill_address_and_geocode]
+    actions = [merge_events, dedup_by_title_date, fill_address_and_geocode, link_twitch_location_artists]
 
     def save_model(self, request, obj, form, change):
         old_status = None
