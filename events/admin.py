@@ -594,7 +594,7 @@ class VenueAdmin(admin.ModelAdmin):
     search_fields = ['name', 'address', 'neighborhood']
     ordering      = ['name']
     readonly_fields = ['created_at']
-    actions = ['verify_venues', 'autofill_from_website', 'close_venue']
+    actions = ['verify_venues', 'autofill_from_website', 'close_venue', 'queue_venue_geocoding']
 
     def verify_venues(self, request, queryset):
         queryset.update(verified=True)
@@ -673,6 +673,27 @@ class VenueAdmin(admin.ModelAdmin):
                 filled += 1
         self.message_user(request, f'Auto-filled {filled} venue(s) from their websites.')
     autofill_from_website.short_description = 'Auto-fill address & logo from website'
+
+    def queue_venue_geocoding(self, request, queryset):
+        """Queue geocode_venue tasks for venues that have an address but no coordinates."""
+        from events.models import WorkerTask
+        to_geocode = queryset.filter(address__gt='').filter(latitude__isnull=True)
+        tasks = [
+            WorkerTask(task_type='geocode_venue', payload={'venue_id': v.id, 'address': v.address})
+            for v in to_geocode
+        ]
+        if tasks:
+            WorkerTask.objects.bulk_create(tasks, ignore_conflicts=True)
+        already = queryset.count() - len(tasks)
+        parts = []
+        if tasks:    parts.append(f'{len(tasks)} venue{"s" if len(tasks) != 1 else ""} queued for geocoding')
+        if already:  parts.append(f'{already} already had coordinates')
+        self.message_user(
+            request,
+            ' · '.join(parts) if parts else 'No venues with addresses found to geocode.',
+            messages.SUCCESS if tasks else messages.WARNING,
+        )
+    queue_venue_geocoding.short_description = 'Queue geocoding for venues missing coordinates'
 
     def save_model(self, request, obj, form, change):
         # Auto-scrape website when address or logo is blank
