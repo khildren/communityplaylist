@@ -1847,7 +1847,7 @@ if (!window._cpPrewarmBound) {
     // Links
     var links = document.createElement('div');
     links.className = 'ee-links';
-    if (d.website) {
+    if (d.website && d.website.startsWith('http')) {
       var a = document.createElement('a');
       a.className = 'ee-link'; a.href = d.website;
       a.target = '_blank'; a.rel = 'noopener noreferrer';

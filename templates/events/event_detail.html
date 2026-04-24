@@ -160,7 +160,7 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
 <div class="promo-photo"><img src="{{ event.photo.url }}" alt="{{ event.title }}" class="lb-trigger" data-caption="{{ event.title }}"></div>
 {% endif %}
 <p class="desc">{{ event.description }}</p>
-{% if event.website %}
+{% if event.website and event.website|slice:":4" == "http" %}
 <a href="{{ event.website }}" target="_blank" class="more-link">More info / Tickets →</a>
 {% endif %}
 {% if event.extra_links %}

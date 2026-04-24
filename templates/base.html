@@ -522,7 +522,7 @@
     });
     descEl.textContent = d.description || '';
     linksEl.innerHTML = '';
-    if (d.website) {
+    if (d.website && d.website.startsWith('http')) {
       var a = document.createElement('a');
       a.className = 'cp-ep-link'; a.href = d.website;
       a.target = '_blank'; a.rel = 'noopener noreferrer';

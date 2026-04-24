@@ -149,10 +149,9 @@ def import_ical(feed, now, stdout, stderr):
             if dtstart < now:
                 continue
 
-            # Dedup: UID stored in website field → slug → normalized title+day.
+            # Dedup: slug match → normalized title+day. UID was previously stored
+            # in website but that caused broken links; slug dedup is sufficient.
             existing = None
-            if uid:
-                existing = Event.objects.filter(website=uid[:200]).first()
             if not existing:
                 slug_base = slugify(f"{summary}-{dtstart.strftime('%Y-%m-%d')}")
                 existing = Event.objects.filter(slug__startswith=slug_base).first()
@@ -168,8 +167,9 @@ def import_ical(feed, now, stdout, stderr):
                     changed['start_date'] = dtstart
                 if dtend and existing.end_date != dtend:
                     changed['end_date'] = dtend
-                if uid and existing.website != uid[:200]:
-                    changed['website'] = uid[:200]
+                real_url_patch = url_prop[:200] if (url_prop and url_prop.startswith('http')) else ''
+                if real_url_patch and existing.website != real_url_patch:
+                    changed['website'] = real_url_patch
                 if changed:
                     for k, v in changed.items():
                         setattr(existing, k, v)
@@ -181,6 +181,9 @@ def import_ical(feed, now, stdout, stderr):
             if url_prop and url_prop not in description:
                 description = f'{description}\n\nEvent link: {url_prop}'.strip()
 
+            # Prefer a real event URL for the website field; fall back to UID
+            # only if no URL is available (UID is used as the dedup key).
+            real_url = url_prop[:200] if (url_prop and url_prop.startswith('http')) else ''
             ev = Event.objects.create(
                 title=summary[:200],
                 description=description[:2000],
@@ -192,8 +195,7 @@ def import_ical(feed, now, stdout, stderr):
                 status=status,
                 is_free=False,
                 category=feed.default_category,
-                # Store UID as stable dedup key; url_prop already in description
-                website=uid[:200] if uid else (url_prop[:200] if url_prop else ''),
+                website=real_url,
             )
             if image_url:
                 fname, content = download_image(image_url)
