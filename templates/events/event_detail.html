@@ -202,10 +202,10 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
       <span style="color:#555;font-size:.72em;text-transform:uppercase;letter-spacing:.06em">Artists</span>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:5px" id="linked-artists-list">
         {% for a in linked_artists %}
-        <a href="/artists/{{ a.slug }}/" data-id="{{ a.pk }}" style="display:inline-flex;align-items:center;gap:5px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:20px;padding:4px 12px;text-decoration:none;color:#ccc;font-size:.82em">
-          🎵 {{ a.name }}
-          {% if can_edit_lineup %}<span class="rm-btn" onclick="removeLineup(event,'artist',{{ a.pk }},this)" style="color:#555;margin-left:4px;cursor:pointer;font-size:.9em" title="Remove">✕</span>{% endif %}
-        </a>
+        <span data-id="{{ a.pk }}" style="display:inline-flex;align-items:center;gap:0;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:20px;font-size:.82em;overflow:hidden">
+          <a href="/artists/{{ a.slug }}/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;text-decoration:none;color:#ccc;cursor:pointer" title="View {{ a.name }} profile">🎵 {{ a.name }}</a>
+          {% if can_edit_lineup %}<span class="rm-btn" onclick="removeLineup(event,'artist',{{ a.pk }},this.closest('span[data-id]'))" style="color:#444;padding:4px 8px 4px 0;cursor:pointer;font-size:.9em;line-height:1" title="Remove">✕</span>{% endif %}
+        </span>
         {% endfor %}
       </div>
     </div>
@@ -215,10 +215,10 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
       <span style="color:#555;font-size:.72em;text-transform:uppercase;letter-spacing:.06em">Crew / Promoters</span>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:5px" id="linked-promoters-list">
         {% for p in linked_promoters %}
-        <a href="/promoters/{{ p.slug }}/" data-id="{{ p.pk }}" style="display:inline-flex;align-items:center;gap:5px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:20px;padding:4px 12px;text-decoration:none;color:#ccc;font-size:.82em">
-          📣 {{ p.name }}
-          {% if can_edit_lineup %}<span class="rm-btn" onclick="removeLineup(event,'promoter',{{ p.pk }},this)" style="color:#555;margin-left:4px;cursor:pointer;font-size:.9em" title="Remove">✕</span>{% endif %}
-        </a>
+        <span data-id="{{ p.pk }}" style="display:inline-flex;align-items:center;gap:0;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:20px;font-size:.82em;overflow:hidden">
+          <a href="/promoters/{{ p.slug }}/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;text-decoration:none;color:#ccc;cursor:pointer" title="View {{ p.name }} profile">📣 {{ p.name }}</a>
+          {% if can_edit_lineup %}<span class="rm-btn" onclick="removeLineup(event,'promoter',{{ p.pk }},this.closest('span[data-id]'))" style="color:#444;padding:4px 8px 4px 0;cursor:pointer;font-size:.9em;line-height:1" title="Remove">✕</span>{% endif %}
+        </span>
         {% endfor %}
       </div>
     </div>
@@ -382,7 +382,8 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
       headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
       body:JSON.stringify({action:'remove', type:type, id:id})
     }).then(function(r){return r.json();}).then(function(){
-      el.closest('a').remove();
+      // el is the outer <span data-id> wrapper
+      el.remove();
     });
   };
 
@@ -399,15 +400,26 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
       var icon = type === 'artist' ? '🎵' : '📣';
       var href = type === 'artist' ? '/artists/'+(slug||id)+'/' : '/promoters/'+(slug||id)+'/';
       if(list.querySelector('[data-id="'+id+'"]')) return;
+      // Outer pill wrapper
+      var pill = document.createElement('span');
+      pill.dataset.id = id;
+      pill.style.cssText = 'display:inline-flex;align-items:center;gap:0;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:20px;font-size:.82em;overflow:hidden';
+      // Clickable link to profile
       var a = document.createElement('a');
-      a.href = href; a.dataset.id = id;
-      a.style.cssText = 'display:inline-flex;align-items:center;gap:5px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:20px;padding:4px 12px;text-decoration:none;color:#ccc;font-size:.82em';
-      {% if can_edit_lineup %}
-      a.innerHTML = icon+' '+name+' <span class="rm-btn" onclick="removeLineup(event,\''+type+'\','+id+',this)" style="color:#555;margin-left:4px;cursor:pointer;font-size:.9em" title="Remove">✕</span>';
-      {% else %}
+      a.href = href; a.target = '_blank'; a.rel = 'noopener';
+      a.style.cssText = 'display:inline-flex;align-items:center;gap:5px;padding:4px 10px;text-decoration:none;color:#ccc;cursor:pointer';
       a.innerHTML = icon+' '+name;
+      pill.appendChild(a);
+      {% if can_edit_lineup %}
+      var rm = document.createElement('span');
+      rm.className = 'rm-btn';
+      rm.title = 'Remove';
+      rm.style.cssText = 'color:#444;padding:4px 8px 4px 0;cursor:pointer;font-size:.9em;line-height:1';
+      rm.textContent = '✕';
+      rm.onclick = function(e){ removeLineup(e, type, id, pill); };
+      pill.appendChild(rm);
       {% endif %}
-      list.appendChild(a);
+      list.appendChild(pill);
       // Also hide any empty-state message
       var empty = list.closest('#lineup-display').querySelector('p');
       if(empty) empty.style.display = 'none';
