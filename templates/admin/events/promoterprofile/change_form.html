@@ -1,0 +1,24 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block object-tools-items %}
+  {% if original.pk and original.admin_email and not original.claimed_by %}
+  <li>
+    <a href="{% url 'admin:events_promoterprofile_send_claim_email' original.pk %}"
+       class="button"
+       title="Send claim instructions to {{ original.admin_email }}">
+      ✉ Send claim email
+    </a>
+  </li>
+  {% elif original.pk and original.admin_email and original.claimed_by %}
+  <li>
+    <a href="{% url 'admin:events_promoterprofile_send_claim_email' original.pk %}"
+       class="button"
+       style="opacity:.55"
+       title="Already claimed — send anyway?">
+      ✉ Resend claim email
+    </a>
+  </li>
+  {% endif %}
+  {{ block.super }}
+{% endblock %}

@@ -95,6 +95,26 @@ class ArtistAdmin(admin.ModelAdmin):
     readonly_fields = ['is_stub', 'auto_bio', 'home_neighborhood', 'city',
                        'latitude', 'longitude', 'last_enriched_at']
     raw_id_fields = ['claimed_by', 'linked_promoter']
+    change_form_template = 'admin/events/artist/change_form.html'
+
+    def get_urls(self):
+        from django.urls import path as _path
+        urls = super().get_urls()
+        return [
+            _path('<int:pk>/send-claim-email/',
+                  self.admin_site.admin_view(self._send_claim_email_view),
+                  name='events_artist_send_claim_email'),
+        ] + urls
+
+    def _send_claim_email_view(self, request, pk):
+        from django.shortcuts import redirect, get_object_or_404
+        from django.urls import reverse
+        obj = get_object_or_404(Artist, pk=pk)
+        if not obj.admin_email:
+            self.message_user(request, 'No admin email set on this artist.', level='error')
+        else:
+            PromoterProfileAdmin._do_send_claim_email(request, obj, 'artists')
+        return redirect(reverse('admin:events_artist_change', args=[pk]))
 
     def stub_badge(self, obj):
         if obj.is_stub and not obj.claimed_by_id:
@@ -310,40 +330,65 @@ class PromoterProfileAdmin(admin.ModelAdmin):
     has_drive.boolean = True
     has_drive.short_description = 'Drive'
 
-    def send_claim_instructions(self, request, queryset):
+    change_form_template = 'admin/events/promoterprofile/change_form.html'
+
+    def get_urls(self):
+        from django.urls import path as _path
+        urls = super().get_urls()
+        return [
+            _path('<int:pk>/send-claim-email/',
+                  self.admin_site.admin_view(self._send_claim_email_view),
+                  name='events_promoterprofile_send_claim_email'),
+        ] + urls
+
+    def _send_claim_email_view(self, request, pk):
+        from django.shortcuts import redirect, get_object_or_404
+        from django.urls import reverse
+        obj = get_object_or_404(PromoterProfile, pk=pk)
+        if not obj.admin_email:
+            self.message_user(request, 'No admin email set on this profile.', level='error')
+        else:
+            self._do_send_claim_email(request, obj, 'promoters')
+        return redirect(reverse('admin:events_promoterprofile_change', args=[pk]))
+
+    @staticmethod
+    def _do_send_claim_email(request, obj, url_segment):
         from django.core.mail import send_mail
+        profile_url = f'https://communityplaylist.com/{url_segment}/{obj.slug}/'
+        body = (
+            'Hey!\n\n'
+            f'Your profile on Community Playlist is live:\n{profile_url}\n\n'
+            'To take ownership — manage events, sync your record shop, and keep your info '
+            'up to date — create a free account and then claim your profile:\n\n'
+            '1. Register (or log in): https://communityplaylist.com/register/\n'
+            f'2. Visit your profile:   {profile_url}\n'
+            '3. Click "Claim this profile" and you\'re in.\n\n'
+            'Any questions? Reply to this email.\n\n'
+            '-- Community Playlist\n'
+            'https://communityplaylist.com'
+        )
+        try:
+            send_mail(
+                subject=f'Claim your Community Playlist profile — {obj.name}',
+                message=body,
+                from_email='Community Playlist <noreply@communityplaylist.com>',
+                recipient_list=[obj.admin_email],
+                fail_silently=False,
+            )
+            from django.contrib import messages
+            messages.success(request, f'Claim email sent to {obj.admin_email}.')
+        except Exception as e:
+            from django.contrib import messages
+            messages.error(request, f'Mail error: {e}')
+
+    def send_claim_instructions(self, request, queryset):
         sent, skipped = 0, 0
         for promoter in queryset:
-            if not promoter.admin_email:
+            if not promoter.admin_email or promoter.claimed_by:
                 skipped += 1
                 continue
-            if promoter.claimed_by:
-                skipped += 1
-                continue
-            profile_url = f'https://communityplaylist.com/promoters/{promoter.slug}/'
-            body = (
-                'Hey!\n\n'
-                f'Your profile on Community Playlist is live:\n{profile_url}\n\n'
-                'To take ownership -- manage events, sync your record shop, and keep your info '
-                'up to date -- create a free account and then claim your profile:\n\n'
-                '1. Register (or log in): https://communityplaylist.com/register/\n'
-                f'2. Visit your profile:   {profile_url}\n'
-                '3. Click "Claim this profile" and you\'re in.\n\n'
-                'Any questions? Reply to this email.\n\n'
-                '-- Community Playlist\n'
-                'https://communityplaylist.com'
-            )
-            try:
-                send_mail(
-                    subject=f'Claim your Community Playlist profile — {promoter.name}',
-                    message=body,
-                    from_email='Community Playlist <noreply@communityplaylist.com>',
-                    recipient_list=[promoter.admin_email],
-                    fail_silently=False,
-                )
-                sent += 1
-            except Exception as e:
-                self.message_user(request, f'Mail error for {promoter.name}: {e}', level='error')
+            self._do_send_claim_email(request, promoter, 'promoters')
+            sent += 1
         if sent:
             self.message_user(request, f'Claim instructions sent to {sent} profile(s).')
         if skipped:
