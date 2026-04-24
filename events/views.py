@@ -374,6 +374,7 @@ def event_detail(request, slug):
     can_edit_lineup = request.user.is_authenticated and (
         request.user.is_staff or event.submitted_user == request.user
     )
+    can_add_lineup = request.user.is_authenticated
 
     return render(request, 'events/event_detail.html', {
         'event': event,
@@ -390,6 +391,7 @@ def event_detail(request, slug):
         'venue': venue,
         'event_edit_fields': EditSuggestion.FIELDS['event'],
         'can_edit_lineup': can_edit_lineup,
+        'can_add_lineup': can_add_lineup,
         'linked_artists': event.artists.all(),
         'linked_promoters': event.promoters.all(),
     })
@@ -458,16 +460,98 @@ def api_parse_lineup(request):
     })
 
 
+def api_artist_lookup(request):
+    """
+    GET /api/artist-lookup/?q=<name>
+    Searches CP DB → MusicBrainz → Last.fm and returns labeled candidates.
+    Response: {results: [{source, id?, name, slug?, mb_id?, tags?, image?}]}
+    """
+    q = request.GET.get('q', '').strip()
+    if len(q) < 2:
+        return JsonResponse({'results': []})
+
+    results = []
+    seen_names = set()
+
+    # 1. CP database
+    for a in Artist.objects.filter(name__icontains=q)[:8]:
+        seen_names.add(a.name.lower())
+        results.append({
+            'source': 'cp', 'id': a.pk, 'name': a.name, 'slug': a.slug,
+            'mb_id': a.mb_id, 'city': a.city,
+        })
+
+    # 2. MusicBrainz
+    try:
+        mb_resp = requests.get(
+            'https://musicbrainz.org/ws/2/artist',
+            params={'query': q, 'fmt': 'json', 'limit': 6},
+            headers={'User-Agent': 'CommunityPlaylist/1.0 (hello@communityplaylist.com)'},
+            timeout=5,
+        )
+        for a in mb_resp.json().get('artists', []):
+            name = a.get('name', '').strip()
+            mb_id = a.get('id', '')
+            if not name or name.lower() in seen_names:
+                continue
+            # Check if already in CP DB under this mb_id
+            existing = Artist.objects.filter(mb_id=mb_id).first() if mb_id else None
+            if existing:
+                if existing.name.lower() not in seen_names:
+                    seen_names.add(existing.name.lower())
+                    results.append({
+                        'source': 'cp', 'id': existing.pk, 'name': existing.name,
+                        'slug': existing.slug, 'mb_id': existing.mb_id, 'city': existing.city,
+                    })
+            else:
+                seen_names.add(name.lower())
+                area = a.get('area', {})
+                tags = [t['name'] for t in a.get('tags', [])[:5]] if a.get('tags') else []
+                results.append({
+                    'source': 'mb', 'name': name, 'mb_id': mb_id,
+                    'city': area.get('name', ''),
+                    'tags': tags,
+                })
+    except Exception:
+        pass
+
+    # 3. Last.fm (only if CP+MB returned < 3 results)
+    if len(results) < 3:
+        try:
+            from django.conf import settings as _s
+            lfm_key = getattr(_s, 'LASTFM_API_KEY', '')
+            if lfm_key:
+                lfm_resp = requests.get(
+                    'https://ws.audioscrobbler.com/2.0/',
+                    params={'method': 'artist.search', 'artist': q, 'api_key': lfm_key,
+                            'format': 'json', 'limit': 5},
+                    timeout=5,
+                )
+                matches = lfm_resp.json().get('results', {}).get('artistmatches', {}).get('artist', [])
+                for a in matches:
+                    name = a.get('name', '').strip()
+                    if not name or name.lower() in seen_names:
+                        continue
+                    seen_names.add(name.lower())
+                    results.append({
+                        'source': 'lastfm', 'name': name,
+                        'image': next((img['#text'] for img in reversed(a.get('image', [])) if img.get('#text')), ''),
+                    })
+        except Exception:
+            pass
+
+    return JsonResponse({'results': results[:12]})
+
+
 @login_required
 def event_lineup_create(request, slug):
     """
-    POST {type: 'artist'|'promoter', name: '...'} — creates a minimal profile,
-    links it to the event, and claims it for the requesting user.
-    Returns {id, name, profile_url, type}.
+    POST {type: 'artist'|'promoter', name, bio?, website?, instagram?, ...} —
+    creates or finds an artist/promoter profile, links to event, claims for user.
+    Any logged-in user can add; full artist fields accepted for richer profiles.
+    Returns {id, name, slug, profile_url, type}.
     """
     event = get_object_or_404(Event, slug=slug)
-    if not (request.user.is_staff or event.submitted_user == request.user):
-        return JsonResponse({'error': 'forbidden'}, status=403)
 
     import json as _json
     body = _json.loads(request.body)
@@ -477,15 +561,36 @@ def event_lineup_create(request, slug):
         return JsonResponse({'error': 'name required'}, status=400)
 
     if obj_type == 'artist':
-        # Try exact-case first, then case-insensitive
         obj = Artist.objects.filter(name__iexact=name).first()
         if obj:
             if not obj.claimed_by:
                 obj.claimed_by = request.user
                 obj.save(update_fields=['claimed_by'])
         else:
-            obj = Artist(name=name, claimed_by=request.user)
-            obj.save()  # triggers slug auto-generation
+            str_field = lambda k, n=200: body.get(k, '').strip()[:n]
+            url_field  = lambda k: body.get(k, '').strip()[:500]
+            obj = Artist(
+                name=name,
+                claimed_by=request.user,
+                bio=body.get('bio', '').strip()[:4000],
+                website=url_field('website'),
+                instagram=str_field('instagram', 100),
+                soundcloud=str_field('soundcloud', 100),
+                bandcamp=url_field('bandcamp'),
+                mixcloud=str_field('mixcloud', 100),
+                youtube=url_field('youtube'),
+                spotify=url_field('spotify'),
+                mastodon=url_field('mastodon'),
+                bluesky=str_field('bluesky', 100),
+                tiktok=str_field('tiktok', 100),
+                twitch=str_field('twitch', 100),
+                beatport=url_field('beatport'),
+                discogs=url_field('discogs'),
+                mb_id=str_field('mb_id', 100),
+                city=str_field('city', 100),
+                is_stub=False,
+            )
+            obj.save()
         event.artists.add(obj)
         return JsonResponse({'id': obj.pk, 'name': obj.name, 'slug': obj.slug, 'type': 'artist',
                              'profile_url': f'/artists/{obj.slug}/'})
@@ -518,16 +623,15 @@ def event_lineup_edit(request, slug):
     """
     POST to add/remove artist or promoter from an event.
     Body: {action: 'add'|'remove', type: 'artist'|'promoter', id: pk}
+    Add: any authenticated user. Remove: owner or staff only.
     """
-    if not request.user.is_staff and not request.user.is_authenticated:
-        return JsonResponse({'error': 'forbidden'}, status=403)
     event = get_object_or_404(Event, slug=slug)
-    if not (request.user.is_staff or event.submitted_user == request.user):
-        return JsonResponse({'error': 'forbidden'}, status=403)
-
     import json as _json
     body = _json.loads(request.body)
     action = body.get('action')
+    if action == 'remove' and not (request.user.is_staff or event.submitted_user == request.user):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+
     obj_type = body.get('type')
     obj_id = int(body.get('id', 0))
 

@@ -8,6 +8,7 @@ urlpatterns = [
     path('api/saved-tracks/', views.saved_tracks_json, name='saved_tracks_json'),
     path('api/videos/', views.api_video_queue, name='api_video_queue'),
     path('api/parse-lineup/', views.api_parse_lineup, name='api_parse_lineup'),
+    path('api/artist-lookup/', views.api_artist_lookup, name='api_artist_lookup'),
     path('api/events/<slug:slug>/', views.api_event_detail, name='api_event_detail'),
     path('api/shelters/', views.api_shelters, name='api_shelters'),
     path('api/lastfm/', views.api_lastfm_proxy, name='api_lastfm_proxy'),

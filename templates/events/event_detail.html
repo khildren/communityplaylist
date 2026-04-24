@@ -182,13 +182,18 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
 </div>
 {% endif %}
 {# ── Lineup ── #}
-{% if linked_artists or linked_promoters or can_edit_lineup %}
+{% if linked_artists or linked_promoters or can_add_lineup %}
 <div id="lineup-section" style="margin:24px 0;padding:16px;background:#161616;border:1px solid #222;border-radius:10px">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
     <span style="color:#ff6b35;font-size:.9em;font-weight:600;text-transform:uppercase;letter-spacing:.07em">Lineup</span>
-    {% if can_edit_lineup %}
-    <button onclick="toggleLineupEdit()" style="background:transparent;border:1px solid #333;color:#666;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:.75em" id="lineup-edit-toggle">✏ Edit</button>
-    {% endif %}
+    <div style="display:flex;gap:6px">
+      {% if can_add_lineup %}
+      <button onclick="toggleAddArtist()" id="add-artist-btn" style="background:transparent;border:1px solid #2a4a2a;color:#4caf50;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:.75em">+ Add Artist</button>
+      {% endif %}
+      {% if can_edit_lineup %}
+      <button onclick="toggleLineupEdit()" style="background:transparent;border:1px solid #333;color:#666;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:.75em" id="lineup-edit-toggle">✏ Edit</button>
+      {% endif %}
+    </div>
   </div>
 
   <div id="lineup-display">
@@ -197,7 +202,7 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
       <span style="color:#555;font-size:.72em;text-transform:uppercase;letter-spacing:.06em">Artists</span>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:5px" id="linked-artists-list">
         {% for a in linked_artists %}
-        <a href="/artists/{{ a.slug }}/" style="display:inline-flex;align-items:center;gap:5px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:20px;padding:4px 12px;text-decoration:none;color:#ccc;font-size:.82em">
+        <a href="/artists/{{ a.slug }}/" data-id="{{ a.pk }}" style="display:inline-flex;align-items:center;gap:5px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:20px;padding:4px 12px;text-decoration:none;color:#ccc;font-size:.82em">
           🎵 {{ a.name }}
           {% if can_edit_lineup %}<span class="rm-btn" onclick="removeLineup(event,'artist',{{ a.pk }},this)" style="color:#555;margin-left:4px;cursor:pointer;font-size:.9em" title="Remove">✕</span>{% endif %}
         </a>
@@ -210,7 +215,7 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
       <span style="color:#555;font-size:.72em;text-transform:uppercase;letter-spacing:.06em">Crew / Promoters</span>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:5px" id="linked-promoters-list">
         {% for p in linked_promoters %}
-        <a href="/promoters/{{ p.slug }}/" style="display:inline-flex;align-items:center;gap:5px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:20px;padding:4px 12px;text-decoration:none;color:#ccc;font-size:.82em">
+        <a href="/promoters/{{ p.slug }}/" data-id="{{ p.pk }}" style="display:inline-flex;align-items:center;gap:5px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:20px;padding:4px 12px;text-decoration:none;color:#ccc;font-size:.82em">
           📣 {{ p.name }}
           {% if can_edit_lineup %}<span class="rm-btn" onclick="removeLineup(event,'promoter',{{ p.pk }},this)" style="color:#555;margin-left:4px;cursor:pointer;font-size:.9em" title="Remove">✕</span>{% endif %}
         </a>
@@ -219,10 +224,109 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
     </div>
     {% endif %}
     {% if not linked_artists and not linked_promoters %}
-    <p style="color:#444;font-size:.82em">No lineup linked yet.</p>
+    <p style="color:#444;font-size:.82em;margin:0">No lineup linked yet.</p>
     {% endif %}
   </div>
 
+  {# ── Add Artist panel (any logged-in user) ── #}
+  {% if can_add_lineup %}
+  <div id="add-artist-panel" style="display:none;margin-top:14px;border-top:1px solid #222;padding-top:14px">
+    <p style="color:#555;font-size:.75em;margin:0 0 8px">Search for an artist to link, or create a new profile:</p>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input type="text" id="artist-lookup-input" placeholder="Artist name…" autocomplete="off"
+        style="flex:1;background:#222;border:1px solid #333;border-radius:6px;padding:6px 10px;color:#eee;font-size:.82em">
+      <button onclick="runArtistLookup()" style="background:#1a2a1a;border:1px solid #2a4a2a;color:#4caf50;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:.82em">Search</button>
+    </div>
+    <div id="artist-lookup-results" style="margin-bottom:10px"></div>
+
+    {# ── Inline create form ── #}
+    <div id="artist-create-form" style="display:none;background:#111;border:1px solid #2a3a2a;border-radius:8px;padding:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="color:#4caf50;font-size:.82em;font-weight:600">New Artist Profile</span>
+        <div style="font-size:.72em;color:#555">Profile completeness:</div>
+      </div>
+      <div style="background:#1a1a1a;border-radius:6px;height:8px;margin-bottom:12px;overflow:hidden">
+        <div id="completeness-bar" style="height:100%;background:linear-gradient(90deg,#ff6b35,#4caf50);border-radius:6px;transition:width .3s;width:0%"></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <span id="completeness-pct" style="font-size:.72em;color:#555">0% complete</span>
+        <span id="completeness-tip" style="font-size:.7em;color:#666"></span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="grid-column:1/-1">
+          <label style="color:#666;font-size:.72em;display:block;margin-bottom:3px">Artist Name *</label>
+          <input id="cf-name" type="text" placeholder="Stage name or project name"
+            style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:6px 9px;color:#eee;font-size:.82em;box-sizing:border-box">
+        </div>
+        <div style="grid-column:1/-1">
+          <label style="color:#666;font-size:.72em;display:block;margin-bottom:3px">Bio <span style="color:#4caf50">+30%</span></label>
+          <textarea id="cf-bio" rows="3" placeholder="Brief bio — genre, origin, style, history…"
+            style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:6px 9px;color:#eee;font-size:.82em;box-sizing:border-box;resize:vertical"></textarea>
+        </div>
+        <div>
+          <label style="color:#666;font-size:.72em;display:block;margin-bottom:3px">City / Origin</label>
+          <input id="cf-city" type="text" placeholder="Portland, OR"
+            style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:6px 9px;color:#eee;font-size:.82em;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="color:#666;font-size:.72em;display:block;margin-bottom:3px">Website</label>
+          <input id="cf-website" type="url" placeholder="https://…"
+            style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:6px 9px;color:#eee;font-size:.82em;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="color:#666;font-size:.72em;display:block;margin-bottom:3px">Instagram <span style="color:#4caf50">+30%</span></label>
+          <input id="cf-instagram" type="text" placeholder="handle (no @)"
+            style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:6px 9px;color:#eee;font-size:.82em;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="color:#666;font-size:.72em;display:block;margin-bottom:3px">SoundCloud</label>
+          <input id="cf-soundcloud" type="text" placeholder="username"
+            style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:6px 9px;color:#eee;font-size:.82em;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="color:#666;font-size:.72em;display:block;margin-bottom:3px">Bandcamp</label>
+          <input id="cf-bandcamp" type="url" placeholder="https://you.bandcamp.com"
+            style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:6px 9px;color:#eee;font-size:.82em;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="color:#666;font-size:.72em;display:block;margin-bottom:3px">Spotify</label>
+          <input id="cf-spotify" type="url" placeholder="https://open.spotify.com/artist/…"
+            style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:6px 9px;color:#eee;font-size:.82em;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="color:#666;font-size:.72em;display:block;margin-bottom:3px">MusicBrainz ID <span style="color:#4caf50">+20%</span></label>
+          <input id="cf-mb-id" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:6px 9px;color:#eee;font-size:.82em;box-sizing:border-box">
+          <a id="cf-mb-link" href="https://musicbrainz.org/search?type=artist&query=" target="_blank"
+            style="font-size:.68em;color:#555;text-decoration:none">Look up on MusicBrainz ↗</a>
+        </div>
+        <div>
+          <label style="color:#666;font-size:.72em;display:block;margin-bottom:3px">Mixcloud</label>
+          <input id="cf-mixcloud" type="text" placeholder="username"
+            style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:6px 9px;color:#eee;font-size:.82em;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="color:#666;font-size:.72em;display:block;margin-bottom:3px">Bluesky</label>
+          <input id="cf-bluesky" type="text" placeholder="yourname.bsky.social"
+            style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:6px 9px;color:#eee;font-size:.82em;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="color:#666;font-size:.72em;display:block;margin-bottom:3px">TikTok</label>
+          <input id="cf-tiktok" type="text" placeholder="handle (no @)"
+            style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:6px 9px;color:#eee;font-size:.82em;box-sizing:border-box">
+        </div>
+      </div>
+      <p style="color:#444;font-size:.7em;margin:10px 0 12px">Photo can be added after via the artist profile page.</p>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('artist-create-form').style.display='none'" style="background:transparent;border:1px solid #333;color:#555;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:.78em">Cancel</button>
+        <button onclick="submitCreateArtist()" id="cf-submit-btn" style="background:#1a2a1a;border:1px solid #2a4a2a;color:#4caf50;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:.78em">Create &amp; Add to Lineup</button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Owner/staff edit panel ── #}
   {% if can_edit_lineup %}
   <div id="lineup-editor" style="display:none;margin-top:14px;border-top:1px solid #222;padding-top:14px">
     <button onclick="parseTitleLineup()" style="background:transparent;border:1px solid #2a4a1a;color:#4caf50;padding:4px 12px;border-radius:5px;cursor:pointer;font-size:.78em;margin-bottom:10px">⚡ Suggest from title</button>
@@ -251,12 +355,24 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
 
   function getCsrf(){var v=document.cookie.match('(^|;) ?csrftoken=([^;]*)(;|$)');return v?v[2]:null}
 
+  // ── Owner/staff edit panel toggle ──
   window.toggleLineupEdit = function(){
     var ed = document.getElementById('lineup-editor');
     var btn = document.getElementById('lineup-edit-toggle');
+    if(!ed) return;
     var open = ed.style.display === 'none';
     ed.style.display = open ? 'block' : 'none';
     btn.textContent = open ? '✕ Close' : '✏ Edit';
+  };
+
+  // ── Add Artist panel toggle (any logged-in user) ──
+  window.toggleAddArtist = function(){
+    var panel = document.getElementById('add-artist-panel');
+    var btn = document.getElementById('add-artist-btn');
+    if(!panel) return;
+    var open = panel.style.display === 'none';
+    panel.style.display = open ? 'block' : 'none';
+    btn.textContent = open ? '✕ Close' : '+ Add Artist';
   };
 
   window.removeLineup = function(e, type, id, el){
@@ -279,32 +395,178 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
       if(!d.ok) return;
       var listId = type === 'artist' ? 'linked-artists-list' : 'linked-promoters-list';
       var list = document.getElementById(listId);
-      if(!list){
-        // section didn't exist — reload to show it
-        window.location.reload(); return;
-      }
+      if(!list){ window.location.reload(); return; }
       var icon = type === 'artist' ? '🎵' : '📣';
       var href = type === 'artist' ? '/artists/'+(slug||id)+'/' : '/promoters/'+(slug||id)+'/';
-      // avoid duplicates
       if(list.querySelector('[data-id="'+id+'"]')) return;
       var a = document.createElement('a');
-      a.href = href;
-      a.dataset.id = id;
+      a.href = href; a.dataset.id = id;
       a.style.cssText = 'display:inline-flex;align-items:center;gap:5px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:20px;padding:4px 12px;text-decoration:none;color:#ccc;font-size:.82em';
+      {% if can_edit_lineup %}
       a.innerHTML = icon+' '+name+' <span class="rm-btn" onclick="removeLineup(event,\''+type+'\','+id+',this)" style="color:#555;margin-left:4px;cursor:pointer;font-size:.9em" title="Remove">✕</span>';
+      {% else %}
+      a.innerHTML = icon+' '+name;
+      {% endif %}
       list.appendChild(a);
+      // Also hide any empty-state message
+      var empty = list.closest('#lineup-display').querySelector('p');
+      if(empty) empty.style.display = 'none';
     });
   };
 
-  // Debounced artist/crew search using existing autocomplete endpoints
+  // ── Multi-source artist lookup ──
+  var lookupTimer = null;
+  var lookupInput = document.getElementById('artist-lookup-input');
+  if(lookupInput){
+    lookupInput.addEventListener('keydown', function(e){ if(e.key==='Enter') runArtistLookup(); });
+    lookupInput.addEventListener('input', function(){
+      clearTimeout(lookupTimer);
+      lookupTimer = setTimeout(runArtistLookup, 400);
+    });
+  }
+
+  window.runArtistLookup = function(){
+    var q = (lookupInput||{}).value || '';
+    var resultsEl = document.getElementById('artist-lookup-results');
+    if(!resultsEl) return;
+    if(q.length < 2){ resultsEl.innerHTML=''; return; }
+    resultsEl.innerHTML = '<p style="color:#555;font-size:.78em">Searching…</p>';
+    fetch('/api/artist-lookup/?q='+encodeURIComponent(q))
+      .then(function(r){return r.json();})
+      .then(function(data){
+        var items = data.results || [];
+        if(!items.length){
+          resultsEl.innerHTML = '<div style="font-size:.8em;color:#555;margin-bottom:8px">No matches found.</div>'
+            + '<button onclick="openCreateForm(\''+q.replace(/'/g,"\\'")+'\')" style="background:#1a2a1a;border:1px solid #2a4a2a;color:#4caf50;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:.8em">+ Create "'+q+'" profile</button>';
+          return;
+        }
+        var sourceBadge = {'cp':'<span style="background:#1a2a3a;color:#88aacc;border-radius:4px;padding:1px 5px;font-size:.68em;margin-right:4px">CP</span>',
+                           'mb':'<span style="background:#2a1a3a;color:#aa88cc;border-radius:4px;padding:1px 5px;font-size:.68em;margin-right:4px">MB</span>',
+                           'lastfm':'<span style="background:#3a1a1a;color:#cc4444;border-radius:4px;padding:1px 5px;font-size:.68em;margin-right:4px">FM</span>'};
+        var html = items.map(function(o){
+          var badge = sourceBadge[o.source] || '';
+          var extra = o.city ? ' <span style="color:#555;font-size:.8em">'+o.city+'</span>' : '';
+          var mbNote = o.mb_id ? ' <span style="color:#666;font-size:.72em" title="MusicBrainz ID">✓MB</span>' : '';
+          return '<div onclick="pickArtist('+JSON.stringify(o)+')" style="cursor:pointer;display:flex;align-items:center;padding:6px 10px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;margin-bottom:4px">'
+            + badge+'<span style="color:#ddd;font-size:.83em">'+o.name+'</span>'+extra+mbNote
+            + '<span style="margin-left:auto;color:#4caf50;font-size:.75em">Add →</span></div>';
+        }).join('');
+        html += '<div style="margin-top:8px"><button onclick="openCreateForm(\''+q.replace(/'/g,"\\'")+'\')" style="background:transparent;border:1px dashed #333;color:#555;padding:4px 12px;border-radius:5px;cursor:pointer;font-size:.75em">+ Not listed — create new profile</button></div>';
+        resultsEl.innerHTML = html;
+      });
+  };
+
+  window.pickArtist = function(o){
+    if(o.id){
+      // Already in CP DB — just link
+      addLineup('artist', o.id, o.name, o.slug);
+      document.getElementById('artist-lookup-results').innerHTML = '<p style="color:#4caf50;font-size:.8em">✓ '+o.name+' added to lineup.</p>';
+      document.getElementById('artist-lookup-input').value = '';
+    } else {
+      // MB/LastFM stub — open create form pre-filled
+      openCreateForm(o.name, o.mb_id||'', o.city||'');
+    }
+  };
+
+  window.openCreateForm = function(name, mbId, city){
+    var form = document.getElementById('artist-create-form');
+    if(!form) return;
+    form.style.display = 'block';
+    document.getElementById('cf-name').value = name||'';
+    document.getElementById('cf-mb-id').value = mbId||'';
+    document.getElementById('cf-city').value = city||'';
+    var mbLink = document.getElementById('cf-mb-link');
+    if(mbLink) mbLink.href = 'https://musicbrainz.org/search?type=artist&query='+encodeURIComponent(name||'');
+    updateCompleteness();
+    form.scrollIntoView({behavior:'smooth', block:'nearest'});
+    document.getElementById('cf-bio').focus();
+  };
+
+  // ── Completeness bar ──
+  function calcCompleteness(){
+    var score = 0;
+    var tips = [];
+    if((document.getElementById('cf-bio').value||'').trim().length > 20){ score+=30; } else { tips.push('add bio (+30%)'); }
+    if((document.getElementById('cf-website').value||'').trim()){ score+=10; }
+    var socials = ['cf-instagram','cf-soundcloud','cf-bandcamp','cf-spotify','cf-youtube','cf-mixcloud','cf-bluesky','cf-tiktok'];
+    var hasSocial = socials.some(function(id){ return (document.getElementById(id).value||'').trim(); });
+    if(hasSocial){ score+=30; } else { tips.push('add social link (+30%)'); }
+    if((document.getElementById('cf-mb-id').value||'').trim()){ score+=20; } else { tips.push('add MusicBrainz ID (+20%)'); }
+    if((document.getElementById('cf-city').value||'').trim()){ score+=10; }
+    return {score:score, tip: tips[0]||''};
+  }
+
+  function updateCompleteness(){
+    var r = calcCompleteness();
+    var bar = document.getElementById('completeness-bar');
+    var pct = document.getElementById('completeness-pct');
+    var tip = document.getElementById('completeness-tip');
+    if(bar) bar.style.width = r.score+'%';
+    if(pct){
+      pct.textContent = r.score+'% complete';
+      pct.style.color = r.score >= 70 ? '#4caf50' : r.score >= 40 ? '#ff6b35' : '#666';
+    }
+    if(tip) tip.textContent = r.score >= 70 ? '✓ Enough to submit to MusicBrainz' : r.tip;
+  }
+
+  // Attach change listeners to all create form inputs
+  (function attachCompletenessListeners(){
+    var ids=['cf-bio','cf-website','cf-instagram','cf-soundcloud','cf-bandcamp','cf-spotify',
+             'cf-youtube','cf-mixcloud','cf-bluesky','cf-tiktok','cf-mb-id','cf-city'];
+    ids.forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.addEventListener('input', updateCompleteness);
+    });
+  })();
+
+  window.submitCreateArtist = function(){
+    var name = (document.getElementById('cf-name').value||'').trim();
+    if(!name){ alert('Artist name is required.'); return; }
+    var btn = document.getElementById('cf-submit-btn');
+    btn.textContent = '…'; btn.disabled = true;
+
+    var payload = {
+      type:'artist', name:name,
+      bio:(document.getElementById('cf-bio').value||'').trim(),
+      city:(document.getElementById('cf-city').value||'').trim(),
+      website:(document.getElementById('cf-website').value||'').trim(),
+      instagram:(document.getElementById('cf-instagram').value||'').trim(),
+      soundcloud:(document.getElementById('cf-soundcloud').value||'').trim(),
+      bandcamp:(document.getElementById('cf-bandcamp').value||'').trim(),
+      spotify:(document.getElementById('cf-spotify').value||'').trim(),
+      mixcloud:(document.getElementById('cf-mixcloud').value||'').trim(),
+      bluesky:(document.getElementById('cf-bluesky').value||'').trim(),
+      tiktok:(document.getElementById('cf-tiktok').value||'').trim(),
+      mb_id:(document.getElementById('cf-mb-id').value||'').trim(),
+    };
+    fetch('/events/'+eventSlug+'/lineup/create/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body:JSON.stringify(payload)
+    }).then(function(r){return r.json();}).then(function(d){
+      btn.textContent='Create & Add to Lineup'; btn.disabled=false;
+      if(d.error){ alert('Error: '+d.error); return; }
+      // Add to display list
+      addLineup('artist', d.id, d.name, d.slug);
+      // Hide form, show success
+      document.getElementById('artist-create-form').style.display='none';
+      document.getElementById('artist-lookup-results').innerHTML = '<p style="color:#4caf50;font-size:.8em">✓ '+d.name+' created and added! <a href="'+d.profile_url+'" style="color:#ff6b35" target="_blank">Edit profile →</a></p>';
+      document.getElementById('artist-lookup-input').value='';
+    }).catch(function(){
+      btn.textContent='Create & Add to Lineup'; btn.disabled=false;
+      alert('Network error — please try again.');
+    });
+  };
+
+  // ── Owner/staff search (existing autocomplete) ──
   var searchTimers = {};
   window.searchLineup = function(type, query){
     clearTimeout(searchTimers[type]);
     var resultsId = type === 'artist' ? 'artist-search-results' : 'crew-search-results';
     var results = document.getElementById(resultsId);
+    if(!results) return;
     if(query.length < 2){ results.innerHTML = ''; return; }
     searchTimers[type] = setTimeout(function(){
-      // artists → bare array; promoters → {promoters:[...]}
       var url = type === 'artist'
         ? '/artists/?q='+encodeURIComponent(query)
         : '/promoters/?q='+encodeURIComponent(query)+'&format=json';
@@ -323,21 +585,18 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
   };
 
   function createAndLink(type, name, pillEl) {
-    pillEl.textContent = '…';
-    pillEl.style.pointerEvents = 'none';
+    pillEl.textContent = '…'; pillEl.style.pointerEvents = 'none';
     fetch('/events/'+eventSlug+'/lineup/create/', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
       body: JSON.stringify({type: type, name: name})
     }).then(function(r){ return r.json(); }).then(function(d){
       if(d.error){ pillEl.textContent = '❌ '+d.error; return; }
-      // Replace pill with linked version + edit link
       var icon = type === 'artist' ? '🎵' : '📣';
       pillEl.outerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;background:#1a2a3a;border:1px solid #2a4a6a;color:#88aacc;border-radius:20px;padding:3px 10px;font-size:.8em;margin:2px">'
         + icon+' '+d.name
         + ' <a href="'+d.profile_url+'" target="_blank" style="color:#ff6b35;font-size:.85em;text-decoration:none" title="Edit profile">✏</a>'
         + '</span>';
-      // Also add to the linked display list
       addLineup(type, d.id, d.name, d.slug);
     });
   }
