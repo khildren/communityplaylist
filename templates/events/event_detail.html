@@ -295,6 +295,11 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
             style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:6px 9px;color:#eee;font-size:.82em;box-sizing:border-box">
         </div>
         <div>
+          <label style="color:#666;font-size:.72em;display:block;margin-bottom:3px">YouTube</label>
+          <input id="cf-youtube" type="url" placeholder="https://youtube.com/@yourchannel"
+            style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:6px 9px;color:#eee;font-size:.82em;box-sizing:border-box">
+        </div>
+        <div>
           <label style="color:#666;font-size:.72em;display:block;margin-bottom:3px">MusicBrainz ID <span style="color:#4caf50">+20%</span></label>
           <input id="cf-mb-id" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
             style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:6px 9px;color:#eee;font-size:.82em;box-sizing:border-box">
@@ -546,6 +551,7 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
       soundcloud:(document.getElementById('cf-soundcloud').value||'').trim(),
       bandcamp:(document.getElementById('cf-bandcamp').value||'').trim(),
       spotify:(document.getElementById('cf-spotify').value||'').trim(),
+      youtube:(document.getElementById('cf-youtube').value||'').trim(),
       mixcloud:(document.getElementById('cf-mixcloud').value||'').trim(),
       bluesky:(document.getElementById('cf-bluesky').value||'').trim(),
       tiktok:(document.getElementById('cf-tiktok').value||'').trim(),
