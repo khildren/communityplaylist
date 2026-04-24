@@ -911,7 +911,8 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
       c.classList.remove('highlighted');
     });
     restoreCurrentWeather();
-    if (map) map.flyTo([45.5051, -122.6750], 12, { animate: true, duration: 1.8, easeLinearity: 0.12 });
+    // Don't snap back — let the map sit where it is so the user can explore freely.
+    // Autopilot will reposition when it resumes after the idle timeout.
   }
 
   function onInteraction() {
