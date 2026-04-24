@@ -116,9 +116,29 @@ class NominatimRateLimited(Exception):
     pass
 
 
+def _geocode_photon(q):
+    """Forward geocode via Photon (Komoot, OSM-based). Returns (lat, lng) or (None, None)."""
+    try:
+        r = requests.get(
+            'https://photon.komoot.io/api/',
+            params={'q': q, 'limit': 1, 'lang': 'en'},
+            headers={'User-Agent': 'CommunityPlaylist/1.0 (andrew.jubinsky@gmail.com)'},
+            timeout=8,
+        )
+        if r.status_code != 200:
+            return None, None
+        features = r.json().get('features', [])
+        if features:
+            coords = features[0]['geometry']['coordinates']  # [lng, lat]
+            return float(coords[1]), float(coords[0])
+    except Exception:
+        pass
+    return None, None
+
+
 def geocode_location(location_string):
     """Forward geocode. Returns (lat, lng) or (None, None).
-    Raises NominatimRateLimited on HTTP 429 so callers can abort early."""
+    Tries Nominatim first; falls back to Photon on 429."""
     if not location_string or location_string.startswith(('http://', 'https://', 'www.')):
         return None, None
     try:
@@ -138,7 +158,7 @@ def geocode_location(location_string):
         if data:
             return float(data[0]['lat']), float(data[0]['lon'])
     except NominatimRateLimited:
-        raise
+        return _geocode_photon(q)  # Nominatim throttled — fall back to Photon
     except Exception:
         pass
     return None, None
