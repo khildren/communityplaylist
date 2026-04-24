@@ -129,10 +129,27 @@ h1{color:#ff6b35;font-size:1.25em;font-weight:700;line-height:1.2}
 .rec-row strong{color:#ff6b35}
 .rec-meta{color:#888;font-size:.82em;margin-left:6px}
 
+/* Twitch clips grid */
+.twitch-clips{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:12px}
+.clip-card{position:relative;border-radius:8px;overflow:hidden;background:#0a0a0a;border:1px solid #1a1a1a;cursor:pointer;text-decoration:none;display:block}
+.clip-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+.clip-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;background:rgba(0,0,0,.5)}
+.clip-card:hover .clip-overlay{opacity:1}
+.clip-play{width:32px;height:32px;border-radius:50%;background:#6441a5;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.8em}
+.clip-info{padding:6px 8px}
+.clip-title{color:#ccc;font-size:.79em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.clip-meta{color:#555;font-size:.7em;margin-top:2px}
+.clip-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;align-items:center;justify-content:center}
+.clip-modal.open{display:flex}
+.clip-modal-inner{width:min(860px,96vw);position:relative}
+.clip-modal-inner iframe{width:100%;aspect-ratio:16/9;border:none;border-radius:8px}
+.clip-modal-close{position:absolute;top:-32px;right:0;background:none;border:none;color:#aaa;font-size:1.4em;cursor:pointer;line-height:1}
+
 @media(max-width:480px){
   .hero{grid-template-columns:64px 1fr;gap:12px;padding:16px}
   .hero-photo,.hero-photo-placeholder{width:64px;height:64px;font-size:1.6em}
   h1{font-size:1.1em}
+  .twitch-clips{grid-template-columns:1fr}
 }
 </style>
 {% endblock %}
@@ -201,6 +218,31 @@ h1{color:#ff6b35;font-size:1.25em;font-weight:700;line-height:1.2}
   </div>
   {% endif %}
 </div>{# /hero card #}
+
+{# ── Twitch clips (shown when not live and clips available) ── #}
+{% if twitch_clips %}
+<div class="card">
+  <div class="section-label">📺 Popular Clips &mdash; <a href="https://twitch.tv/{{ artist.twitch }}" target="_blank" rel="noopener" style="color:#6441a5">twitch.tv/{{ artist.twitch }}</a></div>
+  <div class="twitch-clips">
+    {% for clip in twitch_clips %}
+    <a class="clip-card" href="#" onclick="openClip('{{ clip.id|escapejs }}');return false" title="{{ clip.title|escapejs }}">
+      <img class="clip-thumb" src="{{ clip.thumbnail }}" alt="{{ clip.title|escapejs }}" loading="lazy">
+      <div class="clip-overlay"><div class="clip-play">▶</div></div>
+      <div class="clip-info">
+        <div class="clip-title">{{ clip.title }}</div>
+        <div class="clip-meta">{{ clip.views|floatformat:"0" }} views &middot; {{ clip.duration }}s</div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+<div class="clip-modal" id="clip-modal" onclick="closeClip(event)">
+  <div class="clip-modal-inner">
+    <button class="clip-modal-close" onclick="closeClip()">✕</button>
+    <iframe id="clip-iframe" src="" allowfullscreen></iframe>
+  </div>
+</div>
+{% endif %}
 
 {# ── Embeds — Spotify / YouTube / Mixcloud / SoundCloud / Bandcamp / Twitch ── #}
 {% if artist.spotify or artist.youtube or artist.mixcloud or artist.soundcloud or artist.bandcamp or artist.twitch %}
@@ -408,6 +450,25 @@ function cpPlay(btn) {
   btn.textContent = '⏸';
   if (window.cpLoad) window.cpLoad(url, title, artist, window.location.pathname);
 }
+
+// ── Twitch clip modal ──
+function openClip(id) {
+  var modal = document.getElementById('clip-modal');
+  var iframe = document.getElementById('clip-iframe');
+  if (!modal || !iframe) return;
+  iframe.src = 'https://clips.twitch.tv/embed?clip=' + id + '&parent=communityplaylist.com&autoplay=true';
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeClip(e) {
+  if (e && e.target !== document.getElementById('clip-modal') && !e.target.classList.contains('clip-modal-close')) return;
+  var modal = document.getElementById('clip-modal');
+  var iframe = document.getElementById('clip-iframe');
+  if (modal) modal.classList.remove('open');
+  if (iframe) iframe.src = '';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeClip({target: document.getElementById('clip-modal')}); });
 </script>
 
 {% endblock %}

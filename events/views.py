@@ -909,6 +909,7 @@ def artist_profile(request, slug):
         SavedTrack.objects.filter(user=request.user, track_id__in={t.pk for t in tracks}).values_list('track_id', flat=True)
     ) if request.user.is_authenticated and tracks else set()
     yt_embed_html = _get_yt_embed_cached(artist.youtube) if _is_yt_channel(artist.youtube) else ''
+    twitch_clips = _get_twitch_clips_cached(artist.twitch) if artist.twitch and not artist.is_live else []
     return render(request, 'events/artist_profile.html', {
         'artist': artist, 'upcoming': upcoming, 'past': past, 'recurring': recurring,
         'is_following': is_following,
@@ -918,6 +919,7 @@ def artist_profile(request, slug):
         'can_edit': can_edit,
         'saved_ids': saved_ids,
         'yt_embed_html': yt_embed_html,
+        'twitch_clips': twitch_clips,
         'crews': artist.crews.filter(is_public=True).order_by('name'),
     })
 
