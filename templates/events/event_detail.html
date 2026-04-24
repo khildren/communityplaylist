@@ -333,12 +333,12 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
     <div id="parse-suggestions" style="margin-bottom:10px"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <div style="flex:1;min-width:160px">
-        <input type="text" id="artist-search-input" placeholder="Search artist name…" oninput="searchLineup('artist',this.value)"
+        <input type="text" id="artist-search-input" placeholder="Search artist name…" oninput="searchLineup('artist',this.value)" autocomplete="new-password"
           style="width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:6px 10px;color:#eee;font-size:.82em">
         <div id="artist-search-results" style="margin-top:4px"></div>
       </div>
       <div style="flex:1;min-width:160px">
-        <input type="text" id="crew-search-input" placeholder="Search crew / promoter…" oninput="searchLineup('promoter',this.value)"
+        <input type="text" id="crew-search-input" placeholder="Search crew / promoter…" oninput="searchLineup('promoter',this.value)" autocomplete="off"
           style="width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:6px 10px;color:#eee;font-size:.82em">
         <div id="crew-search-results" style="margin-top:4px"></div>
       </div>
