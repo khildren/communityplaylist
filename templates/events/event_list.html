@@ -501,6 +501,21 @@ function initMap() {
     categoryBySlug[e.slug] = e.category;
   });
   mapInitialized = true;
+
+  // Retry tile layer if CDN fails (tiles show as 0×0 or never load)
+  setTimeout(function() {
+    if (!map) return;
+    var panes = map.getPanes();
+    var tilePane = panes && panes.tilePane;
+    if (tilePane && !tilePane.children.length) {
+      // No tiles rendered yet — remove and re-add the tile layer
+      try { map.removeLayer(tileLayer); } catch(e) {}
+      tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© CARTO', crossOrigin: true,
+      }).addTo(map);
+    }
+    map.invalidateSize({animate: false});
+  }, 1500);
 }
 
 // ── Precipitation radar ──────────────────────────────────────────────────────
