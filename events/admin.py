@@ -800,26 +800,45 @@ dedup_by_title_date.short_description = 'Auto-remove duplicates (same title + da
 
 def fill_address_and_geocode(modeladmin, request, queryset):
     """
-    For each selected event:
-      1. If location is just a venue name (no street number), replace it with the
-         matched Venue's full address.
-      2. Copy lat/lng from the matched venue if the event has none.
-      3. Geocode via Nominatim/Photon if still no coordinates.
-      4. Reverse-geocode neighbourhood from new coordinates if blank.
+    Instant (inline):
+      - Replace venue-name-only locations with the matched Venue's full address.
+      - Copy lat/lng from the matched Venue when the event has none.
+    Async (queued to WorkerTask — no API calls in this request):
+      - Enqueue a geocode_event task for events still missing coordinates.
     """
     import re
-    from events.models import Venue
-    from events.geocode import geocode_location, reverse_geocode_neighborhood
+    from events.models import Venue, WorkerTask
 
-    addr_filled = coord_copied = geocoded = errors = 0
+    addr_filled = coord_copied = queued = already_done = 0
+
+    # Pre-load all active venues once to avoid N+1 in Venue.for_location()
+    venues = list(Venue.objects.filter(active=True).only('id', 'name', 'address', 'latitude', 'longitude', 'slug'))
+
+    def _match_venue(location):
+        import unicodedata
+        def _fold(s):
+            return unicodedata.normalize('NFD', s.lower()).encode('ascii', 'ignore').decode()
+        if not location or location.startswith(('http://', 'https://', 'www.')):
+            return None
+        loc_f = _fold(location)
+        for v in venues:
+            name_f = _fold(v.name.strip())
+            addr_f = _fold(v.address.strip()) if v.address else ''
+            if name_f and len(name_f) > 4 and name_f in loc_f:
+                return v
+            if addr_f and len(addr_f) > 8 and addr_f[:40] in loc_f:
+                return v
+        return None
+
+    tasks_to_create = []
 
     for ev in queryset:
         changed = False
         save_fields = []
 
-        venue = Venue.for_location(ev.location)
+        venue = _match_venue(ev.location)
         if venue:
-            # Fill address only when location looks like a name, not a street address
+            # Fill address if location is just a name (no street number)
             if venue.address and not re.search(r'\d+\s+\w', ev.location):
                 ev.location = venue.address
                 save_fields.append('location')
@@ -833,43 +852,34 @@ def fill_address_and_geocode(modeladmin, request, queryset):
                 coord_copied += 1
                 changed = True
 
-        # Geocode if still no coordinates
-        if not ev.latitude and ev.location and not ev.location.startswith(('http', 'www')):
-            try:
-                lat, lng = geocode_location(ev.location)
-                if lat and lng:
-                    ev.latitude, ev.longitude = lat, lng
-                    save_fields += ['latitude', 'longitude']
-                    geocoded += 1
-                    changed = True
-            except Exception:
-                errors += 1
-
-        # Reverse-geocode neighbourhood if we have fresh coordinates and none set
-        if changed and ev.latitude and not ev.neighborhood:
-            try:
-                hood = reverse_geocode_neighborhood(ev.latitude, ev.longitude)
-                if hood:
-                    ev.neighborhood = hood
-                    save_fields.append('neighborhood')
-            except Exception:
-                pass
-
         if changed:
             ev.save(update_fields=list(set(save_fields)))
+
+        # Queue geocoding if event still has no coordinates
+        if not ev.latitude and ev.location and not ev.location.startswith(('http', 'www')):
+            tasks_to_create.append(WorkerTask(
+                task_type='geocode_event',
+                payload={'event_id': ev.id, 'address': ev.location},
+            ))
+            queued += 1
+        elif ev.latitude:
+            already_done += 1
+
+    if tasks_to_create:
+        WorkerTask.objects.bulk_create(tasks_to_create, ignore_conflicts=True)
 
     parts = []
     if addr_filled:  parts.append(f'{addr_filled} address{"es" if addr_filled != 1 else ""} filled from venue')
     if coord_copied: parts.append(f'{coord_copied} coords copied from venue')
-    if geocoded:     parts.append(f'{geocoded} geocoded')
-    if errors:       parts.append(f'{errors} geocode failed')
+    if queued:       parts.append(f'{queued} queued for geocoding (worker will process in background)')
+    if already_done: parts.append(f'{already_done} already had coordinates')
     modeladmin.message_user(
         request,
-        ' · '.join(parts) if parts else 'Nothing to update — all selected events already have full addresses and coordinates.',
-        messages.SUCCESS if (addr_filled or coord_copied or geocoded) else messages.WARNING,
+        ' · '.join(parts) if parts else 'Nothing to update.',
+        messages.SUCCESS if (addr_filled or coord_copied or queued) else messages.WARNING,
     )
 
-fill_address_and_geocode.short_description = 'Fill address from venue + geocode coordinates'
+fill_address_and_geocode.short_description = 'Fill address from venue + queue geocoding'
 
 
 @admin.register(Event)
