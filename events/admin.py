@@ -101,7 +101,7 @@ class ArtistAdmin(admin.ModelAdmin):
         ('Social links', {'fields': ['instagram', 'soundcloud', 'bandcamp', 'mixcloud',
                                      'youtube', 'spotify', 'mastodon', 'bluesky',
                                      'tiktok', 'twitch', 'beatport', 'discogs',
-                                     'house_mixes'], 'classes': ['collapse']}),
+                                     'house_mixes', 'house_mixes_sort'], 'classes': ['collapse']}),
         ('Music folder', {'fields': ['drive_folder_url']}),
         ('Claim & verification', {'fields': ['admin_email', 'claimed_by', 'is_verified', 'is_live',
                                               'youtube_channel_id', 'view_count', 'linked_promoter']}),

@@ -910,7 +910,7 @@ def artist_profile(request, slug):
     ) if request.user.is_authenticated and tracks else set()
     yt_embed_html = _get_yt_embed_cached(artist.youtube) if _is_yt_channel(artist.youtube) else ''
     twitch_clips = _get_twitch_clips_cached(artist.twitch) if artist.twitch and not artist.is_live else []
-    house_mixes_tracks = _get_house_mixes_tracks(artist.house_mixes) if artist.house_mixes else []
+    house_mixes_tracks = _get_house_mixes_tracks(artist.house_mixes, sort=artist.house_mixes_sort or 'newest') if artist.house_mixes else []
     return render(request, 'events/artist_profile.html', {
         'artist': artist, 'upcoming': upcoming, 'past': past, 'recurring': recurring,
         'is_following': is_following,
@@ -1718,43 +1718,84 @@ _HM_CACHE: dict = {}
 _HM_TTL = 900  # 15 min
 
 
-def _get_house_mixes_tracks(username, limit=12):
-    """Fetch mix list for a house-mixes.com username via RSC payload. Cached 15 min."""
-    import re, time
+def _get_house_mixes_tracks(username, sort='newest', limit=12):
+    """Fetch mix list for a house-mixes.com username via RSC payload. Cached 15 min.
+    sort: 'newest' | 'oldest' | 'downloads' | 'plays'
+    """
+    import re, time, json as _json
     if not username:
         return []
-    cached = _HM_CACHE.get(username)
+    cache_key = username
+    cached = _HM_CACHE.get(cache_key)
     if cached and time.time() - cached['ts'] < _HM_TTL:
-        return cached['data']
-    try:
-        r = requests.get(
-            f'https://www.house-mixes.com/{username}',
-            headers={'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0', 'RSC': '1'},
-            timeout=8,
-        )
-        if r.status_code != 200:
+        raw = cached['raw']
+    else:
+        try:
+            r = requests.get(
+                f'https://www.house-mixes.com/{username}',
+                headers={'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0', 'RSC': '1'},
+                timeout=8,
+            )
+            if r.status_code != 200:
+                return []
+            data = r.text
+            # Parse initialMixes array which contains full track objects
+            m = re.search(r'"initialMixes":\[(.+?)\],"initialPag', data, re.S)
+            if m:
+                try:
+                    raw = _json.loads('[' + m.group(1) + ']')
+                except Exception:
+                    raw = []
+            else:
+                raw = []
+            # Fallback: build minimal records from regex if JSON parse failed
+            if not raw:
+                uuids = re.findall(
+                    rf'/{re.escape(username)}/([0-9a-f]{{8}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{12}})(?!\w)', data)
+                META = {username, 'House-Mixes.com', 'viewport', 'description', 'keywords',
+                        'robots', 'msapplication-TileColor', 'msapplication-config'}
+                names = [n for n in re.findall(r'"name":"([^"]+)"', data) if n not in META]
+                artworks = re.findall(
+                    r'https://ik\.imagekit\.io/housemixes/tr:n-athumb7/[^"]+artwork[^"]+\.jpg', data)
+                raw = [{'name': names[i] if i < len(names) else f'Mix {i+1}',
+                        'waveformUrl': f'https://files.house-mixes.com/mp3/{username}/{uuid}.mp3',
+                        'artwork': artworks[i] if i < len(artworks) else '',
+                        'dateAdded': '', 'totalDownloads': 0, 'totalPlays': 0}
+                       for i, uuid in enumerate(uuids)]
+            _HM_CACHE[cache_key] = {'ts': time.time(), 'raw': raw}
+        except Exception:
             return []
-        data = r.text
-        uuids = re.findall(rf'/{re.escape(username)}/([0-9a-f]{{8}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{12}})(?!\w)', data)
-        META = {username, 'House-Mixes.com', 'viewport', 'description', 'keywords',
-                'robots', 'msapplication-TileColor', 'msapplication-config'}
-        mix_names = [n for n in re.findall(r'"name":"([^"]+)"', data) if n not in META]
-        artworks = re.findall(
-            r'https://ik\.imagekit\.io/housemixes/tr:n-athumb7/[^"]+artwork[^"]+\.jpg', data
-        )
-        tracks = []
-        for i, uuid in enumerate(uuids[:limit]):
-            tracks.append({
-                'title':      mix_names[i] if i < len(mix_names) else f'Mix {i + 1}',
-                'stream_url': f'https://files.house-mixes.com/mp3/{username}/{uuid}.mp3',
-                'thumbnail':  artworks[i] if i < len(artworks) else '',
-                'source_url': f'https://www.house-mixes.com/{username}',
-                'duration':   '',
-            })
-        _HM_CACHE[username] = {'ts': time.time(), 'data': tracks}
-        return tracks
-    except Exception:
-        return []
+
+    # Sort
+    if sort == 'oldest':
+        raw = sorted(raw, key=lambda x: x.get('dateAdded') or '', reverse=False)
+    elif sort == 'downloads':
+        raw = sorted(raw, key=lambda x: x.get('totalDownloads') or 0, reverse=True)
+    elif sort == 'plays':
+        raw = sorted(raw, key=lambda x: x.get('totalPlays') or 0, reverse=True)
+    # 'newest' = default order from API (already newest-first)
+
+    tracks = []
+    for mix in raw[:limit]:
+        # waveformUrl is like https://files.house-mixes.com/mp3/user/uuid.mp3 — reuse as stream_url
+        waveform = mix.get('waveformUrl', '')
+        uuid_m = re.search(
+            rf'/{re.escape(username)}/([0-9a-f]{{8}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{12}})',
+            waveform)
+        if not uuid_m:
+            continue
+        uuid = uuid_m.group(1)
+        artwork = (mix.get('artworkUrl') or mix.get('artwork') or
+                   mix.get('coverUrl') or mix.get('coverImageUrl') or '')
+        tracks.append({
+            'title':      mix.get('name') or mix.get('title') or f'Mix',
+            'stream_url': f'https://files.house-mixes.com/mp3/{username}/{uuid}.mp3',
+            'thumbnail':  artwork,
+            'source_url': f'https://www.house-mixes.com/{username}',
+            'downloads':  mix.get('totalDownloads', 0),
+            'plays':      mix.get('totalPlays', 0),
+        })
+    return tracks
 
 
 def _get_twitch_clips_cached(channel):

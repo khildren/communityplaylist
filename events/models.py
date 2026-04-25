@@ -155,6 +155,17 @@ class Artist(models.Model):
     beatport   = models.URLField(blank=True, help_text='Beatport artist page URL')
     discogs    = models.URLField(blank=True, help_text='Discogs artist page URL')
     house_mixes = models.CharField(max_length=100, blank=True, help_text='house-mixes.com username')
+    HOUSE_MIXES_SORT_CHOICES = [
+        ('newest',    'Newest first'),
+        ('oldest',    'Oldest first'),
+        ('downloads', 'Most downloaded'),
+        ('plays',     'Most played'),
+    ]
+    house_mixes_sort = models.CharField(
+        max_length=20, blank=True, default='newest',
+        choices=HOUSE_MIXES_SORT_CHOICES,
+        help_text='Sort order for house-mixes.com track list',
+    )
 
     # Music folder
     drive_folder_url = models.URLField(
