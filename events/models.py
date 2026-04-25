@@ -1448,3 +1448,24 @@ class WorkerTask(models.Model):
 
     def __str__(self):
         return f"{self.task_type} [{self.status}] #{self.pk}"
+
+
+class VideoRoomMessage(models.Model):
+    """Chat messages for the video theater room."""
+    user         = models.ForeignKey('auth.User', null=True, blank=True, on_delete=models.SET_NULL)
+    display_name = models.CharField(max_length=40, blank=True)
+    content      = models.CharField(max_length=400)
+    created_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+        indexes  = [models.Index(fields=['created_at'])]
+
+    @property
+    def author(self):
+        if self.user_id:
+            return self.user.username
+        return self.display_name or 'anon'
+
+    def __str__(self):
+        return f'{self.author}: {self.content[:40]}'
