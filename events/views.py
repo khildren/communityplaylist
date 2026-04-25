@@ -1831,7 +1831,7 @@ def _fetch_twitch_clips(channel):
         )
         token = tok_r.json().get('access_token', '')
         if not token:
-            return []
+            return _empty
         hdrs = {'Client-ID': cid, 'Authorization': f'Bearer {token}'}
         user_r = requests.get(
             'https://api.twitch.tv/helix/users',
@@ -1839,7 +1839,7 @@ def _fetch_twitch_clips(channel):
         )
         users = user_r.json().get('data', [])
         if not users:
-            return []
+            return _empty
         broadcaster_id = users[0]['id']
 
         import re as _re
