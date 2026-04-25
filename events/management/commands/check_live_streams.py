@@ -27,7 +27,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 from events.models import Artist, PromoterProfile, Venue
 from events.management.commands.harvest_youtube_videos import extract_channel_id_from_url
-from events.management.commands.harvest_twitch import get_access_token, check_live as twitch_check_live
+from events.management.commands.harvest_twitch import get_access_token, check_live as twitch_check_live, TwitchUserNotFound
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +160,13 @@ class Command(BaseCommand):
                                     f'  🔴 TW LIVE  {label}: {obj.name}  '
                                     f'({info["viewer_count"]} viewers)'
                                 ))
+                            # Clear orphan flag if it was previously set
+                            if not dry_run and getattr(obj, 'twitch_unresolvable', False):
+                                obj.__class__.objects.filter(pk=obj.pk).update(twitch_unresolvable=False)
+                        except TwitchUserNotFound:
+                            self.stdout.write(f'  ⚠ Twitch orphan: {label} {obj.name!r} — "{twitch_user}" not found')
+                            if not dry_run:
+                                obj.__class__.objects.filter(pk=obj.pk).update(twitch_unresolvable=True)
                         except Exception as exc:
                             logger.warning('Twitch check failed for %s: %s', obj.name, exc)
                         time.sleep(0.1)

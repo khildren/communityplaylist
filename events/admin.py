@@ -89,7 +89,7 @@ class ArtistAdmin(admin.ModelAdmin):
     list_display  = ['name', 'slug', 'stub_badge', 'show_count', 'home_neighborhood',
                      'city', 'has_drive', 'is_verified', 'claimed_by', 'last_enriched_at']
     list_editable = ['is_verified']
-    list_filter   = ['is_verified', 'is_stub', 'claimed_by']
+    list_filter   = ['is_verified', 'is_stub', 'twitch_unresolvable', 'claimed_by']
     raw_id_fields = ['claimed_by']
     actions       = [merge_artists, 'rebuild_stubs', 'mark_not_stub', 'convert_to_crew', 'retire_as_crew']
     readonly_fields = ['is_stub', 'auto_bio', 'home_neighborhood', 'city',
@@ -332,7 +332,7 @@ class PromoterProfileAdmin(admin.ModelAdmin):
     ordering = ['name']
     list_display = ['name', 'slug', 'name_variants', 'admin_email', 'is_verified', 'is_public', 'has_drive', 'claimed_by']
     list_editable = ['is_verified', 'is_public']
-    list_filter = ['is_verified', 'is_public']
+    list_filter = ['is_verified', 'is_public', 'twitch_unresolvable']
     raw_id_fields = ['claimed_by']
     filter_horizontal = ['genres']
     actions = [merge_promoters, 'send_claim_instructions', 'convert_to_artist']

@@ -184,6 +184,7 @@ class Artist(models.Model):
     )
     is_verified = models.BooleanField(default=False, help_text='Admin-verified artist')
     is_live     = models.BooleanField(default=False, help_text='Currently streaming live (updated by check_live_streams)')
+    twitch_unresolvable = models.BooleanField(default=False, help_text='Twitch username returned 400 — needs review')
     youtube_channel_id = models.CharField(max_length=50, blank=True, help_text='Cached YouTube channel ID (UCxxx…)')
     view_count  = models.PositiveIntegerField(default=0)
 
@@ -311,6 +312,7 @@ class PromoterProfile(models.Model):
     is_verified = models.BooleanField(default=False)
     is_public   = models.BooleanField(default=True)
     is_live     = models.BooleanField(default=False, help_text='Currently streaming live (updated by check_live_streams)')
+    twitch_unresolvable = models.BooleanField(default=False, help_text='Twitch username returned 400 — needs review')
     youtube_channel_id = models.CharField(max_length=50, blank=True, help_text='Cached YouTube channel ID (UCxxx…)')
     created_at  = models.DateTimeField(auto_now_add=True)
     view_count  = models.PositiveIntegerField(default=0)
