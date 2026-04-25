@@ -466,9 +466,9 @@ function initMap() {
   if (mapInitialized) return;
   const _mc = document.getElementById('map');
   if (!_mc) return;
-  // Safety: clear any residual Leaflet id in case cleanup didn't fire
-  delete _mc._leaflet_id;
-  if (_mc.children.length) { _mc.innerHTML = ''; }
+  // Strip ALL leaflet-* properties — bfcache can thaw the element with stale ones
+  Object.keys(_mc).forEach(function(k) { if (k.startsWith('_leaflet')) { try { delete _mc[k]; } catch(e) {} } });
+  _mc.innerHTML = '';
   try {
     map = L.map('map', {
       zoomAnimationThreshold: 4,
@@ -1177,21 +1177,23 @@ function getDefaultView() {
 
 setView(getDefaultView(), false);  // auto-default: don't overwrite user's saved choice
 
-// ── bfcache restoration: browser Back/Forward from native cache ──────────────
-// turbo:before-cache destroys the map before Turbo snapshots the page, leaving
-// mapInitialized=false. When the browser restores the page from its own bfcache
-// (e.persisted=true), scripts don't re-run, so setView never fires again.
-// The pageshow handler catches this and re-initialises or repairs the map.
+// ── bfcache: destroy BEFORE the browser freezes the page ─────────────────────
+// pagehide fires before bfcache snapshot — guarantees a clean element when thawed.
+window.addEventListener('pagehide', _destroyMap);
+
+// ── bfcache restoration: browser Back/Forward ────────────────────────────────
+// Always destroy then re-init: Leaflet's internal state doesn't survive being
+// frozen by bfcache even if mapInitialized was true when the page was frozen.
 window.addEventListener('pageshow', function(e) {
   if (!e.persisted) return;
-  if (!mapInitialized) {
-    setView(getDefaultView(), false);
-  } else if (map) {
-    setTimeout(function() {
+  _destroyMap();
+  setView(getDefaultView(), false);
+  setTimeout(function() {
+    if (map) {
       map.invalidateSize({animate: false});
       if (tileLayer) tileLayer.redraw();
-    }, 50);
-  }
+    }
+  }, 300);
 });
 
 // Player is now a floating corner widget — no map resize needed when it appears
