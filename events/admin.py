@@ -953,9 +953,21 @@ class EventAdmin(admin.ModelAdmin):
                     yield _sse(f'SKIP [{done}/{total}] {ev.title[:50]} — already geocoded')
                     continue
 
+                # When location is blank/URL, try submitted_by as a venue name hint
                 if not ev.location or ev.location.startswith(('http', 'www')):
-                    failed += 1
-                    yield _sse(f'SKIP [{done}/{total}] {ev.title[:50]} — no usable address')
+                    venue = _match_venue(ev.submitted_by or '')
+                    if venue and venue.latitude and venue.address:
+                        ev.location = venue.address
+                        ev.latitude, ev.longitude = venue.latitude, venue.longitude
+                        hood = reverse_geocode_neighborhood(venue.latitude, venue.longitude)
+                        ev.neighborhood = hood
+                        ev.save(update_fields=['location', 'latitude', 'longitude', 'neighborhood'])
+                        coord_copied += 1
+                        yield _sse(f'VENUE [{done}/{total}] {ev.title[:50]} → {venue.name} via submitter ({hood})')
+                        _time.sleep(0.5)
+                    else:
+                        failed += 1
+                        yield _sse(f'FAIL [{done}/{total}] {ev.title[:50]} — no location, submitter={ev.submitted_by!r} unmatched')
                     continue
 
                 venue = _match_venue(ev.location)
