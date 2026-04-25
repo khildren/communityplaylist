@@ -2,41 +2,57 @@
 {% block content %}
 <style>
   #gp-wrap { max-width: 860px; }
-  #gp-bar-outer { background:#2a2a2a; border-radius:6px; height:22px; margin:16px 0; overflow:hidden; }
+  #gp-bar-outer { background:#2a2a2a; border-radius:6px; height:22px; margin:12px 0; overflow:hidden; }
   #gp-bar { background:#4caf50; height:100%; width:0%; transition:width .3s; }
   #gp-status { font-size:.85em; color:#aaa; margin-bottom:8px; }
   #gp-log {
     background:#111; color:#ccc; font-family:monospace; font-size:.78em;
     border:1px solid #333; border-radius:4px; padding:10px;
-    height:340px; overflow-y:auto;
+    height:360px; overflow-y:auto;
   }
-  #gp-log .ok   { color:#6f6; }
+  #gp-log .ok    { color:#6f6; }
   #gp-log .venue { color:#6cf; }
   #gp-log .skip  { color:#888; }
   #gp-log .fail  { color:#f66; }
   #gp-log .err   { color:#f93; }
   #gp-done { display:none; margin-top:16px; padding:10px 16px; background:#1a3a1a; border:1px solid #4caf50; border-radius:6px; color:#8f8; }
   #gp-back { display:none; margin-top:12px; }
+  #gp-options { margin:12px 0; display:flex; align-items:center; gap:10px; font-size:.9em; }
+  #gp-options label { cursor:pointer; display:flex; align-items:center; gap:6px; }
+  #gp-options input[type=checkbox] { width:16px; height:16px; cursor:pointer; }
+  #gp-start { padding:6px 18px; }
 </style>
 
 <div id="gp-wrap">
-  <h2>Geocoding {{ id_count }} event{{ id_count|pluralize }}…</h2>
-  <div id="gp-status">Starting…</div>
-  <div id="gp-bar-outer"><div id="gp-bar"></div></div>
-  <div id="gp-log"></div>
+  <h2>Geocoding {{ id_count }} event{{ id_count|pluralize }}</h2>
+
+  <div id="gp-options">
+    <label>
+      <input type="checkbox" id="auto-approve" checked>
+      Auto-approve events once geocoded
+    </label>
+    <button id="gp-start" class="button">▶ Start</button>
+  </div>
+
+  <div id="gp-status" style="display:none">Starting…</div>
+  <div id="gp-bar-outer" style="display:none"><div id="gp-bar"></div></div>
+  <div id="gp-log" style="display:none"></div>
   <div id="gp-done"></div>
   <div id="gp-back"><a href="../?status__exact=pending" class="button">← Back to pending events</a></div>
 </div>
 
 <script>
 (function(){
-  var ids   = "{{ ids|escapejs }}";
-  var log   = document.getElementById('gp-log');
-  var bar   = document.getElementById('gp-bar');
-  var stat  = document.getElementById('gp-status');
-  var done  = document.getElementById('gp-done');
-  var back  = document.getElementById('gp-back');
+  var ids    = "{{ ids|escapejs }}";
+  var log    = document.getElementById('gp-log');
+  var bar    = document.getElementById('gp-bar');
+  var stat   = document.getElementById('gp-status');
+  var done   = document.getElementById('gp-done');
+  var back   = document.getElementById('gp-back');
+  var opts   = document.getElementById('gp-options');
+  var startBtn = document.getElementById('gp-start');
   var total = 0, current = 0;
+  var src = null;
 
   function addLine(text, cls) {
     var d = document.createElement('div');
@@ -46,52 +62,62 @@
     log.scrollTop = log.scrollHeight;
   }
 
-  var src = new EventSource('../geocode-stream/?ids=' + encodeURIComponent(ids));
+  startBtn.addEventListener('click', function() {
+    var autoApprove = document.getElementById('auto-approve').checked ? '1' : '0';
+    opts.style.display = 'none';
+    stat.style.display = '';
+    document.getElementById('gp-bar-outer').style.display = '';
+    log.style.display = '';
 
-  src.onmessage = function(e) {
-    var msg = e.data;
+    src = new EventSource('../geocode-stream/?ids=' + encodeURIComponent(ids) + '&auto_approve=' + autoApprove);
 
-    if (msg.startsWith('TOTAL ')) {
-      total = parseInt(msg.slice(6), 10);
-      stat.textContent = '0 / ' + total + ' processed';
-      return;
-    }
+    src.onmessage = function(e) {
+      var msg = e.data.trim();
+      if (!msg) return;
 
-    if (msg.startsWith('DONE ')) {
+      if (msg.startsWith('TOTAL ')) {
+        total = parseInt(msg.slice(6), 10);
+        stat.textContent = '0 / ' + total + ' processed';
+        return;
+      }
+
+      if (msg.startsWith('DONE ')) {
+        src.close();
+        bar.style.width = '100%';
+        stat.textContent = 'Complete — ' + total + ' events processed';
+        var summary = {};
+        msg.slice(5).split(' ').forEach(function(p){ var kv=p.split('='); summary[kv[0]]=kv[1]; });
+        done.style.display = 'block';
+        done.innerHTML = '✓ Done'
+          + ' &nbsp;|&nbsp; <b>' + ((+summary.venue||0) + (+summary.geocoded||0)) + '</b> geocoded'
+          + (summary.approved > 0 ? ' &nbsp;|&nbsp; <b>' + summary.approved + '</b> approved' : '')
+          + ' &nbsp;|&nbsp; <b>' + (summary.failed||0) + '</b> failed'
+          + ' &nbsp;|&nbsp; <b>' + (summary.skipped||0) + '</b> already had coords';
+        back.style.display = 'block';
+        return;
+      }
+
+      var cls = '';
+      if      (msg.startsWith('OK '))    cls = 'ok';
+      else if (msg.startsWith('VENUE ')) cls = 'venue';
+      else if (msg.startsWith('SKIP '))  cls = 'skip';
+      else if (msg.startsWith('FAIL '))  cls = 'fail';
+      else if (msg.startsWith('ERR '))   cls = 'err';
+      if (cls) current++;
+      addLine(msg, cls);
+
+      if (total) {
+        bar.style.width = Math.round(current / total * 100) + '%';
+        stat.textContent = current + ' / ' + total + ' processed';
+      }
+    };
+
+    src.onerror = function() {
       src.close();
-      bar.style.width = '100%';
-      stat.textContent = 'Complete — ' + total + ' events processed';
-      var parts = msg.slice(5).split(' ');
-      var summary = {};
-      parts.forEach(function(p){ var kv=p.split('='); summary[kv[0]]=kv[1]; });
-      done.style.display = 'block';
-      done.innerHTML = '✓ Done &nbsp;|&nbsp; '
-        + '<b>' + (summary.venue||0)  + '</b> from venue DB &nbsp;|&nbsp; '
-        + '<b>' + (summary.geocoded||0) + '</b> geocoded via API &nbsp;|&nbsp; '
-        + '<b>' + (summary.failed||0) + '</b> failed &nbsp;|&nbsp; '
-        + '<b>' + (summary.skipped||0) + '</b> already had coords';
+      addLine('⚠ Connection closed — refresh to check results', 'fail');
       back.style.display = 'block';
-      return;
-    }
-
-    if (msg.startsWith('OK '))    { addLine(msg, 'ok');    current++; }
-    else if (msg.startsWith('VENUE ')) { addLine(msg, 'venue'); current++; }
-    else if (msg.startsWith('SKIP ')) { addLine(msg, 'skip');  current++; }
-    else if (msg.startsWith('FAIL ')) { addLine(msg, 'fail');  current++; }
-    else if (msg.startsWith('ERR '))  { addLine(msg, 'err');   current++; }
-    else                              { addLine(msg, ''); }
-
-    if (total) {
-      bar.style.width = Math.round(current / total * 100) + '%';
-      stat.textContent = current + ' / ' + total + ' processed';
-    }
-  };
-
-  src.onerror = function() {
-    src.close();
-    addLine('⚠ Connection closed — refresh to check results', 'fail');
-    back.style.display = 'block';
-  };
+    };
+  });
 })();
 </script>
 {% endblock %}

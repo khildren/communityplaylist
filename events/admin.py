@@ -913,13 +913,14 @@ class EventAdmin(admin.ModelAdmin):
         except ValueError:
             ids = []
 
-        def _stream(ids):
+        auto_approve = request.GET.get('auto_approve') == '1'
+
+        def _stream(ids, auto_approve):
             import re, unicodedata, time as _time
             from events.models import Venue
             from events.geocode import geocode_location, reverse_geocode_neighborhood
 
             def _sse(data):
-                # Pad to 1 KB so proxies/gunicorn flush each chunk immediately
                 msg = f'data: {data}\n\n'
                 return msg + ':' + ' ' * max(0, 1024 - len(msg)) + '\n\n'
 
@@ -941,34 +942,51 @@ class EventAdmin(admin.ModelAdmin):
                         return v
                 return None
 
+            def _save_geocoded(ev, extra_fields):
+                """Save geocode fields and optionally approve the event."""
+                fields = list(extra_fields)
+                if auto_approve and ev.status != 'approved':
+                    ev.status = 'approved'
+                    fields.append('status')
+                ev.save(update_fields=fields)
+
+            def _tag(hood):
+                return f'[{hood}] ' if hood else ''
+
             events = list(Event.objects.filter(pk__in=ids))
             total = len(events)
             yield _sse(f'TOTAL {total}')
 
-            done = coord_copied = geocoded = failed = already = 0
+            done = coord_copied = geocoded = failed = already = approved = 0
             for ev in events:
                 done += 1
                 if ev.latitude:
                     already += 1
-                    yield _sse(f'SKIP [{done}/{total}] {ev.title[:50]} — already geocoded')
+                    # Still approve if requested and not yet approved
+                    if auto_approve and ev.status != 'approved':
+                        ev.status = 'approved'
+                        ev.save(update_fields=['status'])
+                        approved += 1
+                        yield _sse(f'SKIP [{done}/{total}] {ev.title[:50]} — already geocoded → ✓ approved')
+                    else:
+                        yield _sse(f'SKIP [{done}/{total}] {ev.title[:50]} — already geocoded')
                     continue
 
                 # When location is blank/URL, try submitted_by as a venue name hint
                 if not ev.location or ev.location.startswith(('http', 'www')):
                     submitter = (ev.submitted_by or '').strip()
-                    # 1) Local venue DB match
                     venue = _match_venue(submitter)
                     if venue and venue.latitude and venue.address:
                         ev.location = venue.address
                         ev.latitude, ev.longitude = venue.latitude, venue.longitude
                         hood = reverse_geocode_neighborhood(venue.latitude, venue.longitude)
                         ev.neighborhood = hood
-                        ev.save(update_fields=['location', 'latitude', 'longitude', 'neighborhood'])
+                        _save_geocoded(ev, ['location', 'latitude', 'longitude', 'neighborhood', 'status'])
                         coord_copied += 1
-                        yield _sse(f'VENUE [{done}/{total}] {ev.title[:50]} → {venue.name} via submitter ({hood})')
+                        if auto_approve: approved += 1
+                        yield _sse(f'VENUE [{done}/{total}] {_tag(hood)}{ev.title[:45]} → {venue.name} via submitter{" ✓" if auto_approve else ""}')
                         _time.sleep(0.5)
                     elif submitter and not submitter.startswith(('http', 'www')):
-                        # 2) Geocode "Venue Name, Portland, OR" via Nominatim/Photon
                         try:
                             query = f'{submitter}, Portland, OR'
                             lat, lng = geocode_location(query)
@@ -977,12 +995,13 @@ class EventAdmin(admin.ModelAdmin):
                                 ev.location = query
                                 ev.latitude, ev.longitude = lat, lng
                                 ev.neighborhood = hood
-                                ev.save(update_fields=['location', 'latitude', 'longitude', 'neighborhood'])
+                                _save_geocoded(ev, ['location', 'latitude', 'longitude', 'neighborhood', 'status'])
                                 geocoded += 1
-                                yield _sse(f'OK [{done}/{total}] {ev.title[:50]} → geocoded submitter "{submitter}" ({hood})')
+                                if auto_approve: approved += 1
+                                yield _sse(f'OK [{done}/{total}] {_tag(hood)}{ev.title[:45]} → "{submitter}"{" ✓" if auto_approve else ""}')
                             else:
                                 failed += 1
-                                yield _sse(f'FAIL [{done}/{total}] {ev.title[:50]} — submitter "{submitter}" not found')
+                                yield _sse(f'FAIL [{done}/{total}] {ev.title[:50]} — "{submitter}" not found')
                         except Exception as exc:
                             failed += 1
                             yield _sse(f'ERR [{done}/{total}] {ev.title[:50]} — {exc}')
@@ -994,17 +1013,17 @@ class EventAdmin(admin.ModelAdmin):
 
                 venue = _match_venue(ev.location)
                 if venue and venue.latitude:
-                    fields = ['latitude', 'longitude']
+                    fields = ['latitude', 'longitude', 'neighborhood', 'status']
                     ev.latitude, ev.longitude = venue.latitude, venue.longitude
                     if venue.address and not re.search(r'\d+\s+\w', ev.location):
                         ev.location = venue.address
                         fields.append('location')
                     hood = reverse_geocode_neighborhood(venue.latitude, venue.longitude)
                     ev.neighborhood = hood
-                    fields.append('neighborhood')
-                    ev.save(update_fields=fields)
+                    _save_geocoded(ev, fields)
                     coord_copied += 1
-                    yield _sse(f'VENUE [{done}/{total}] {ev.title[:50]} → {venue.name} ({hood})')
+                    if auto_approve: approved += 1
+                    yield _sse(f'VENUE [{done}/{total}] {_tag(hood)}{ev.title[:45]} → {venue.name}{" ✓" if auto_approve else ""}')
                     _time.sleep(0.5)
                     continue
 
@@ -1014,20 +1033,21 @@ class EventAdmin(admin.ModelAdmin):
                         ev.latitude, ev.longitude = lat, lng
                         hood = reverse_geocode_neighborhood(lat, lng)
                         ev.neighborhood = hood
-                        ev.save(update_fields=['latitude', 'longitude', 'neighborhood'])
+                        _save_geocoded(ev, ['latitude', 'longitude', 'neighborhood', 'status'])
                         geocoded += 1
-                        yield _sse(f'OK [{done}/{total}] {ev.title[:50]} → {hood}')
+                        if auto_approve: approved += 1
+                        yield _sse(f'OK [{done}/{total}] {_tag(hood)}{ev.title[:45]}{" ✓" if auto_approve else ""}')
                     else:
                         failed += 1
-                        yield _sse(f'FAIL [{done}/{total}] {ev.title[:50]} — no result for: {ev.location[:60]}')
+                        yield _sse(f'FAIL [{done}/{total}] {ev.title[:50]} — no result for: {ev.location[:50]}')
                 except Exception as exc:
                     failed += 1
                     yield _sse(f'ERR [{done}/{total}] {ev.title[:50]} — {exc}')
                 _time.sleep(1.1)
 
-            yield _sse(f'DONE venue={coord_copied} geocoded={geocoded} failed={failed} skipped={already}')
+            yield _sse(f'DONE venue={coord_copied} geocoded={geocoded} approved={approved} failed={failed} skipped={already}')
 
-        resp = StreamingHttpResponse(_stream(ids), content_type='text/event-stream')
+        resp = StreamingHttpResponse(_stream(ids, auto_approve), content_type='text/event-stream')
         resp['Cache-Control'] = 'no-cache'
         resp['X-Accel-Buffering'] = 'no'
         return resp
