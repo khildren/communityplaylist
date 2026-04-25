@@ -50,13 +50,15 @@ def get_access_token(client_id, client_secret):
 
 
 def _get(endpoint, params, client_id, token):
-    """Twitch Helix API GET with auth headers."""
+    """Twitch Helix API GET with auth headers. Returns {} on 400 (bad username)."""
     headers = {
         'Client-Id':     client_id,
         'Authorization': f'Bearer {token}',
     }
     r = requests.get(f'{TWITCH_API}/{endpoint}', params=params,
                      headers=headers, timeout=15)
+    if r.status_code == 400:
+        return {'data': []}  # invalid username — treat as not found, not an error
     r.raise_for_status()
     return r.json()
 

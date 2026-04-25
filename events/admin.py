@@ -1281,7 +1281,8 @@ def _parse_log(path, tail_lines=25):
     has_error = any(
         kw in l
         for l in lines[-30:]
-        for kw in ('Traceback', 'SyntaxError', 'ImportError', 'ERROR:', 'Error:', 'FAILED')
+        for kw in ('Traceback', 'SyntaxError', 'ImportError', 'ERROR:', 'FAILED')
+        if 'Client Error' not in l  # HTTP 4xx from external APIs are not app errors
     )
     return mtime, last, has_error
 
