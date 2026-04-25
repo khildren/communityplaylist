@@ -24,6 +24,11 @@ import pytz
 
 PDX_TZ = pytz.timezone('America/Los_Angeles')
 
+# ── Feed health helpers ────────────────────────────────────────────────────────
+
+from events.utils.url_safety import is_hard_feed_failure as _is_hard_failure
+
+
 # ── Cross-feed dedup helpers ──────────────────────────────────────────────────
 
 def _norm_title(title):
@@ -986,13 +991,26 @@ class Command(BaseCommand):
                 error = f'unsupported source_type: {feed.source_type}'
                 created = skipped = 0
 
+            prev_error = feed.last_error  # capture before overwrite
             feed.last_synced = now
             feed.last_error = error
-            feed.save(update_fields=['last_synced', 'last_error'])
+            update_fields = ['last_synced', 'last_error']
 
-            if error:
+            # Auto-deactivate on consecutive hard failures (403/404/SSL gone)
+            if error and prev_error and _is_hard_failure(error) and _is_hard_failure(prev_error):
+                feed.active = False
+                update_fields.append('active')
+                self.stderr.write(
+                    self.style.ERROR(
+                        f'  AUTO-DEACTIVATED: consecutive hard failure — {error[:80]}'
+                    )
+                )
+
+            feed.save(update_fields=update_fields)
+
+            if error and feed.active:
                 self.stderr.write(f'  ERROR: {error}')
-            else:
+            elif not error:
                 self.stdout.write(f'  ✓ {created} created, {skipped} skipped')
 
             total_created += created

@@ -1291,6 +1291,12 @@ CRON_JOBS = [
         'log':      'logs/cp_check_media.log',
         'schedule': 'Weekly  Monday  6:00 AM',
     },
+    {
+        'name':     'Enrich missing profile photos (og:image / Instagram)',
+        'command':  'enrich_profile_photos',
+        'log':      'logs/cp_enrich_photos.log',
+        'schedule': 'Weekly  Monday  6:30 AM',
+    },
 ]
 
 

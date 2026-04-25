@@ -51,3 +51,17 @@ def display_domain(url: str) -> str:
         return urlparse(url).netloc.lstrip('www.')
     except Exception:
         return ''
+
+
+# ── Feed health ───────────────────────────────────────────────────────────────
+
+_HARD_FAIL_MARKERS = (
+    '403 ', '404 ', 'SSLError', 'SSL:', 'certificate', 'Name or service not known'
+)
+
+
+def is_hard_feed_failure(error_str: str) -> bool:
+    """True if error_str looks like a permanent feed failure (not a transient blip)."""
+    if not error_str:
+        return False
+    return any(m in error_str for m in _HARD_FAIL_MARKERS)
