@@ -209,12 +209,14 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
   </div>
 </div>
 
-{# ── Twitch Popular Clips (offline only) ── #}
+{# ── Twitch Clips + Archives ── #}
+{% if twitch_clips or twitch_vods %}
+<p class="section-title">📺 Twitch &mdash; <a href="https://twitch.tv/{{ promoter.twitch }}" target="_blank" rel="noopener" style="color:#6441a5;text-decoration:none">twitch.tv/{{ promoter.twitch }}</a></p>
 {% if twitch_clips %}
-<p class="section-title">📺 Popular Clips &mdash; <a href="https://twitch.tv/{{ promoter.twitch }}" target="_blank" rel="noopener" style="color:#6441a5;text-decoration:none">twitch.tv/{{ promoter.twitch }}</a></p>
+<p style="font-size:.75em;color:#888;margin:-8px 0 8px">Top clips</p>
 <div class="twitch-clips">
   {% for clip in twitch_clips %}
-  <a class="clip-card" href="#" onclick="openClip('{{ clip.id|escapejs }}');return false" title="{{ clip.title|escapejs }}">
+  <a class="clip-card" href="#" onclick="openClip('{{ clip.id|escapejs }}','{{ clip.type|escapejs }}');return false" title="{{ clip.title|escapejs }}">
     <img class="clip-thumb" src="{{ clip.thumbnail }}" alt="{{ clip.title|escapejs }}" loading="lazy">
     <div class="clip-overlay"><div class="clip-play">▶</div></div>
     <div class="clip-info">
@@ -224,6 +226,22 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
   </a>
   {% endfor %}
 </div>
+{% endif %}
+{% if twitch_vods %}
+<p style="font-size:.75em;color:#888;margin:12px 0 8px">Past streams</p>
+<div class="twitch-clips">
+  {% for clip in twitch_vods %}
+  <a class="clip-card" href="#" onclick="openClip('{{ clip.id|escapejs }}','{{ clip.type|escapejs }}');return false" title="{{ clip.title|escapejs }}">
+    <img class="clip-thumb" src="{{ clip.thumbnail }}" alt="{{ clip.title|escapejs }}" loading="lazy">
+    <div class="clip-overlay"><div class="clip-play">▶</div></div>
+    <div class="clip-info">
+      <div class="clip-title">{{ clip.title }}</div>
+      <div class="clip-meta">{{ clip.views|floatformat:"0" }} views &middot; {{ clip.duration }}s</div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
 <div class="clip-modal" id="clip-modal" onclick="closeClip(event)">
   <div class="clip-modal-inner">
     <button class="clip-modal-close" onclick="closeClip()">✕</button>
@@ -534,11 +552,14 @@ function cpPlayShare(btn) {
 }
 
 // ── Twitch clip modal ──
-function openClip(id) {
+function openClip(id, type) {
   var modal = document.getElementById('clip-modal');
   var iframe = document.getElementById('clip-iframe');
   if (!modal || !iframe) return;
-  iframe.src = 'https://clips.twitch.tv/embed?clip=' + id + '&parent=communityplaylist.com&autoplay=true';
+  var src = (type === 'vod')
+    ? 'https://player.twitch.tv/?video=' + id + '&parent=communityplaylist.com&autoplay=true'
+    : 'https://clips.twitch.tv/embed?clip=' + id + '&parent=communityplaylist.com&autoplay=true';
+  iframe.src = src;
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
 }

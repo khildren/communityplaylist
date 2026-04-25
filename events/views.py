@@ -909,7 +909,9 @@ def artist_profile(request, slug):
         SavedTrack.objects.filter(user=request.user, track_id__in={t.pk for t in tracks}).values_list('track_id', flat=True)
     ) if request.user.is_authenticated and tracks else set()
     yt_embed_html = _get_yt_embed_cached(artist.youtube) if _is_yt_channel(artist.youtube) else ''
-    twitch_clips = _get_twitch_clips_cached(artist.twitch) if artist.twitch and not artist.is_live else []
+    _twitch_data  = _get_twitch_clips_cached(artist.twitch) if artist.twitch and not artist.is_live else {}
+    twitch_clips  = _twitch_data.get('clips', [])
+    twitch_vods   = _twitch_data.get('vods', [])
     house_mixes_tracks = _get_house_mixes_tracks(artist.house_mixes, sort=artist.house_mixes_sort or 'newest') if artist.house_mixes else []
     return render(request, 'events/artist_profile.html', {
         'artist': artist, 'upcoming': upcoming, 'past': past, 'recurring': recurring,
@@ -921,6 +923,7 @@ def artist_profile(request, slug):
         'saved_ids': saved_ids,
         'yt_embed_html': yt_embed_html,
         'twitch_clips': twitch_clips,
+        'twitch_vods': twitch_vods,
         'house_mixes_tracks': house_mixes_tracks,
         'crews': artist.crews.filter(is_public=True).order_by('name'),
     })
@@ -1799,16 +1802,16 @@ def _get_house_mixes_tracks(username, sort='newest', limit=12):
 
 
 def _get_twitch_clips_cached(channel):
-    """Return list of top-clip dicts for a Twitch channel, cached 1h."""
+    """Return {'clips': [...], 'vods': [...]} for a Twitch channel, cached 1h."""
     if not channel:
-        return []
+        return {'clips': [], 'vods': []}
     now = _time.time()
     entry = _twitch_clips_cache.get(channel)
     if entry and now - entry[1] < _TWITCH_CLIPS_TTL:
         return entry[0]
-    clips = _fetch_twitch_clips(channel)
-    _twitch_clips_cache[channel] = (clips, now)
-    return clips
+    data = _fetch_twitch_clips(channel)
+    _twitch_clips_cache[channel] = (data, now)
+    return data
 
 def _fetch_twitch_clips(channel):
     """Return up to 4 clips for a channel; falls back to past VODs if no clips."""
@@ -1836,7 +1839,17 @@ def _fetch_twitch_clips(channel):
             return []
         broadcaster_id = users[0]['id']
 
-        # Try clips first
+        import re as _re
+
+        def _parse_dur(dur_str):
+            dur = 0
+            for unit, mult in [('h', 3600), ('m', 60), ('s', 1)]:
+                m = _re.search(r'(\d+)' + unit, dur_str or '0s')
+                if m:
+                    dur += int(m.group(1)) * mult
+            return dur
+
+        # Top clips
         clips_r = requests.get(
             'https://api.twitch.tv/helix/clips',
             params={'broadcaster_id': broadcaster_id, 'first': 4},
@@ -1854,34 +1867,25 @@ def _fetch_twitch_clips(channel):
                 'type':      'clip',
             })
 
-        # Fall back to past VODs (archives) if no clips
-        if not clips:
-            vods_r = requests.get(
-                'https://api.twitch.tv/helix/videos',
-                params={'user_id': broadcaster_id, 'first': 4, 'type': 'archive'},
-                headers=hdrs, timeout=5,
-            )
-            for v in vods_r.json().get('data', []):
-                # VOD thumbnail URL needs resolution substitution
-                thumb = v.get('thumbnail_url', '').replace('%{width}', '320').replace('%{height}', '180')
-                # Parse duration string like "1h23m45s" → seconds
-                dur_str = v.get('duration', '0s')
-                dur = 0
-                import re as _re
-                for unit, mult in [('h', 3600), ('m', 60), ('s', 1)]:
-                    m = _re.search(r'(\d+)' + unit, dur_str)
-                    if m:
-                        dur += int(m.group(1)) * mult
-                clips.append({
-                    'id':        v['id'],
-                    'title':     v['title'],
-                    'thumbnail': thumb,
-                    'views':     v.get('view_count', 0),
-                    'duration':  dur,
-                    'url':       v['url'],
-                    'type':      'vod',
-                })
-        return clips
+        # Past VODs / archives (always fetch — shown as separate section)
+        vods_r = requests.get(
+            'https://api.twitch.tv/helix/videos',
+            params={'user_id': broadcaster_id, 'first': 4, 'type': 'archive'},
+            headers=hdrs, timeout=5,
+        )
+        vods = []
+        for v in vods_r.json().get('data', []):
+            thumb = v.get('thumbnail_url', '').replace('%{width}', '320').replace('%{height}', '180')
+            vods.append({
+                'id':        v['id'],
+                'title':     v['title'],
+                'thumbnail': thumb,
+                'views':     v.get('view_count', 0),
+                'duration':  _parse_dur(v.get('duration', '0s')),
+                'url':       v['url'],
+                'type':      'vod',
+            })
+        return {'clips': clips, 'vods': vods}
     except Exception:
         return []
 
@@ -3381,7 +3385,9 @@ def promoter_detail(request, slug):
         SavedTrack.objects.filter(user=request.user, track__in=tracks).values_list('track_id', flat=True)
     ) if request.user.is_authenticated else set()
     yt_embed_html = _get_yt_embed_cached(promoter.youtube) if _is_yt_channel(promoter.youtube) else ''
-    twitch_clips = _get_twitch_clips_cached(promoter.twitch) if promoter.twitch and not promoter.is_live else []
+    _twitch_data  = _get_twitch_clips_cached(promoter.twitch) if promoter.twitch else {}
+    twitch_clips  = _twitch_data.get('clips', [])
+    twitch_vods   = _twitch_data.get('vods', [])
     shared_tracks = []  # TrackShare feature removed
 
     listings = list(promoter.record_listings.filter(is_available=True)) if promoter.shop_sheet_url else []
@@ -3417,6 +3423,7 @@ def promoter_detail(request, slug):
         'saved_ids': saved_ids,
         'yt_embed_html': yt_embed_html,
         'twitch_clips': twitch_clips,
+        'twitch_vods': twitch_vods,
         'shared_tracks': shared_tracks,
         'members': promoter.members.order_by('name'),
         'listings': listings,
