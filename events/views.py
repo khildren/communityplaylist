@@ -2421,7 +2421,8 @@ def artist_edit(request, slug):
         return redirect('artist_profile', slug=artist.slug)
 
     SOCIAL_FIELDS = ['instagram', 'soundcloud', 'bandcamp', 'mixcloud', 'youtube',
-                     'spotify', 'mastodon', 'bluesky', 'tiktok', 'twitch']
+                     'spotify', 'mastodon', 'bluesky', 'tiktok', 'twitch',
+                     'house_mixes']
 
     if request.method == 'GET':
         return render(request, 'events/artist_edit.html', {'artist': artist})
@@ -2430,6 +2431,9 @@ def artist_edit(request, slug):
     for field in ['bio', 'website', 'drive_folder_url'] + SOCIAL_FIELDS:
         val = request.POST.get(field, '').strip()
         setattr(artist, field, val)
+    sort = request.POST.get('house_mixes_sort', '').strip()
+    if sort in ('newest', 'oldest', 'downloads', 'plays'):
+        artist.house_mixes_sort = sort
     if request.FILES.get('photo'):
         artist.photo = request.FILES['photo']
     artist.save()

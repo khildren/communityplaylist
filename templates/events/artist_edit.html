@@ -104,6 +104,27 @@ h1{color:#ff6b35;font-size:1.2em;margin-bottom:22px}
 </div>
 
 <div class="card">
+  <div class="card-title">🎛 House-Mixes.com</div>
+  <p style="font-size:.78em;color:#555;margin-bottom:14px;line-height:1.6">Connect your house-mixes.com profile to display your mixes on your artist page — playable directly in the Community Playlist player.</p>
+  <div class="social-grid">
+    <div class="fg">
+      <label>house-mixes.com username</label>
+      <input type="text" name="house_mixes" value="{{ artist.house_mixes }}" placeholder="your username">
+      <div class="hint">Your profile at house-mixes.com/<strong>username</strong></div>
+    </div>
+    <div class="fg">
+      <label>Sort mixes by</label>
+      <select name="house_mixes_sort" style="width:100%;padding:8px 10px;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#eee;font-size:.9em">
+        <option value="newest"    {% if artist.house_mixes_sort == 'newest'    or not artist.house_mixes_sort %}selected{% endif %}>Newest first</option>
+        <option value="oldest"    {% if artist.house_mixes_sort == 'oldest'    %}selected{% endif %}>Oldest first</option>
+        <option value="downloads" {% if artist.house_mixes_sort == 'downloads' %}selected{% endif %}>Most downloaded</option>
+        <option value="plays"     {% if artist.house_mixes_sort == 'plays'     %}selected{% endif %}>Most played</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="card">
   <div class="card-title">Music Folder</div>
   <div class="fg">
     <label>Google Drive Folder URL</label>
