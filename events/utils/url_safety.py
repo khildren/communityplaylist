@@ -53,6 +53,28 @@ def display_domain(url: str) -> str:
         return ''
 
 
+# ── Discord notifications ─────────────────────────────────────────────────────
+
+def discord_send(webhook_url: str, payload: dict) -> bool:
+    """POST a JSON payload to a Discord webhook. Returns True on success."""
+    if not webhook_url:
+        return False
+    try:
+        import urllib.request as _ur
+        import json as _json
+        req = _ur.Request(
+            webhook_url,
+            data=_json.dumps(payload).encode(),
+            headers={'Content-Type': 'application/json'},
+            method='POST',
+        )
+        with _ur.urlopen(req, timeout=10):
+            return True
+    except Exception as e:
+        print(f'[Discord] send failed: {e}')
+        return False
+
+
 # ── Feed health ───────────────────────────────────────────────────────────────
 
 _HARD_FAIL_MARKERS = (

@@ -150,6 +150,7 @@ BLUESKY_APP_PASSWORD = config('BLUESKY_APP_PASSWORD', default='')
 # Discord webhooks — configure in .env
 DISCORD_WEBHOOK_BOARD  = config('DISCORD_WEBHOOK_BOARD',  default='')  # board topics + Free & Trade
 DISCORD_WEBHOOK_EVENTS = config('DISCORD_WEBHOOK_EVENTS', default='')  # new approved events (text/forum)
+DISCORD_WEBHOOK_OPS    = config('DISCORD_WEBHOOK_OPS',    default='')  # ops alerts: db_health, deploy status
 
 # Discord bot — needed for native Scheduled Events tab
 # Create bot at discord.com/developers, add to server with MANAGE_EVENTS permission

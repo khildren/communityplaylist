@@ -1297,6 +1297,12 @@ CRON_JOBS = [
         'log':      'logs/cp_enrich_photos.log',
         'schedule': 'Weekly  Monday  6:30 AM',
     },
+    {
+        'name':     'DB health report (row counts + task queue + Discord alert)',
+        'command':  'db_health',
+        'log':      'logs/cp_db_health.log',
+        'schedule': 'Daily  8:00 AM',
+    },
 ]
 
 
@@ -1385,6 +1391,74 @@ class EditSuggestionAdmin(admin.ModelAdmin):
             return format_html('<a href="/neighborhoods/{}/" target="_blank">{}</a>', target.slug, target.name)
         return '—'
     target_link.short_description = 'Target'
+
+
+def _build_system_stats():
+    """Quick counts for the ops health widget — runs on every cron page load."""
+    from django.utils import timezone as _tz
+    from datetime import timedelta as _td
+    from django.db.models import Count as _Count
+    from events.utils.url_safety import is_hard_feed_failure
+
+    now = _tz.now()
+
+    # Events
+    ev_counts = dict(
+        Event.objects.values_list('status').annotate(n=_Count('pk')).values_list('status', 'n')
+    )
+    pending   = ev_counts.get('pending', 0)
+    approved  = ev_counts.get('approved', 0)
+    stale_3d  = Event.objects.filter(status='pending', created_at__lt=now - _td(days=3)).count()
+
+    # WorkerTask
+    task_counts = {}
+    try:
+        from events.models import WorkerTask as _WT
+        task_counts = dict(
+            _WT.objects.values_list('status').annotate(n=_Count('pk')).values_list('status', 'n')
+        )
+        stuck = _WT.objects.filter(
+            status='running', created_at__lt=now - _td(minutes=30)
+        ).count()
+    except Exception:
+        stuck = 0
+
+    queued  = task_counts.get('queued',  0)
+    running = task_counts.get('running', 0)
+    errors  = task_counts.get('error',   0)
+
+    # Feeds
+    active_feeds = VenueFeed.objects.filter(active=True).count()
+    hard_fails   = sum(
+        1 for f in VenueFeed.objects.filter(active=True, last_error__gt='').only('last_error')
+        if is_hard_feed_failure(f.last_error)
+    )
+    soft_errors = VenueFeed.objects.filter(active=True, last_error__gt='').count() - hard_fails
+
+    task_status = 'ok'
+    if errors > 10 or stuck > 0 or queued > 50:
+        task_status = 'error'
+    elif errors > 0 or queued > 10:
+        task_status = 'warn'
+
+    ev_status = 'error' if stale_3d > 0 else ('warn' if pending > 5 else 'ok')
+    feed_status = 'error' if hard_fails > 0 else ('warn' if soft_errors > 0 else 'ok')
+
+    return {
+        'pending':      pending,
+        'approved':     approved,
+        'stale_3d':     stale_3d,
+        'ev_status':    ev_status,
+        'queued':       queued,
+        'running':      running,
+        'task_errors':  errors,
+        'stuck':        stuck,
+        'task_status':  task_status,
+        'active_feeds': active_feeds,
+        'hard_fails':   hard_fails,
+        'soft_errors':  soft_errors,
+        'feed_status':  feed_status,
+    }
 
 
 def _build_alerts():
@@ -1553,13 +1627,15 @@ class CronStatusAdmin(admin.ModelAdmin):
                 'exists':    mtime is not None,
             })
 
-        alerts = _build_alerts()
+        alerts       = _build_alerts()
+        system_stats = _build_system_stats()
 
         context = {
             **self.admin_site.each_context(request),
             'title': 'Cron Status',
             'jobs':  jobs,
             'alerts': alerts,
+            'stats': system_stats,
             'now':   datetime.datetime.now(),
         }
         return TemplateResponse(request, 'admin/cron_status.html', context)

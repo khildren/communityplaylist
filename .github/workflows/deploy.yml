@@ -15,6 +15,7 @@ jobs:
           username: root
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
+            set -e
             cd /var/www/vhosts/communityplaylist.com/django
             git pull origin main
             source venv/bin/activate
@@ -23,3 +24,37 @@ jobs:
             python manage.py collectstatic --no-input --clear 2>/dev/null || true
             systemctl restart communityplaylist.service
             echo "deployed at $(date)"
+
+            # ── Post-deploy health check ─────────────────────────────────
+            sleep 8
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://communityplaylist.com/)
+            if [ "$HTTP_STATUS" != "200" ]; then
+              echo "HEALTH CHECK FAILED — HTTP $HTTP_STATUS"
+              exit 1
+            fi
+            echo "Health check passed (HTTP $HTTP_STATUS)"
+
+            # Quick DB sanity + optional Discord ping
+            python manage.py db_health --quiet 2>&1 | tail -5 || true
+
+      - name: Notify Discord on success
+        if: success()
+        run: |
+          COMMIT_MSG=$(echo "${{ github.event.head_commit.message }}" | head -1)
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+          ACTOR="${{ github.actor }}"
+          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_OPS }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"content\": \"✅ **Deployed** \`${SHORT_SHA}\` by ${ACTOR}\\n> ${COMMIT_MSG}\"}" || true
+
+      - name: Notify Discord on failure
+        if: failure()
+        run: |
+          COMMIT_MSG=$(echo "${{ github.event.head_commit.message }}" | head -1)
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+          ACTOR="${{ github.actor }}"
+          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_OPS }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"content\": \"🔴 **Deploy FAILED** \`${SHORT_SHA}\` by ${ACTOR}\\n> ${COMMIT_MSG}\\nCheck GH Actions for details.\"}" || true

@@ -55,6 +55,21 @@
 .btn-retry{background:transparent;border:1px solid #444;color:#888;padding:3px 10px;border-radius:5px;font-size:.75em;cursor:pointer;white-space:nowrap;flex-shrink:0}
 .btn-retry:hover{border-color:#ff6b35;color:#ff6b35}
 .btn-retry.loading{opacity:.5;pointer-events:none}
+
+/* ── System health widget ─────────────────────────────────── */
+.health-grid{display:flex;gap:12px;max-width:900px;margin-bottom:24px;flex-wrap:wrap}
+.health-card{flex:1;min-width:180px;border-radius:8px;padding:14px 18px;background:#1a1a1a;border:1px solid #2a2a2a}
+.health-card.ok   {border-top:3px solid #4caf50}
+.health-card.warn {border-top:3px solid #ddaa33}
+.health-card.error{border-top:3px solid #f66}
+.health-label{font-size:.7em;text-transform:uppercase;letter-spacing:.08em;color:#666;margin-bottom:8px}
+.health-primary{font-size:1.6em;font-weight:700;line-height:1;margin-bottom:4px}
+.health-card.ok    .health-primary{color:#4caf50}
+.health-card.warn  .health-primary{color:#ddaa33}
+.health-card.error .health-primary{color:#f66}
+.health-sub{font-size:.74em;color:#666;line-height:1.6}
+.health-sub b{color:#aaa}
+.health-section-title{font-size:.75em;text-transform:uppercase;letter-spacing:.08em;color:#666;margin-bottom:10px}
 </style>
 
 <h1>Cron Status</h1>
@@ -74,6 +89,46 @@
   {% else %}
     <div class="all-clear">✓ Nothing pending — all clear</div>
   {% endif %}
+</div>
+
+<!-- ── System Health ──────────────────────────────────────── -->
+<div class="health-section-title">System Health</div>
+<div class="health-grid">
+
+  <a href="/admin/events/event/?status__exact=pending" class="health-card {{ stats.ev_status }}" style="text-decoration:none">
+    <div class="health-label">Pending Review</div>
+    <div class="health-primary">{{ stats.pending }}</div>
+    <div class="health-sub">
+      <b>{{ stats.approved }}</b> approved
+      {% if stats.stale_3d %}
+        &nbsp;·&nbsp; <b style="color:#f66">{{ stats.stale_3d }} over 3d</b>
+      {% endif %}
+    </div>
+  </a>
+
+  <div class="health-card {{ stats.task_status }}">
+    <div class="health-label">Worker Queue</div>
+    <div class="health-primary">{{ stats.queued }}</div>
+    <div class="health-sub">
+      <b>{{ stats.running }}</b> running
+      &nbsp;·&nbsp; <b>{{ stats.task_errors }}</b> errors
+      {% if stats.stuck %}&nbsp;·&nbsp; <b style="color:#f66">{{ stats.stuck }} stuck</b>{% endif %}
+    </div>
+  </div>
+
+  <a href="/admin/events/venuefeed/?active__exact=1" class="health-card {{ stats.feed_status }}" style="text-decoration:none">
+    <div class="health-label">Active Feeds</div>
+    <div class="health-primary">{{ stats.active_feeds }}</div>
+    <div class="health-sub">
+      {% if stats.hard_fails %}
+        <b style="color:#f66">{{ stats.hard_fails }} hard fail{% if stats.hard_fails != 1 %}s{% endif %}</b>
+        {% if stats.soft_errors %}&nbsp;·&nbsp;{% endif %}
+      {% endif %}
+      {% if stats.soft_errors %}<b>{{ stats.soft_errors }} soft error{% if stats.soft_errors != 1 %}s{% endif %}</b>{% endif %}
+      {% if not stats.hard_fails and not stats.soft_errors %}<b style="color:#4caf50">all healthy</b>{% endif %}
+    </div>
+  </a>
+
 </div>
 
 <!-- ── Cron jobs ───────────────────────────────────────────── -->
