@@ -87,13 +87,14 @@ class ArtistAdmin(admin.ModelAdmin):
     search_fields = ['name', 'slug', 'city', 'home_neighborhood']
     ordering = ['name']
     list_display  = ['name', 'slug', 'stub_badge', 'show_count', 'home_neighborhood',
-                     'city', 'has_drive', 'is_verified', 'claimed_by', 'last_enriched_at']
+                     'city', 'has_drive', 'mb_badge', 'is_verified', 'claimed_by', 'last_enriched_at']
     list_editable = ['is_verified']
     list_filter   = ['is_verified', 'is_stub', 'twitch_unresolvable', 'link_broken', 'claimed_by']
     raw_id_fields = ['claimed_by']
-    actions       = [merge_artists, 'rebuild_stubs', 'mark_not_stub', 'convert_to_crew', 'retire_as_crew']
+    actions       = [merge_artists, 'rebuild_stubs', 'mark_not_stub', 'convert_to_crew', 'retire_as_crew',
+                     'clear_mb_id']
     readonly_fields = ['is_stub', 'auto_bio', 'home_neighborhood', 'city',
-                       'latitude', 'longitude', 'last_enriched_at']
+                       'latitude', 'longitude', 'last_enriched_at', 'mb_verify_link']
     raw_id_fields = ['claimed_by', 'linked_promoter']
     change_form_template = 'admin/events/artist/change_form.html'
     fieldsets = [
@@ -105,6 +106,14 @@ class ArtistAdmin(admin.ModelAdmin):
         ('Music folder', {'fields': ['drive_folder_url']}),
         ('Claim & verification', {'fields': ['admin_email', 'claimed_by', 'is_verified', 'is_live',
                                               'youtube_channel_id', 'view_count', 'linked_promoter']}),
+        ('MusicBrainz', {
+            'fields': ['mb_id', 'mb_verify_link'],
+            'description': (
+                'Paste the correct UUID from musicbrainz.org/artist/&lt;uuid&gt;, '
+                'or clear to remove the link from the public profile. '
+                'The enrichment cron will not overwrite a manually-set ID.'
+            ),
+        }),
         ('Auto-generated', {'fields': ['is_stub', 'auto_bio', 'home_neighborhood', 'city',
                                         'latitude', 'longitude', 'last_enriched_at'], 'classes': ['collapse']}),
     ]
@@ -127,6 +136,29 @@ class ArtistAdmin(admin.ModelAdmin):
         else:
             PromoterProfileAdmin._do_send_claim_email(request, obj, 'artists')
         return redirect(reverse('admin:events_artist_change', args=[pk]))
+
+    def mb_verify_link(self, obj):
+        from django.utils.html import format_html
+        if not obj.mb_id:
+            return '—  (no MusicBrainz ID set)'
+        url = f'https://musicbrainz.org/artist/{obj.mb_id}'
+        return format_html(
+            '<a href="{}" target="_blank" rel="noopener noreferrer" '
+            'style="font-family:monospace">{}</a>&nbsp;&nbsp;'
+            '<a href="{}" target="_blank" rel="noopener noreferrer" '
+            'style="font-size:.85em;color:#888">Verify on MusicBrainz ↗</a>',
+            url, obj.mb_id, url,
+        )
+    mb_verify_link.short_description = 'MB profile link'
+
+    def mb_badge(self, obj):
+        return '✓ MB' if obj.mb_id else '—'
+    mb_badge.short_description = 'MB'
+
+    def clear_mb_id(self, request, queryset):
+        updated = queryset.update(mb_id='')
+        self.message_user(request, f'Cleared MusicBrainz ID on {updated} artist(s).')
+    clear_mb_id.short_description = '🔗 Clear MusicBrainz ID (wrong match)'
 
     def stub_badge(self, obj):
         if obj.is_stub and not obj.claimed_by_id:
