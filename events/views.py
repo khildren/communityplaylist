@@ -2458,7 +2458,7 @@ def artist_edit(request, slug):
     if old_drive and not artist.drive_folder_url:
         PlaylistTrack.objects.filter(artist=artist).delete()
     messages.success(request, 'Profile updated.')
-    return redirect('artist_profile', slug=artist.slug)
+    return redirect('artist_edit', slug=artist.slug)
 
 
 @login_required
@@ -4262,6 +4262,11 @@ def api_youtube_playlist_proxy(request):
 def video_room(request):
     """Fullscreen theater: PDXTV video queue + live chat."""
     return render(request, 'events/video_room.html')
+
+
+def player_page(request):
+    """Standalone full-page music/video player."""
+    return render(request, 'events/player.html')
 
 
 def video_room_messages(request):

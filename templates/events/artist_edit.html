@@ -28,6 +28,14 @@ h1{color:#ff6b35;font-size:1.2em;margin-bottom:22px}
 <a href="{% url 'artist_profile' artist.slug %}" class="back">← {{ artist.name }}</a>
 <h1>Edit artist profile</h1>
 
+{% if messages %}
+  {% for msg in messages %}
+  <div style="background:#1a2a1a;border:1px solid #2a4a2a;border-radius:7px;padding:10px 16px;margin-bottom:16px;color:#4caf50;font-size:.85em">
+    ✓ {{ msg }}
+  </div>
+  {% endfor %}
+{% endif %}
+
 <form method="post" enctype="multipart/form-data" data-turbo="false">
 {% csrf_token %}
 
