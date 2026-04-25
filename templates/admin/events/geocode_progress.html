@@ -20,7 +20,7 @@
 </style>
 
 <div id="gp-wrap">
-  <h2>Geocoding {{ ids|cut:","| add:" events" }}</h2>
+  <h2>Geocoding {{ id_count }} event{{ id_count|pluralize }}…</h2>
   <div id="gp-status">Starting…</div>
   <div id="gp-bar-outer"><div id="gp-bar"></div></div>
   <div id="gp-log"></div>
@@ -30,7 +30,7 @@
 
 <script>
 (function(){
-  var ids   = {{ ids|safe|default:'""' }};
+  var ids   = "{{ ids|escapejs }}";
   var log   = document.getElementById('gp-log');
   var bar   = document.getElementById('gp-bar');
   var stat  = document.getElementById('gp-status');

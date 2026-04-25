@@ -902,7 +902,8 @@ class EventAdmin(admin.ModelAdmin):
 
     def _geocode_progress_page(self, request):
         ids = request.GET.get('ids', '')
-        ctx = {**self.admin_site.each_context(request), 'ids': ids, 'title': 'Geocoding events…'}
+        id_count = len([i for i in ids.split(',') if i.strip().isdigit()])
+        ctx = {**self.admin_site.each_context(request), 'ids': ids, 'id_count': id_count, 'title': 'Geocoding events…'}
         return TemplateResponse(request, 'admin/events/geocode_progress.html', ctx)
 
     def _geocode_stream(self, request):
@@ -918,7 +919,9 @@ class EventAdmin(admin.ModelAdmin):
             from events.geocode import geocode_location, reverse_geocode_neighborhood
 
             def _sse(data):
-                return f'data: {data}\n\n'
+                # Pad to 1 KB so proxies/gunicorn flush each chunk immediately
+                msg = f'data: {data}\n\n'
+                return msg + ':' + ' ' * max(0, 1024 - len(msg)) + '\n\n'
 
             def _fold(s):
                 return unicodedata.normalize('NFD', s.lower()).encode('ascii', 'ignore').decode()
