@@ -1801,10 +1801,12 @@ def _get_house_mixes_tracks(username, sort='newest', limit=12):
     return tracks
 
 
+_TWITCH_EMPTY = {'clips': [], 'vods': []}
+
 def _get_twitch_clips_cached(channel):
     """Return {'clips': [...], 'vods': [...]} for a Twitch channel, cached 1h."""
     if not channel:
-        return {'clips': [], 'vods': []}
+        return _TWITCH_EMPTY
     now = _time.time()
     entry = _twitch_clips_cache.get(channel)
     if entry and now - entry[1] < _TWITCH_CLIPS_TTL:
@@ -1818,8 +1820,9 @@ def _fetch_twitch_clips(channel):
     from django.conf import settings as _s
     cid = getattr(_s, 'TWITCH_CLIENT_ID', '')
     csec = getattr(_s, 'TWITCH_CLIENT_SECRET', '')
+    _empty = {'clips': [], 'vods': []}
     if not cid or not csec:
-        return []
+        return _empty
     try:
         tok_r = requests.post(
             'https://id.twitch.tv/oauth2/token',
@@ -1887,7 +1890,7 @@ def _fetch_twitch_clips(channel):
             })
         return {'clips': clips, 'vods': vods}
     except Exception:
-        return []
+        return _empty
 
 
 # ── Discogs API helper ────────────────────────────────────────────────────────
