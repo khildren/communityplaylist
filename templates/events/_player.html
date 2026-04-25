@@ -415,6 +415,25 @@
     } catch(e){}
   };
 
+  // Load a full list of tracks as the player queue and start at startIdx.
+  // trackList: [{stream_url, title, artist, source_url}, ...]
+  window.cpLoadQueue = function(trackList, startIdx) {
+    if (!trackList || !trackList.length) return;
+    if (window.cpVideo && window.cpVideo.leave) window.cpVideo.leave();
+    tracks = trackList;
+    current = Math.max(0, Math.min(startIdx || 0, trackList.length - 1));
+    show();
+    seekFill.style.width = '0%';
+    clearRowProgress();
+    audio.volume = parseFloat(volSlide.value) / 100;
+    loadTrack(current);
+    play();
+    try {
+      var t = tracks[current];
+      sessionStorage.setItem(STORE, JSON.stringify({url: t.stream_url, title: t.title, artist: t.artist, source_url: t.source_url || '', genre: genre, idx: current, time: 0}));
+    } catch(e){}
+  };
+
   // Restore state on first load
   var savedGenre = 'all', savedIdx = 0, savedTime = 0;
   try {

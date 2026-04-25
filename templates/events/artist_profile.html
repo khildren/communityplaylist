@@ -179,6 +179,7 @@ h1{color:#ff6b35;font-size:1.25em;font-weight:700;line-height:1.2}
         {% if artist.spotify %}<a href="{{ artist.spotify }}" class="social-pill" target="_blank" rel="noopener">♫ Spotify</a>{% endif %}
         {% if artist.youtube %}<a href="{{ artist.youtube }}" class="social-pill" target="_blank" rel="noopener">▶ YouTube</a>{% endif %}
         {% if artist.twitch %}<a href="https://twitch.tv/{{ artist.twitch }}" class="social-pill" target="_blank" rel="noopener" style="border-color:#6441a5;color:#9f7fd4">📺 Twitch</a>{% endif %}
+        {% if artist.house_mixes %}<a href="https://www.house-mixes.com/{{ artist.house_mixes }}" class="social-pill" target="_blank" rel="noopener" style="border-color:#ff6600;color:#ff8833">🎛 House-Mixes</a>{% endif %}
         {% if artist.mastodon %}<a href="{{ artist.mastodon }}" class="social-pill" target="_blank" rel="noopener">🐘 Mastodon</a>{% endif %}
         {% if artist.bluesky %}<a href="https://bsky.app/profile/{{ artist.bluesky }}" class="social-pill" target="_blank" rel="noopener">🦋 Bluesky</a>{% endif %}
         {% if artist.tiktok %}<a href="https://tiktok.com/@{{ artist.tiktok }}" class="social-pill" target="_blank" rel="noopener">🎵 TikTok</a>{% endif %}
@@ -235,6 +236,25 @@ h1{color:#ff6b35;font-size:1.25em;font-weight:700;line-height:1.2}
     <button class="clip-modal-close" onclick="closeClip()">✕</button>
     <iframe id="clip-iframe" src="" allowfullscreen></iframe>
   </div>
+</div>
+{% endif %}
+
+{# ── House-Mixes.com mixes ── #}
+{% if house_mixes_tracks %}
+<div class="card">
+  <div class="section-label">🎛 Mixes &mdash; <a href="https://www.house-mixes.com/{{ artist.house_mixes }}" target="_blank" rel="noopener" style="color:#ff6b35">house-mixes.com/{{ artist.house_mixes }}</a></div>
+  {% for mix in house_mixes_tracks %}
+  <div class="track-row" data-stream="{{ mix.stream_url }}" data-title="{{ mix.title }}" data-artist="{{ artist.name }}" style="align-items:flex-start">
+    <button class="track-play" onclick="cpPlay(this)" title="Play">▶</button>
+    {% if mix.thumbnail %}
+    <img src="{{ mix.thumbnail }}" alt="" style="width:40px;height:40px;border-radius:4px;object-fit:cover;flex-shrink:0">
+    {% endif %}
+    <div class="track-info">
+      <div class="track-title">{{ mix.title }}</div>
+    </div>
+    <a href="{{ mix.source_url }}" target="_blank" rel="noopener" style="color:#555;font-size:.75em;flex-shrink:0;align-self:center" title="Open on house-mixes.com">↗</a>
+  </div>
+  {% endfor %}
 </div>
 {% endif %}
 
@@ -435,10 +455,8 @@ function cpDeleteTrack(btn, pk) {
 
 // ── Track play buttons → global CP player ──
 function cpPlay(btn) {
-  var row    = btn.closest('.track-row');
-  var url    = row.dataset.stream;
-  var title  = row.dataset.title;
-  var artist = row.dataset.artist;
+  var row  = btn.closest('.track-row');
+  var card = row.closest('.card');
   document.querySelectorAll('.track-row').forEach(function(r){
     r.classList.remove('playing');
     var b = r.querySelector('.track-play');
@@ -446,7 +464,19 @@ function cpPlay(btn) {
   });
   row.classList.add('playing');
   btn.textContent = '⏸';
-  if (window.cpLoad) window.cpLoad(url, title, artist, window.location.pathname);
+  // Build a queue from all track-rows in the same card so prev/next works
+  if (window.cpLoadQueue && card) {
+    var rows = Array.from(card.querySelectorAll('.track-row'));
+    if (rows.length > 1) {
+      var artistName = row.dataset.artist;
+      var queue = rows.map(function(r) {
+        return {stream_url: r.dataset.stream, title: r.dataset.title, artist: r.dataset.artist || artistName, source_url: window.location.pathname};
+      });
+      window.cpLoadQueue(queue, rows.indexOf(row));
+      return;
+    }
+  }
+  if (window.cpLoad) window.cpLoad(row.dataset.stream, row.dataset.title, row.dataset.artist, window.location.pathname);
 }
 
 // ── Twitch clip modal ──

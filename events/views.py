@@ -910,6 +910,7 @@ def artist_profile(request, slug):
     ) if request.user.is_authenticated and tracks else set()
     yt_embed_html = _get_yt_embed_cached(artist.youtube) if _is_yt_channel(artist.youtube) else ''
     twitch_clips = _get_twitch_clips_cached(artist.twitch) if artist.twitch and not artist.is_live else []
+    house_mixes_tracks = _get_house_mixes_tracks(artist.house_mixes) if artist.house_mixes else []
     return render(request, 'events/artist_profile.html', {
         'artist': artist, 'upcoming': upcoming, 'past': past, 'recurring': recurring,
         'is_following': is_following,
@@ -920,6 +921,7 @@ def artist_profile(request, slug):
         'saved_ids': saved_ids,
         'yt_embed_html': yt_embed_html,
         'twitch_clips': twitch_clips,
+        'house_mixes_tracks': house_mixes_tracks,
         'crews': artist.crews.filter(is_public=True).order_by('name'),
     })
 
@@ -1710,6 +1712,50 @@ def _is_yt_channel(url):
 # ── Twitch clips helper ───────────────────────────────────────────────────────
 _twitch_clips_cache: dict = {}
 _TWITCH_CLIPS_TTL = 3600
+
+# ── House-Mixes.com ───────────────────────────────────────────────────────────
+_HM_CACHE: dict = {}
+_HM_TTL = 900  # 15 min
+
+
+def _get_house_mixes_tracks(username, limit=12):
+    """Fetch mix list for a house-mixes.com username via RSC payload. Cached 15 min."""
+    import re, time
+    if not username:
+        return []
+    cached = _HM_CACHE.get(username)
+    if cached and time.time() - cached['ts'] < _HM_TTL:
+        return cached['data']
+    try:
+        r = requests.get(
+            f'https://www.house-mixes.com/{username}',
+            headers={'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0', 'RSC': '1'},
+            timeout=8,
+        )
+        if r.status_code != 200:
+            return []
+        data = r.text
+        uuids = re.findall(rf'/{re.escape(username)}/([0-9a-f]{{8}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{12}})(?!\w)', data)
+        META = {username, 'House-Mixes.com', 'viewport', 'description', 'keywords',
+                'robots', 'msapplication-TileColor', 'msapplication-config'}
+        mix_names = [n for n in re.findall(r'"name":"([^"]+)"', data) if n not in META]
+        artworks = re.findall(
+            r'https://ik\.imagekit\.io/housemixes/tr:n-athumb7/[^"]+artwork[^"]+\.jpg', data
+        )
+        tracks = []
+        for i, uuid in enumerate(uuids[:limit]):
+            tracks.append({
+                'title':      mix_names[i] if i < len(mix_names) else f'Mix {i + 1}',
+                'stream_url': f'https://files.house-mixes.com/mp3/{username}/{uuid}.mp3',
+                'thumbnail':  artworks[i] if i < len(artworks) else '',
+                'source_url': f'https://www.house-mixes.com/{username}',
+                'duration':   '',
+            })
+        _HM_CACHE[username] = {'ts': time.time(), 'data': tracks}
+        return tracks
+    except Exception:
+        return []
+
 
 def _get_twitch_clips_cached(channel):
     """Return list of top-clip dicts for a Twitch channel, cached 1h."""

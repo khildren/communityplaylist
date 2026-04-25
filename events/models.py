@@ -154,6 +154,7 @@ class Artist(models.Model):
     twitch     = models.CharField(max_length=100, blank=True, help_text='Channel name without @')
     beatport   = models.URLField(blank=True, help_text='Beatport artist page URL')
     discogs    = models.URLField(blank=True, help_text='Discogs artist page URL')
+    house_mixes = models.CharField(max_length=100, blank=True, help_text='house-mixes.com username')
 
     # Music folder
     drive_folder_url = models.URLField(
