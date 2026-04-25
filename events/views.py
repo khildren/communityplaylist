@@ -2872,7 +2872,7 @@ def playlist_tracks_json(request):
 
     # Merge house-mixes.com tracks (no genre metadata — only in ALL channel)
     if not genre_filter:
-        hm_artists = Artist.objects.filter(house_mixes__gt='', is_public=True).values_list(
+        hm_artists = Artist.objects.filter(house_mixes__gt='', is_stub=False).values_list(
             'name', 'house_mixes', 'house_mixes_sort', 'slug')
         for a_name, hm_user, hm_sort, a_slug in hm_artists:
             for hm in _get_house_mixes_tracks(hm_user, sort=hm_sort or 'newest'):
