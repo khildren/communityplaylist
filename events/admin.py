@@ -3,7 +3,7 @@ from django.utils.html import format_html, mark_safe
 from django.utils.timezone import localtime
 from django.template.response import TemplateResponse
 from django.urls import path
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, StreamingHttpResponse
 from django.contrib import messages
 from django import forms
 from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile, PromoterProfile, PlaylistTrack, RecordListing, RecordReservation, VideoTrack, Shelter, InstagramAccount, InstagramPost, WorkerTask
@@ -821,87 +821,11 @@ dedup_by_title_date.short_description = 'Auto-remove duplicates (same title + da
 
 
 def fill_address_and_geocode(modeladmin, request, queryset):
-    """
-    Instant (inline):
-      - Replace venue-name-only locations with the matched Venue's full address.
-      - Copy lat/lng from the matched Venue when the event has none.
-    Async (queued to WorkerTask — no API calls in this request):
-      - Enqueue a geocode_event task for events still missing coordinates.
-    """
-    import re
-    from events.models import Venue, WorkerTask
+    """Redirect to the geocode-progress page for live streaming output."""
+    ids = ','.join(str(e.pk) for e in queryset)
+    return HttpResponseRedirect(f'geocode-progress/?ids={ids}')
 
-    addr_filled = coord_copied = queued = already_done = 0
-
-    # Pre-load all active venues once to avoid N+1 in Venue.for_location()
-    venues = list(Venue.objects.filter(active=True).only('id', 'name', 'address', 'latitude', 'longitude', 'slug'))
-
-    def _match_venue(location):
-        import unicodedata
-        def _fold(s):
-            return unicodedata.normalize('NFD', s.lower()).encode('ascii', 'ignore').decode()
-        if not location or location.startswith(('http://', 'https://', 'www.')):
-            return None
-        loc_f = _fold(location)
-        for v in venues:
-            name_f = _fold(v.name.strip())
-            addr_f = _fold(v.address.strip()) if v.address else ''
-            if name_f and len(name_f) > 4 and name_f in loc_f:
-                return v
-            if addr_f and len(addr_f) > 8 and addr_f[:40] in loc_f:
-                return v
-        return None
-
-    tasks_to_create = []
-
-    for ev in queryset:
-        changed = False
-        save_fields = []
-
-        venue = _match_venue(ev.location)
-        if venue:
-            # Fill address if location is just a name (no street number)
-            if venue.address and not re.search(r'\d+\s+\w', ev.location):
-                ev.location = venue.address
-                save_fields.append('location')
-                addr_filled += 1
-                changed = True
-            # Copy venue coordinates if event has none
-            if venue.latitude and venue.longitude and not ev.latitude:
-                ev.latitude = venue.latitude
-                ev.longitude = venue.longitude
-                save_fields += ['latitude', 'longitude']
-                coord_copied += 1
-                changed = True
-
-        if changed:
-            ev.save(update_fields=list(set(save_fields)))
-
-        # Queue geocoding if event still has no coordinates
-        if not ev.latitude and ev.location and not ev.location.startswith(('http', 'www')):
-            tasks_to_create.append(WorkerTask(
-                task_type='geocode_event',
-                payload={'event_id': ev.id, 'address': ev.location},
-            ))
-            queued += 1
-        elif ev.latitude:
-            already_done += 1
-
-    if tasks_to_create:
-        WorkerTask.objects.bulk_create(tasks_to_create, ignore_conflicts=True)
-
-    parts = []
-    if addr_filled:  parts.append(f'{addr_filled} address{"es" if addr_filled != 1 else ""} filled from venue')
-    if coord_copied: parts.append(f'{coord_copied} coords copied from venue')
-    if queued:       parts.append(f'{queued} queued for geocoding (worker will process in background)')
-    if already_done: parts.append(f'{already_done} already had coordinates')
-    modeladmin.message_user(
-        request,
-        ' · '.join(parts) if parts else 'Nothing to update.',
-        messages.SUCCESS if (addr_filled or coord_copied or queued) else messages.WARNING,
-    )
-
-fill_address_and_geocode.short_description = 'Fill address from venue + queue geocoding'
+fill_address_and_geocode.short_description = 'Geocode & assign neighborhood (live progress)'
 
 
 def link_twitch_location_artists(modeladmin, request, queryset):
@@ -966,6 +890,110 @@ class EventAdmin(admin.ModelAdmin):
     autocomplete_fields = ['genres', 'artists']
     inlines = [EventPhotoInline]
     actions = [merge_events, dedup_by_title_date, fill_address_and_geocode, link_twitch_location_artists]
+
+    def get_urls(self):
+        from django.urls import path as _path
+        urls = super().get_urls()
+        custom = [
+            _path('geocode-progress/', self.admin_site.admin_view(self._geocode_progress_page), name='event_geocode_progress'),
+            _path('geocode-stream/',   self.admin_site.admin_view(self._geocode_stream),         name='event_geocode_stream'),
+        ]
+        return custom + urls
+
+    def _geocode_progress_page(self, request):
+        ids = request.GET.get('ids', '')
+        ctx = {**self.admin_site.each_context(request), 'ids': ids, 'title': 'Geocoding events…'}
+        return TemplateResponse(request, 'admin/events/geocode_progress.html', ctx)
+
+    def _geocode_stream(self, request):
+        ids_raw = request.GET.get('ids', '')
+        try:
+            ids = [int(i) for i in ids_raw.split(',') if i.strip().isdigit()]
+        except ValueError:
+            ids = []
+
+        def _stream(ids):
+            import re, unicodedata, time as _time
+            from events.models import Venue
+            from events.geocode import geocode_location, reverse_geocode_neighborhood
+
+            def _sse(data):
+                return f'data: {data}\n\n'
+
+            def _fold(s):
+                return unicodedata.normalize('NFD', s.lower()).encode('ascii', 'ignore').decode()
+
+            venues = list(Venue.objects.filter(active=True).only('name', 'address', 'latitude', 'longitude'))
+
+            def _match_venue(location):
+                if not location or location.startswith(('http://', 'https://')):
+                    return None
+                loc_f = _fold(location)
+                for v in venues:
+                    name_f = _fold(v.name.strip())
+                    addr_f = _fold(v.address.strip()) if v.address else ''
+                    if name_f and len(name_f) > 4 and name_f in loc_f:
+                        return v
+                    if addr_f and len(addr_f) > 8 and addr_f[:40] in loc_f:
+                        return v
+                return None
+
+            events = list(Event.objects.filter(pk__in=ids))
+            total = len(events)
+            yield _sse(f'TOTAL {total}')
+
+            done = coord_copied = geocoded = failed = already = 0
+            for ev in events:
+                done += 1
+                if ev.latitude:
+                    already += 1
+                    yield _sse(f'SKIP [{done}/{total}] {ev.title[:50]} — already geocoded')
+                    continue
+
+                if not ev.location or ev.location.startswith(('http', 'www')):
+                    failed += 1
+                    yield _sse(f'SKIP [{done}/{total}] {ev.title[:50]} — no usable address')
+                    continue
+
+                venue = _match_venue(ev.location)
+                if venue and venue.latitude:
+                    fields = ['latitude', 'longitude']
+                    ev.latitude, ev.longitude = venue.latitude, venue.longitude
+                    if venue.address and not re.search(r'\d+\s+\w', ev.location):
+                        ev.location = venue.address
+                        fields.append('location')
+                    hood = reverse_geocode_neighborhood(venue.latitude, venue.longitude)
+                    ev.neighborhood = hood
+                    fields.append('neighborhood')
+                    ev.save(update_fields=fields)
+                    coord_copied += 1
+                    yield _sse(f'VENUE [{done}/{total}] {ev.title[:50]} → {venue.name} ({hood})')
+                    _time.sleep(0.5)
+                    continue
+
+                try:
+                    lat, lng = geocode_location(ev.location)
+                    if lat and lng:
+                        ev.latitude, ev.longitude = lat, lng
+                        hood = reverse_geocode_neighborhood(lat, lng)
+                        ev.neighborhood = hood
+                        ev.save(update_fields=['latitude', 'longitude', 'neighborhood'])
+                        geocoded += 1
+                        yield _sse(f'OK [{done}/{total}] {ev.title[:50]} → {hood}')
+                    else:
+                        failed += 1
+                        yield _sse(f'FAIL [{done}/{total}] {ev.title[:50]} — no result for: {ev.location[:60]}')
+                except Exception as exc:
+                    failed += 1
+                    yield _sse(f'ERR [{done}/{total}] {ev.title[:50]} — {exc}')
+                _time.sleep(1.1)
+
+            yield _sse(f'DONE venue={coord_copied} geocoded={geocoded} failed={failed} skipped={already}')
+
+        resp = StreamingHttpResponse(_stream(ids), content_type='text/event-stream')
+        resp['Cache-Control'] = 'no-cache'
+        resp['X-Accel-Buffering'] = 'no'
+        return resp
 
     def save_model(self, request, obj, form, change):
         old_status = None
