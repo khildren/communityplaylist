@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import admin, messages
 from django.template.response import TemplateResponse
-from .models import Event, EventPhoto, Genre, Artist, SiteStats, CalendarFeed, Venue, Neighborhood, UserProfile, Follow, EditSuggestion, PromoterProfile, PlaylistTrack, SavedTrack, RecordListing, RecordReservation, VideoTrack, Shelter, FlyerBackground
+from .models import Event, EventPhoto, Genre, Artist, SiteStats, CalendarFeed, Venue, Neighborhood, UserProfile, Follow, EditSuggestion, PromoterProfile, PlaylistTrack, SavedTrack, RecordListing, RecordReservation, VideoTrack, Shelter, FlyerBackground, VideoRoomMessage
 from .forms import EventSubmitForm, EventPhotoForm, RegisterForm, StyledAuthForm, VenueForm
 from .geocode import geocode_location
 from urllib.parse import quote
@@ -2434,6 +2434,7 @@ def artist_edit(request, slug):
     if request.method == 'GET':
         return render(request, 'events/artist_edit.html', {'artist': artist})
 
+    import re as _re
     old_drive = artist.drive_folder_url or ''
     for field in ['bio', 'website', 'drive_folder_url'] + SOCIAL_FIELDS:
         val = request.POST.get(field, '').strip()
@@ -2443,6 +2444,16 @@ def artist_edit(request, slug):
         artist.house_mixes_sort = sort
     if request.FILES.get('photo'):
         artist.photo = request.FILES['photo']
+    # MB ID — accept a UUID or a full musicbrainz.org/artist/<uuid> URL; empty = clear
+    mb_raw = request.POST.get('mb_id', '').strip()
+    if mb_raw:
+        _uuid_match = _re.search(
+            r'([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})',
+            mb_raw, _re.I
+        )
+        artist.mb_id = _uuid_match.group(1).lower() if _uuid_match else artist.mb_id
+    else:
+        artist.mb_id = ''
     artist.save()
     if old_drive and not artist.drive_folder_url:
         PlaylistTrack.objects.filter(artist=artist).delete()
@@ -2866,6 +2877,7 @@ def playlist_tracks_json(request):
             'stream_url':  t.stream_url,
             'source':      t.source_label,
             'source_url':  source_url(t),
+            'art_url':     t.artist.photo.url if (t.artist and t.artist.photo) else '',
         }
         for t in qs.order_by('-pk')  # newest first
     ]
@@ -2885,6 +2897,7 @@ def playlist_tracks_json(request):
                     'stream_url':  hm['stream_url'],
                     'source':      'House-Mixes',
                     'source_url':  f'/artists/{a_slug}/',
+                    'art_url':     hm.get('thumbnail', ''),
                 })
 
     genres = list(
@@ -2942,6 +2955,7 @@ def saved_tracks_json(request):
             'stream_url': s.track.stream_url,
             'source_url': source_url(s.track),
             'saved':      True,
+            'art_url':    s.track.artist.photo.url if (s.track.artist and s.track.artist.photo) else '',
         }
         for s in saved
     ]
@@ -4241,3 +4255,42 @@ def api_youtube_playlist_proxy(request):
         return JsonResponse(data)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+# ── Video Room (Theater) ───────────────────────────────────────────────────────
+
+def video_room(request):
+    """Fullscreen theater: PDXTV video queue + live chat."""
+    return render(request, 'events/video_room.html')
+
+
+def video_room_messages(request):
+    """GET last 60 chat messages; POST to create one."""
+    if request.method == 'POST':
+        import json as _json
+        try:
+            body = _json.loads(request.body)
+        except Exception:
+            return JsonResponse({'error': 'bad json'}, status=400)
+        content = (body.get('content') or '').strip()[:400]
+        if not content:
+            return JsonResponse({'error': 'empty'}, status=400)
+        name = (body.get('name') or '').strip()[:40]
+        msg = VideoRoomMessage.objects.create(
+            user         = request.user if request.user.is_authenticated else None,
+            display_name = '' if request.user.is_authenticated else (name or 'anon'),
+            content      = content,
+        )
+        return JsonResponse({
+            'id':         msg.pk,
+            'author':     msg.author,
+            'content':    msg.content,
+            'created_at': msg.created_at.strftime('%H:%M'),
+        })
+    # GET – return last 60 messages
+    msgs = VideoRoomMessage.objects.order_by('-created_at')[:60]
+    return JsonResponse({'messages': [
+        {'id': m.pk, 'author': m.author, 'content': m.content,
+         'created_at': m.created_at.strftime('%H:%M')}
+        for m in reversed(list(msgs))
+    ]})

@@ -138,6 +138,45 @@ h1{color:#ff6b35;font-size:1.2em;margin-bottom:22px}
   </div>
 </div>
 
+<div class="card">
+  <div class="card-title">🎼 MusicBrainz</div>
+  <p style="font-size:.82em;color:#aaa;line-height:1.65;margin-bottom:10px">
+    <strong style="color:#eee">MusicBrainz is the open encyclopedia that Spotify, Apple Music, Last.fm, and ASCAP all pull from.</strong>
+    Linking your profile here does a few things for you:
+  </p>
+  <ul style="font-size:.8em;color:#888;line-height:2;margin:0 0 14px 18px;list-style:disc">
+    <li>Your name shows up accurately in genre catalogues and streaming metadata</li>
+    <li>ASCAP, BMI, and SOCAN use it to track live performances — helps if you're registered</li>
+    <li>Releases, aliases, and collaborations all get indexed under one canonical ID</li>
+    <li>A verified badge appears on your Community Playlist profile</li>
+  </ul>
+  <p style="font-size:.78em;color:#555;line-height:1.6;margin-bottom:14px">
+    No account? <a href="https://musicbrainz.org/register" target="_blank" rel="noopener noreferrer" style="color:#ff6b35">Sign up free →</a>
+    — search for your artist name, add your releases, and grab the UUID from your artist page URL.
+    Already there? <a href="https://musicbrainz.org/search?type=artist" target="_blank" rel="noopener noreferrer" style="color:#ff6b35">Search for yourself →</a>
+  </p>
+
+  {% if artist.mb_id %}
+  <div style="background:#1a1f1a;border:1px solid #2a3a2a;border-radius:7px;padding:12px 14px;margin-bottom:12px;font-size:.8em">
+    <div style="color:#4caf50;margin-bottom:4px;font-weight:600">✓ MusicBrainz linked</div>
+    <a href="https://musicbrainz.org/artist/{{ artist.mb_id }}" target="_blank" rel="noopener noreferrer"
+       style="color:#888;font-family:monospace;word-break:break-all">{{ artist.mb_id }}</a>
+    &nbsp;
+    <a href="https://musicbrainz.org/artist/{{ artist.mb_id }}" target="_blank" rel="noopener noreferrer"
+       style="color:#ff6b35;font-size:.9em">Verify →</a>
+    <div style="color:#555;margin-top:6px;font-size:.9em">Paste a different ID below to replace it, or clear the field to remove the link.</div>
+  </div>
+  {% endif %}
+
+  <div class="fg">
+    <label>MusicBrainz ID <span style="color:#444;font-weight:400">(UUID or full artist page URL)</span></label>
+    <input type="text" name="mb_id" value="{{ artist.mb_id }}"
+           placeholder="e.g. 9c9f1380-2516-11e0-8467-0025781b7e3c"
+           style="font-family:monospace">
+    <div class="hint">Find it in the URL on your MusicBrainz artist page: musicbrainz.org/artist/<strong>&lt;paste-here&gt;</strong></div>
+  </div>
+</div>
+
 <button type="submit" class="btn">Save changes</button>
 </form>
 </div>
