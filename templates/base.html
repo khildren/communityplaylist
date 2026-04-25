@@ -703,7 +703,7 @@ body.view-map .sh-search{display:none}
       var meta   = [s.hours, s.accepts !== 'Everyone' ? 'Accepts: ' + s.accepts : '', s.pets_ok ? '🐾 pets ok' : ''].filter(Boolean);
       var actions = [];
       if (s.phone) actions.push('<a href="tel:' + s.phone + '">📞 ' + s.phone + '</a>');
-      if (s.website) actions.push('<a href="' + s.website + '" target="_blank" rel="noopener">🔗 Website</a>');
+      if (s.website && /^https?:\/\//.test(s.website)) actions.push('<a href="' + s.website + '" target="_blank" rel="noopener noreferrer">🔗 Website</a>');
       if (s.latitude) actions.push('<a href="https://maps.google.com/?q=' + s.latitude + ',' + s.longitude + '" target="_blank" rel="noopener">🗺 Directions</a>');
 
       var weatherFlags = [];

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load url_tags %}
 {% block title %}{{ artist.name }} — Community Playlist{% endblock %}
 
 {% block head_extra %}
@@ -171,7 +172,7 @@ h1{color:#ff6b35;font-size:1.25em;font-weight:700;line-height:1.2}
       {% if artist.bio %}<p class="bio">{{ artist.bio }}</p>{% endif %}
 
       <div class="socials">
-        {% if artist.website %}<a href="{{ artist.website }}" class="social-pill" target="_blank" rel="noopener">🌐 Website</a>{% endif %}
+        {% if artist.website %}<a href="{{ artist.website|safe_href }}" class="social-pill" target="_blank" rel="noopener">🌐 Website</a>{% endif %}
         {% if artist.instagram %}<a href="https://instagram.com/{{ artist.instagram }}" class="social-pill" target="_blank" rel="noopener">📷 @{{ artist.instagram }}</a>{% endif %}
         {% if artist.soundcloud %}<a href="https://soundcloud.com/{{ artist.soundcloud }}" class="social-pill" target="_blank" rel="noopener">☁ SoundCloud</a>{% endif %}
         {% if artist.bandcamp %}<a href="{{ artist.bandcamp }}" class="social-pill" target="_blank" rel="noopener">🏕 Bandcamp</a>{% endif %}

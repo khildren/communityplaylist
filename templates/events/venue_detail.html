@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load url_tags %}
 {% block title %}{{ venue.name }} — Community Playlist{% endblock %}
 {% block head_extra %}
 <link rel="alternate" type="text/calendar" title="{{ venue.name }} events" href="/venues/{{ venue.slug }}/feed.ics">
@@ -118,7 +119,7 @@ body{background:#111;color:#eee;font-family:sans-serif}
       {% if venue.neighborhood %}<span>📍 {{ venue.neighborhood }}</span>{% endif %}
       {% if venue.address %}<span>{{ venue.address }}</span>{% endif %}
       {% if venue.view_count %}<span style="color:#444">👁 {{ venue.view_count }}</span>{% endif %}
-      {% if venue.website %}<span><a href="{{ venue.website }}" target="_blank" rel="noopener">Website ↗</a></span>{% endif %}
+      {% if venue.website %}<span><a href="{{ venue.website|safe_href }}" target="_blank" rel="noopener">Website ↗</a></span>{% endif %}
       <span><a href="/venues/{{ venue.slug }}/feed.ics" title="Subscribe in Google Calendar, Apple Calendar, etc.">📅 Subscribe</a></span>
     </div>
     <div class="socials">

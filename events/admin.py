@@ -89,7 +89,7 @@ class ArtistAdmin(admin.ModelAdmin):
     list_display  = ['name', 'slug', 'stub_badge', 'show_count', 'home_neighborhood',
                      'city', 'has_drive', 'is_verified', 'claimed_by', 'last_enriched_at']
     list_editable = ['is_verified']
-    list_filter   = ['is_verified', 'is_stub', 'twitch_unresolvable', 'claimed_by']
+    list_filter   = ['is_verified', 'is_stub', 'twitch_unresolvable', 'link_broken', 'claimed_by']
     raw_id_fields = ['claimed_by']
     actions       = [merge_artists, 'rebuild_stubs', 'mark_not_stub', 'convert_to_crew', 'retire_as_crew']
     readonly_fields = ['is_stub', 'auto_bio', 'home_neighborhood', 'city',
@@ -332,7 +332,7 @@ class PromoterProfileAdmin(admin.ModelAdmin):
     ordering = ['name']
     list_display = ['name', 'slug', 'name_variants', 'admin_email', 'is_verified', 'is_public', 'has_drive', 'claimed_by']
     list_editable = ['is_verified', 'is_public']
-    list_filter = ['is_verified', 'is_public', 'twitch_unresolvable']
+    list_filter = ['is_verified', 'is_public', 'twitch_unresolvable', 'link_broken']
     raw_id_fields = ['claimed_by']
     filter_horizontal = ['genres']
     actions = [merge_promoters, 'send_claim_instructions', 'convert_to_artist']
@@ -591,7 +591,7 @@ def _scrape_venue_site(website):
 @admin.register(Venue)
 class VenueAdmin(admin.ModelAdmin):
     list_display  = ['name', 'neighborhood', 'verified', 'claimed_by', 'created_at']
-    list_filter   = ['verified', 'active']
+    list_filter   = ['verified', 'active', 'link_broken']
     search_fields = ['name', 'address', 'neighborhood']
     ordering      = ['name']
     readonly_fields = ['created_at']
@@ -1260,6 +1260,12 @@ CRON_JOBS = [
         'command':  'enrich_instagram',
         'log':      'logs/cp_enrich_instagram.log',
         'schedule': 'Weekly  Sunday  4:00 AM',
+    },
+    {
+        'name':     'Check website links (broken URL detector)',
+        'command':  'check_links',
+        'log':      'logs/cp_check_links.log',
+        'schedule': 'Weekly  Sunday  5:00 AM',
     },
 ]
 
