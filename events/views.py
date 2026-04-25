@@ -2869,6 +2869,24 @@ def playlist_tracks_json(request):
         }
         for t in qs.order_by('-pk')  # newest first
     ]
+
+    # Merge house-mixes.com tracks (no genre metadata — only in ALL channel)
+    if not genre_filter:
+        hm_artists = Artist.objects.filter(house_mixes__gt='', is_public=True).values_list(
+            'name', 'house_mixes', 'house_mixes_sort', 'slug')
+        for a_name, hm_user, hm_sort, a_slug in hm_artists:
+            for hm in _get_house_mixes_tracks(hm_user, sort=hm_sort or 'newest'):
+                tracks.append({
+                    'id':          None,
+                    'title':       hm['title'],
+                    'artist':      a_name,
+                    'genre':       None,
+                    'recorded_at': None,
+                    'stream_url':  hm['stream_url'],
+                    'source':      'House-Mixes',
+                    'source_url':  f'/artists/{a_slug}/',
+                })
+
     genres = list(
         Genre.objects.filter(tracks__isnull=False)
         .values_list('name', flat=True)
