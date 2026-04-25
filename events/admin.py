@@ -955,7 +955,9 @@ class EventAdmin(admin.ModelAdmin):
 
                 # When location is blank/URL, try submitted_by as a venue name hint
                 if not ev.location or ev.location.startswith(('http', 'www')):
-                    venue = _match_venue(ev.submitted_by or '')
+                    submitter = (ev.submitted_by or '').strip()
+                    # 1) Local venue DB match
+                    venue = _match_venue(submitter)
                     if venue and venue.latitude and venue.address:
                         ev.location = venue.address
                         ev.latitude, ev.longitude = venue.latitude, venue.longitude
@@ -965,9 +967,29 @@ class EventAdmin(admin.ModelAdmin):
                         coord_copied += 1
                         yield _sse(f'VENUE [{done}/{total}] {ev.title[:50]} → {venue.name} via submitter ({hood})')
                         _time.sleep(0.5)
+                    elif submitter and not submitter.startswith(('http', 'www')):
+                        # 2) Geocode "Venue Name, Portland, OR" via Nominatim/Photon
+                        try:
+                            query = f'{submitter}, Portland, OR'
+                            lat, lng = geocode_location(query)
+                            if lat and lng:
+                                hood = reverse_geocode_neighborhood(lat, lng)
+                                ev.location = query
+                                ev.latitude, ev.longitude = lat, lng
+                                ev.neighborhood = hood
+                                ev.save(update_fields=['location', 'latitude', 'longitude', 'neighborhood'])
+                                geocoded += 1
+                                yield _sse(f'OK [{done}/{total}] {ev.title[:50]} → geocoded submitter "{submitter}" ({hood})')
+                            else:
+                                failed += 1
+                                yield _sse(f'FAIL [{done}/{total}] {ev.title[:50]} — submitter "{submitter}" not found')
+                        except Exception as exc:
+                            failed += 1
+                            yield _sse(f'ERR [{done}/{total}] {ev.title[:50]} — {exc}')
+                        _time.sleep(1.1)
                     else:
                         failed += 1
-                        yield _sse(f'FAIL [{done}/{total}] {ev.title[:50]} — no location, submitter={ev.submitted_by!r} unmatched')
+                        yield _sse(f'FAIL [{done}/{total}] {ev.title[:50]} — no location or submitter')
                     continue
 
                 venue = _match_venue(ev.location)
