@@ -1198,67 +1198,67 @@ CRON_JOBS = [
     {
         'name':     'Import user feeds',
         'command':  'import_feeds',
-        'log':      '/var/log/cp_import_feeds.log',
+        'log':      'logs/cp_import_feeds.log',
         'schedule': 'Mon + Thu  6:00 AM',
     },
     {
         'name':     'Import venue / PDX net feeds',
         'command':  'import_venue_feeds',
-        'log':      '/var/log/cp_import_venues.log',
+        'log':      'logs/cp_import_venues.log',
         'schedule': 'Mon + Thu  7:00 AM',
     },
     {
         'name':     'Generate recurring event instances',
         'command':  'generate_recurring_events',
-        'log':      '/var/log/cp_recurring.log',
+        'log':      'logs/cp_recurring.log',
         'schedule': 'Daily  6:05 AM',
     },
     {
         'name':     'Geocode events (20/night)',
         'command':  'geocode_events',
-        'log':      '/var/log/cp_geocode.log',
+        'log':      'logs/cp_geocode.log',
         'schedule': 'Daily  2:00 AM',
     },
     {
         'name':     'Fetch event images (og:image)',
         'command':  'fetch_event_images',
-        'log':      '/var/log/cp_fetch_images.log',
+        'log':      'logs/cp_fetch_images.log',
         'schedule': 'Daily  3:00 AM',
     },
     {
         'name':     'Daily Discord digest',
         'command':  'daily_digest',
-        'log':      '/var/log/cp_daily_digest.log',
+        'log':      'logs/cp_daily_digest.log',
         'schedule': 'Daily  9:00 AM',
     },
     {
         'name':     'Recheck inactive venue feeds',
         'command':  'recheck_venue_feeds',
-        'log':      '/var/log/cp_recheck_feeds.log',
+        'log':      'logs/cp_recheck_feeds.log',
         'schedule': '1st of month  8:00 AM',
     },
     {
         'name':     'Discover new PDX feeds',
         'command':  'discover_pdx_feeds',
-        'log':      '/var/log/cp_discover_feeds.log',
+        'log':      'logs/cp_discover_feeds.log',
         'schedule': '1st of month  8:05 AM',
     },
     {
         'name':     'Check live streams (YouTube + Twitch)',
         'command':  'check_live_streams',
-        'log':      '/var/log/cp_live_streams.log',
+        'log':      'logs/cp_live_streams.log',
         'schedule': 'Every 10 min',
     },
     {
         'name':     'Dedup events (cross-feed merge)',
         'command':  'dedup_events',
-        'log':      '/var/log/cp_dedup_events.log',
+        'log':      'logs/cp_dedup_events.log',
         'schedule': 'Mon + Thu  7:30 AM (after import)',
     },
     {
         'name':     'Enrich from Instagram (bio + links + photo)',
         'command':  'enrich_instagram',
-        'log':      '/var/log/cp_enrich_instagram.log',
+        'log':      'logs/cp_enrich_instagram.log',
         'schedule': 'Weekly  Sunday  4:00 AM',
     },
 ]
@@ -1266,6 +1266,9 @@ CRON_JOBS = [
 
 def _parse_log(path, tail_lines=25):
     """Read a log file. Returns (mtime_dt, last_lines, has_error)."""
+    if not os.path.isabs(path):
+        from django.conf import settings as _s
+        path = os.path.join(str(_s.BASE_DIR), path)
     if not os.path.exists(path):
         return None, [], False
     mtime = datetime.datetime.fromtimestamp(os.path.getmtime(path))
@@ -1471,20 +1474,26 @@ class CronStatusAdmin(admin.ModelAdmin):
             messages.error(request, f'Unknown command: {command}')
             return HttpResponseRedirect('/admin/events/cronstatus/')
 
-        log_path = _COMMAND_MAP[command].get('log', f'/var/log/cp_{command}.log')
+        import sys
+        from django.conf import settings as _settings
+        base_dir = str(_settings.BASE_DIR)
+        rel_log  = _COMMAND_MAP[command].get('log', f'logs/cp_{command}.log')
+        # Make log path absolute relative to project root
+        log_path = rel_log if os.path.isabs(rel_log) else os.path.join(base_dir, rel_log)
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+
+        manage_py = os.path.join(base_dir, 'manage.py')
+        python    = sys.executable  # same interpreter that's running gunicorn
 
         try:
-            # Fire-and-forget — do NOT wait (subprocess.run blocks gunicorn worker).
-            # Works in Docker: use the container's own python + /app/manage.py.
-            # stdout/stderr go to the same log file the cron status page reads.
             log_fh = open(log_path, 'a')
             subprocess.Popen(
-                ['python', '/app/manage.py', command],
-                cwd='/app',
+                [python, manage_py, command],
+                cwd=base_dir,
                 env={**os.environ, 'DJANGO_SETTINGS_MODULE': 'communityplaylist.settings'},
                 stdout=log_fh,
                 stderr=log_fh,
-                start_new_session=True,  # detach from gunicorn process group
+                start_new_session=True,
             )
             messages.success(request, f'✓ "{command}" launched — reload this page in a moment to see updated log output.')
         except Exception as e:
