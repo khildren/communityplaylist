@@ -1267,6 +1267,30 @@ CRON_JOBS = [
         'log':      'logs/cp_check_links.log',
         'schedule': 'Weekly  Sunday  5:00 AM',
     },
+    {
+        'name':     'Auto-reject stale pending events',
+        'command':  'past_date_auto_reject',
+        'log':      'logs/cp_past_date_reject.log',
+        'schedule': 'Daily  4:00 AM',
+    },
+    {
+        'name':     'Check stale feeds (venue + calendar)',
+        'command':  'check_stale_feeds',
+        'log':      'logs/cp_stale_feeds.log',
+        'schedule': 'Daily  6:00 AM',
+    },
+    {
+        'name':     'Profile completeness report',
+        'command':  'profile_completeness',
+        'log':      'logs/cp_profile_completeness.log',
+        'schedule': 'Weekly  Monday  5:30 AM',
+    },
+    {
+        'name':     'Check media files (photos + Drive URLs)',
+        'command':  'check_media_files',
+        'log':      'logs/cp_check_media.log',
+        'schedule': 'Weekly  Monday  6:00 AM',
+    },
 ]
 
 
