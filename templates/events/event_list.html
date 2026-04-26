@@ -431,14 +431,16 @@ var CAT_COLORS = {
   hybrid:'#ff9944',
 };
 function makeIcon(active, category, pulse) {
-  const size = active ? 24 : 18;
+  const size  = active ? 22 : 16;
   const color = active ? '#ff6b35' : (CAT_COLORS[category] || '#5865F2');
-  const ring = pulse
+  // Glow and ring only on active marker; plain dot otherwise
+  const shadow = active ? `box-shadow:0 0 8px ${color}bb` : '';
+  const ring   = pulse
     ? `<div class="cp-marker-ring" style="position:absolute;inset:0;border-radius:50%;border:2px solid ${color};animation:cp-marker-pulse 1.4s ease-out infinite"></div>`
     : '';
   return L.divIcon({
     className: '',
-    html: `<div style="position:relative;width:${size}px;height:${size}px;background:transparent">${ring}<div style="width:${size}px;height:${size}px;background:${color};border-radius:50%;border:3px solid rgba(255,255,255,.85);box-shadow:0 0 6px ${color}88"></div></div>`,
+    html: `<div style="position:relative;width:${size}px;height:${size}px;background:transparent">${ring}<div style="width:${size}px;height:${size}px;background:${color};border-radius:50%;border:2px solid rgba(255,255,255,.8);${shadow}"></div></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, -(size / 2 + 4)],
@@ -627,19 +629,20 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
     clearRoute();
     if (!map) { onDone(); return; }
 
-    // Draw route immediately at low opacity — full opacity after tiles settle
+    // Draw route at low opacity — brighten once dot starts
     routeLayer = L.polyline(pts, {
-      color: '#ff6b35', weight: 3.5, opacity: 0.25, dashArray: '9 12'
+      color: '#ff6b35', weight: 3, opacity: 0.2, dashArray: '8 11'
     }).addTo(map);
 
-    // Phase 1: zoom out to show full route — extra bottom pad for player bar on mobile
-    const _pl = document.getElementById('cp-player');
-    const _playerPad = (_pl && _pl.style.display !== 'none') ? _pl.offsetHeight : 0;
-    map.fitBounds(routeLayer.getBounds(), {
-      paddingTopLeft:     [65, 65],
-      paddingBottomRight: [65 + _playerPad, 65],
-      animate: true, duration: FIT_DURATION, easeLinearity: 0.12
-    });
+    // ── Relative zoom: only move map if route goes off-screen ──────────────
+    // Never zoom out more than 3 levels from current; never past zoom 11.
+    const MIN_ZOOM        = 11;
+    const MAX_ZOOM_OUT    = 3;
+    const currentZoom     = map.getZoom();
+    const currentBounds   = map.getBounds();
+    const fromLL          = L.latLng(pts[0]);
+    const toLL            = L.latLng(pts[pts.length - 1]);
+    const bothVisible     = currentBounds.contains(fromLL) && currentBounds.contains(toLL);
 
     let phaseStarted = false;
     function doPhase() {
@@ -647,71 +650,77 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
       phaseStarted = true;
       if (!cycling) { clearRoute(); return; }
 
-      // Wait for tiles to finish rendering before starting dot animation.
-      // tileLayer 'load' fires when all tiles for the current view are painted;
-      // fall back after 1000ms in case tiles are already cached and load fires early.
-      let tileReady = false;
-      function startDotPhase() {
-        if (tileReady) return;
-        tileReady = true;
-        if (!cycling || !routeLayer) return;
+      routeLayer.setStyle({ opacity: 0.6 });
 
-        routeLayer.setStyle({ opacity: 0.65 });
+      travelDot = L.circleMarker(pts[0], {
+        radius: 6, color: '#fff', weight: 2, fillColor: '#4caf50', fillOpacity: 1
+      }).addTo(map);
 
-        travelDot = L.circleMarker(pts[0], {
-          radius: 7, color: '#fff', weight: 2.5, fillColor: '#4caf50', fillOpacity: 1
-        }).addTo(map);
+      const t0 = performance.now();
+      let lastPan = 0;  // throttle pan-follow calls
 
-        const t0 = performance.now();
-        function step(now) {
-          if (!cycling) { clearRoute(); return; }
-          const frac = Math.min((now - t0) / ROUTE_TRAVEL_MS, 1);
-          const eased = frac < 0.5 ? 2*frac*frac : 1 - Math.pow(-2*frac+2, 2)/2;
-          travelDot.setLatLng(pointAlongLine(pts, eased));
-          if (frac < 1) {
-            travelAnim = requestAnimationFrame(step);
-          } else {
-            // Phase 3: dot arrived — fade route out, fly into destination
-            if (routeLayer) routeLayer.setStyle({ opacity: 0 });
-            setTimeout(function() {
-              clearRoute();
-              if (!cycling) return;
-              if (map && destLatLng) {
-                let flyDone = false;
-                const flyFallback = setTimeout(function() {
-                  if (!flyDone) { flyDone = true; onDone(); }
-                }, Math.round(FLY_DURATION * 1000) + 600);
-                map.flyTo(destLatLng, 15, { animate: true, duration: FLY_DURATION, easeLinearity: 0.12 });
-                map.once('moveend', function() {
-                  clearTimeout(flyFallback);
-                  if (!flyDone) { flyDone = true; setTimeout(onDone, 200); }
-                });
-              } else {
-                onDone();
-              }
-            }, 400);
+      function step(now) {
+        if (!cycling) { clearRoute(); return; }
+        const frac  = Math.min((now - t0) / ROUTE_TRAVEL_MS, 1);
+        const eased = frac < 0.5 ? 2*frac*frac : 1 - Math.pow(-2*frac+2, 2)/2;
+        const pos   = L.latLng(pointAlongLine(pts, eased));
+        travelDot.setLatLng(pos);
+
+        // Follow the dot: if it drifts within 15% of the edge, pan to keep it centered
+        if (map && now - lastPan > 600) {
+          const padded = map.getBounds().pad(-0.15);
+          if (!padded.contains(pos)) {
+            map.panTo(pos, { animate: true, duration: 0.8, easeLinearity: 0.4 });
+            lastPan = now;
           }
         }
-        travelAnim = requestAnimationFrame(step);
-      }
 
-      // Listen for tiles loaded; max wait 1000ms
-      const tileTimeout = setTimeout(startDotPhase, 1000);
-      if (tileLayer) {
-        tileLayer.once('load', function() {
-          clearTimeout(tileTimeout);
-          setTimeout(startDotPhase, 150); // small buffer after tiles paint
-        });
+        if (frac < 1) {
+          travelAnim = requestAnimationFrame(step);
+        } else {
+          // Dot arrived — fade route, fly into destination
+          if (routeLayer) routeLayer.setStyle({ opacity: 0 });
+          setTimeout(function() {
+            clearRoute();
+            if (!cycling) return;
+            if (map && destLatLng) {
+              // Arrive at destination — zoom in gently if we're too far out, don't zoom in past 15
+              const arriveZoom = Math.min(Math.max(map.getZoom(), 14), 15);
+              let flyDone = false;
+              const flyFallback = setTimeout(function() {
+                if (!flyDone) { flyDone = true; onDone(); }
+              }, Math.round(FLY_DURATION * 1000) + 600);
+              map.flyTo(destLatLng, arriveZoom, { animate: true, duration: FLY_DURATION, easeLinearity: 0.12 });
+              map.once('moveend', function() {
+                clearTimeout(flyFallback);
+                if (!flyDone) { flyDone = true; setTimeout(onDone, 200); }
+              });
+            } else {
+              onDone();
+            }
+          }, 350);
+        }
       }
+      travelAnim = requestAnimationFrame(step);
     }
 
-    // If fitBounds doesn't move the map (route already visible), moveend never fires —
-    // fall back after FIT_DURATION so the dot animation always starts.
-    const moveFallback = setTimeout(doPhase, Math.round(FIT_DURATION * 1000) + 400);
-    map.once('moveend', function() {
-      clearTimeout(moveFallback);
+    if (bothVisible) {
+      // Both endpoints on screen — skip any zoom change, go straight to dot animation
       doPhase();
-    });
+    } else {
+      // Nudge zoom just enough to show both points, bounded by MAX_ZOOM_OUT
+      const routeBounds  = L.latLngBounds(fromLL, toLL);
+      const neededZoom   = map.getBoundsZoom(routeBounds, false, [80, 80]);
+      const targetZoom   = Math.max(neededZoom - 0.5, currentZoom - MAX_ZOOM_OUT, MIN_ZOOM);
+      const moveFallback = setTimeout(doPhase, Math.round(FIT_DURATION * 1000) + 400);
+      map.flyTo(routeBounds.getCenter(), targetZoom, {
+        animate: true, duration: FIT_DURATION, easeLinearity: 0.15
+      });
+      map.once('moveend', function() {
+        clearTimeout(moveFallback);
+        doPhase();
+      });
+    }
   }
 
   function routeKey(from, to) {
@@ -837,15 +846,12 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
     }
     const m = markersBySlug[slug];
     if (m) {
-      m.setIcon(makeIcon(true, categoryBySlug[slug], true));  // pulse = true on arrive
+      m.setIcon(makeIcon(true, categoryBySlug[slug], true));  // pulse on arrive
       if (m._icon) m._icon.style.zIndex = 1000;
       if (map && !skipFly) {
-        map.flyTo(m.getLatLng(), 15, { animate: true, duration: FLY_DURATION, easeLinearity: 0.12 });
-        map.once('moveend', function() {
-          if (activeHighlightSlug !== slug) return;  // cycle moved on — don't re-pulse old marker
-          m.setIcon(makeIcon(true, categoryBySlug[slug], true));
-          if (m._icon) m._icon.style.zIndex = 1000;
-        });
+        // Fly to destination — but only zoom to 14 if we're currently further out
+        const targetZoom = Math.max(map.getZoom(), 14);
+        map.flyTo(m.getLatLng(), targetZoom, { animate: true, duration: FLY_DURATION, easeLinearity: 0.12 });
       }
     }
   }
@@ -857,6 +863,17 @@ document.querySelectorAll('.event[data-slug]').forEach(card => {
 
     const slug   = cards[cycleIdx].dataset.slug;
     const evData = mapEvents.find(function(e){ return e.slug === slug; });
+
+    // In map-only view, skip events with no coordinates — they have no marker
+    // and leave the map sitting idle with no visible context
+    if (document.body.classList.contains('view-map') && (!evData || !evData.latitude)) {
+      cycleIdx++;
+      // Guard against infinite loop if all events lack coords
+      if (cycleIdx >= cards.length) cycleIdx = 0;
+      cycleStep(prevEvData);
+      return;
+    }
+
     if (window.cpRotatorShowSlug) window.cpRotatorShowSlug(slug);
 
     function arrive(skipFly) {
