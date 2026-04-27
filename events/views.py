@@ -1096,12 +1096,17 @@ def dashboard(request):
             pk = request.POST.get('pk')
             Venue.objects.filter(pk=pk, claimed_by=request.user).update(claimed_by=None)
             messages.success(request, 'Venue claim released.')
+        elif action == 'release_space':
+            pk = request.POST.get('pk')
+            CommunitySpace.objects.filter(pk=pk, claimed_by=request.user).update(claimed_by=None)
+            messages.success(request, 'Space claim released.')
         return redirect('dashboard')
 
     # Claimed profiles
     claimed_artists   = list(request.user.claimed_artists.all())
     claimed_promoters = list(request.user.claimed_promoters.all())
     claimed_venues    = list(request.user.claimed_venues.all())
+    claimed_spaces    = list(CommunitySpace.objects.filter(claimed_by=request.user))
 
     # If user has claimed profiles, auto-activate the matching flag
     if claimed_artists and not profile.wants_artist:
@@ -1143,7 +1148,8 @@ def dashboard(request):
                        .select_related('listing__promoter')
                        .order_by('-created_at')) if my_promoter_pks else []
 
-    active_profiles = len(claimed_artists) + len(claimed_promoters) + len(claimed_venues)
+    space_views     = sum(s.view_count for s in claimed_spaces)
+    active_profiles = len(claimed_artists) + len(claimed_promoters) + len(claimed_venues) + len(claimed_spaces)
 
     response = render(request, 'accounts/dashboard.html', {
         'profile': profile,
@@ -1156,10 +1162,12 @@ def dashboard(request):
         'claimed_artists': claimed_artists,
         'claimed_promoters': claimed_promoters,
         'claimed_venues': claimed_venues,
+        'claimed_spaces': claimed_spaces,
         'artist_views': artist_views,
         'promoter_views': promoter_views,
         'venue_views': venue_views,
-        'total_views': artist_views + promoter_views + venue_views,
+        'space_views': space_views,
+        'total_views': artist_views + promoter_views + venue_views + space_views,
         'events_pending': events.filter(status='pending').count(),
         'events_approved': events.filter(status='approved').count(),
         'active_profiles': active_profiles,

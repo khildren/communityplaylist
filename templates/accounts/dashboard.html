@@ -341,6 +341,32 @@ details[open] .sum-chevron{transform:rotate(180deg)}
       </div>
       {% endif %}
 
+      {# Community Space #}
+      <div class="ptype-card">
+        <div class="ptype-icon">🌱</div>
+        <div class="ptype-name">Community Space</div>
+        {% if claimed_spaces %}
+          {% for s in claimed_spaces %}
+          <div class="ptype-meta" style="margin-top:8px">{{ s.name }} · <span style="color:#4caf50">{{ s.view_count }} views</span></div>
+          <div class="ptype-actions">
+            <a href="/spaces/{{ s.slug }}/" class="btn-sm">View page</a>
+            <a href="/spaces/{{ s.slug }}/edit/" class="btn-sm">Edit</a>
+            <form method="post" style="display:inline" onsubmit="return confirm('Release your claim on {{ s.name }}?')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="release_space">
+              <input type="hidden" name="pk" value="{{ s.pk }}">
+              <button class="btn-sm" type="submit" style="color:#555;border-color:#222">Release</button>
+            </form>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="ptype-meta">No space claimed yet</div>
+          <div class="ptype-actions">
+            <a href="mailto:hello@communityplaylist.com?subject=Request%20a%20Space%20Profile&body=Space%20name%3A%0AType%20(garden%2C%20makerspace%2C%20third%20space%2C%20etc.)%3A%0AAddress%3A" class="btn-sm btn-orange">Request a space</a>
+          </div>
+        {% endif %}
+      </div>
+
     </div>{# /profile-type-grid #}
   </div>
 </details>
