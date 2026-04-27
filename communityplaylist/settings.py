@@ -147,6 +147,10 @@ SPOTIFY_CLIENT_SECRET = config('SPOTIFY_CLIENT_SECRET', default='')
 BLUESKY_HANDLE       = config('BLUESKY_HANDLE', default='')
 BLUESKY_APP_PASSWORD = config('BLUESKY_APP_PASSWORD', default='')
 
+# Local Ollama — moondream vision model for flyer scanning (tokyo7, no API cost)
+OLLAMA_URL          = config('OLLAMA_URL', default='http://10.0.0.124:11434')
+OLLAMA_FLYER_MODEL  = config('OLLAMA_FLYER_MODEL', default='moondream')
+
 # Discord webhooks — configure in .env
 DISCORD_WEBHOOK_BOARD  = config('DISCORD_WEBHOOK_BOARD',  default='')  # board topics + Free & Trade
 DISCORD_WEBHOOK_EVENTS = config('DISCORD_WEBHOOK_EVENTS', default='')  # new approved events (text/forum)

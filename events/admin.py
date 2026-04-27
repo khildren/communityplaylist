@@ -911,17 +911,79 @@ def link_twitch_location_artists(modeladmin, request, queryset):
 link_twitch_location_artists.short_description = 'Auto-create/link artists from Twitch location URLs'
 
 
+def scan_event_flyers(modeladmin, request, queryset):
+    """
+    Scan flyer_url for selected events using local Ollama (moondream) and
+    pre-fill any missing fields. Only events with flyer_url set are processed.
+    """
+    from events.utils.flyer_scan import scan_flyer
+    import re
+    from django.utils import timezone
+    from datetime import datetime
+
+    done = skipped = failed = 0
+    for ev in queryset:
+        if not ev.flyer_url:
+            skipped += 1
+            continue
+        result = scan_flyer(ev.flyer_url)
+        if not result:
+            failed += 1
+            ev.flyer_scanned = True
+            ev.save(update_fields=['flyer_scanned'])
+            continue
+
+        changed = []
+        if result.get('title') and not ev.title:
+            ev.title = result['title'][:200]; changed.append('title')
+        if result.get('description') and not ev.description:
+            ev.description = result['description']; changed.append('description')
+        if result.get('venue_name') and not ev.location:
+            loc = result['venue_name']
+            if result.get('venue_address'):
+                loc = f"{loc}, {result['venue_address']}"
+            ev.location = loc[:300]; changed.append('location')
+        if result.get('price') and not ev.price_info:
+            ev.price_info = result['price'][:100]; changed.append('price_info')
+            if re.search(r'\d', result['price'].lower()):
+                ev.is_free = False; changed.append('is_free')
+        if result.get('ticket_url') and not ev.website:
+            ev.website = result['ticket_url'][:500]; changed.append('website')
+
+        ev.flyer_scanned = True
+        save_fields = ['flyer_scanned'] + [f for f in changed if f in ['title', 'description', 'location', 'price_info', 'is_free', 'website']]
+        ev.save(update_fields=save_fields)
+        done += 1
+
+    parts = [f'{done} enriched']
+    if skipped: parts.append(f'{skipped} skipped (no URL)')
+    if failed:  parts.append(f'{failed} scan failed')
+    modeladmin.message_user(request, ' · '.join(parts),
+                             messages.SUCCESS if done else messages.WARNING)
+
+scan_event_flyers.short_description = '🎨 Scan flyer URL with Ollama (moondream) → pre-fill fields'
+
+
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-    list_display = ['title', 'start_date', 'location', 'neighborhood', 'status', 'is_free', 'submitted_by']
-    list_filter = ['status', 'is_free', 'neighborhood']
+    list_display = ['title', 'start_date', 'location', 'neighborhood', 'status', 'is_free', 'submitted_by', 'flyer_badge']
+    list_filter = ['status', 'is_free', 'neighborhood', 'flyer_scanned']
     search_fields = ['title', 'location', 'submitted_by']
     list_editable = ['status']
     ordering = ['start_date']
     prepopulated_fields = {'slug': ('title',)}
     autocomplete_fields = ['genres', 'artists']
     inlines = [EventPhotoInline]
-    actions = [merge_events, dedup_by_title_date, fill_address_and_geocode, link_twitch_location_artists]
+    actions = [merge_events, dedup_by_title_date, fill_address_and_geocode, link_twitch_location_artists, scan_event_flyers]
+    readonly_fields = ['flyer_scanned']
+
+    def flyer_badge(self, obj):
+        if obj.flyer_url and not obj.flyer_scanned:
+            return format_html('<span style="color:#ff9800;font-size:.8em">⏳ unscanned</span>')
+        if obj.flyer_url and obj.flyer_scanned:
+            return format_html('<span style="color:#4caf50;font-size:.8em">✓ scanned</span>')
+        return ''
+    flyer_badge.short_description = 'Flyer'
 
     def get_urls(self):
         from django.urls import path as _path
@@ -1334,6 +1396,12 @@ CRON_JOBS = [
         'command':  'db_health',
         'log':      'logs/cp_db_health.log',
         'schedule': 'Daily  8:00 AM',
+    },
+    {
+        'name':     'Enrich event flyers with Ollama moondream (tokyo7)',
+        'command':  'enrich_event_flyers',
+        'log':      'logs/cp_enrich_flyers.log',
+        'schedule': 'Daily  5:00 AM',
     },
 ]
 

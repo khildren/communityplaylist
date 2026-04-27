@@ -741,12 +741,24 @@ def event_submit(request):
                 event.submitted_user = request.user
             event.save()
             form.save_m2m()
+            # Save flyer URL if provided
+            flyer_url = request.POST.get('flyer_url', '').strip()
+            if flyer_url:
+                event.flyer_url = flyer_url
+                event.save(update_fields=['flyer_url'])
+
             # Queue geocoding async — Unraid worker fills lat/lng without blocking this request
             from .models import WorkerTask
             if event.location:
                 WorkerTask.objects.create(
                     task_type="geocode_event",
                     payload={"event_id": event.id, "address": event.location},
+                )
+            # Queue flyer scan async — tokyo7 Ollama enriches missing fields overnight
+            if flyer_url:
+                WorkerTask.objects.create(
+                    task_type="enrich_flyer",
+                    payload={"event_id": event.id, "flyer_url": flyer_url},
                 )
             genre_ids = request.POST.getlist('genre_ids')
             if genre_ids:
@@ -4267,6 +4279,22 @@ def video_room(request):
 def player_page(request):
     """Standalone full-page music/video player."""
     return render(request, 'events/player.html')
+
+
+def player_manifest(request):
+    """Web app manifest for standalone player PWA."""
+    from django.http import JsonResponse
+    return JsonResponse({
+        "name": "CP Player · PDX",
+        "short_name": "CP Player",
+        "start_url": "/player/",
+        "scope": "/player/",
+        "display": "standalone",
+        "background_color": "#0a0a0a",
+        "theme_color": "#ff6b35",
+        "description": "Community Playlist PDX — music & video player",
+        "icons": [],
+    })
 
 
 def video_room_messages(request):

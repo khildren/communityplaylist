@@ -88,6 +88,30 @@ def complete_task(request, task_id):
             Venue.objects.filter(id=task.payload["venue_id"]).update(
                 latitude=lat, longitude=lng
             )
+    elif task.task_type == "enrich_flyer":
+        # body = dict of extracted flyer fields — only fill blanks
+        import re
+        event = Event.objects.filter(id=task.payload["event_id"]).first()
+        if event and body:
+            changed = []
+            if body.get("title") and not event.title:
+                event.title = body["title"][:200]; changed.append("title")
+            if body.get("description") and not event.description:
+                event.description = body["description"]; changed.append("description")
+            if body.get("venue_name") and not event.location:
+                loc = body["venue_name"]
+                if body.get("venue_address"):
+                    loc = f"{loc}, {body['venue_address']}"
+                event.location = loc[:300]; changed.append("location")
+            if body.get("price") and not event.price_info:
+                event.price_info = body["price"][:100]; changed.append("price_info")
+                if re.search(r"\d", body["price"].lower()):
+                    event.is_free = False; changed.append("is_free")
+            if body.get("ticket_url") and not event.website:
+                event.website = body["ticket_url"][:500]; changed.append("website")
+            event.flyer_scanned = True
+            fields = ["flyer_scanned"] + [f for f in changed if f in ["title", "description", "location", "price_info", "is_free", "website"]]
+            event.save(update_fields=fields)
 
     return JsonResponse({"ok": True})
 

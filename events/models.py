@@ -711,6 +711,8 @@ class Event(models.Model):
     latitude = models.FloatField(blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)
     view_count = models.PositiveIntegerField(default=0)
+    flyer_url      = models.URLField(blank=True, help_text='Instagram post URL or direct flyer image URL — used for AI enrichment')
+    flyer_scanned  = models.BooleanField(default=False, help_text='Set once moondream has scanned this flyer')
 
     class Meta:
         ordering = ['start_date']
