@@ -1043,6 +1043,104 @@ def onboarding_view(request):
     return render(request, 'accounts/onboarding.html', {'profile': profile})
 
 
+def _build_activity_feed(user, follows):
+    """
+    Aggregate a community activity feed for the dashboard.
+    Returns a list of dicts with keys: type, title, blurb, url, date, source_name.
+    Types: board_give | board_iso | ask | event_artist | event_venue | event_space
+    """
+    from datetime import timedelta
+    from django.utils import timezone as _tz
+    cutoff = _tz.now() - timedelta(days=60)
+
+    feed = []
+
+    # ── Board offerings (give / ISO / trade) ──────────────────────────────────
+    try:
+        from board.models import Offering
+        for off in Offering.objects.filter(
+            created_at__gte=cutoff, is_claimed=False,
+        ).order_by('-created_at')[:40]:
+            if off.category == Offering.CATEGORY_GIVE:
+                ftype = 'board_give'
+            elif off.category == Offering.CATEGORY_ISO:
+                ftype = 'board_iso'
+            else:
+                ftype = 'board_trade'
+            feed.append({
+                'type':        ftype,
+                'title':       off.title,
+                'blurb':       (off.description or '')[:100],
+                'url':         off.get_absolute_url() if hasattr(off, 'get_absolute_url') else '/board/',
+                'date':        off.created_at,
+                'source_name': off.poster_name or 'Community Board',
+            })
+    except Exception:
+        pass
+
+    # ── Community Asks from any public space/venue ─────────────────────────────
+    try:
+        for ask in CommunityAsk.objects.filter(
+            status='open', created_at__gte=cutoff,
+        ).select_related('community_space', 'venue').order_by('-created_at')[:30]:
+            source = ask.community_space or ask.venue
+            if not source:
+                continue
+            url = (f'/spaces/{source.slug}/' if ask.community_space
+                   else f'/venues/{source.slug}/')
+            feed.append({
+                'type':        'ask',
+                'title':       ask.title,
+                'blurb':       (ask.description or '')[:100],
+                'url':         url,
+                'date':        ask.created_at,
+                'source_name': source.name,
+            })
+    except Exception:
+        pass
+
+    # ── Recent events from followed entities ──────────────────────────────────
+    follow_map = {(f['follow'].target_type, f['follow'].target_id): f['target'] for f in follows}
+    followed_artist_pks  = [tid for (tt, tid) in follow_map if tt == Follow.TYPE_ARTIST]
+    followed_venue_pks   = [tid for (tt, tid) in follow_map if tt == Follow.TYPE_VENUE]
+    followed_space_pks   = [tid for (tt, tid) in follow_map if tt == Follow.TYPE_SPACE]
+
+    try:
+        for ev in Event.objects.filter(
+            submitted_artist__pk__in=followed_artist_pks,
+            status='approved', start_date__gte=_tz.now().date(),
+        ).select_related('submitted_artist')[:20]:
+            feed.append({
+                'type':        'event_artist',
+                'title':       ev.title,
+                'blurb':       f'{ev.start_date}',
+                'url':         f'/events/{ev.slug}/',
+                'date':        ev.created_at,
+                'source_name': ev.submitted_artist.name if ev.submitted_artist else '',
+            })
+    except Exception:
+        pass
+
+    try:
+        for ev in Event.objects.filter(
+            venue__pk__in=followed_venue_pks,
+            status='approved', start_date__gte=_tz.now().date(),
+        ).select_related('venue')[:20]:
+            feed.append({
+                'type':        'event_venue',
+                'title':       ev.title,
+                'blurb':       f'{ev.start_date}',
+                'url':         f'/events/{ev.slug}/',
+                'date':        ev.created_at,
+                'source_name': ev.venue.name if ev.venue else '',
+            })
+    except Exception:
+        pass
+
+    feed.sort(key=lambda x: x['date'], reverse=True)
+    return feed[:80]
+
+
 @login_required(login_url='/login/')
 def dashboard(request):
     profile, _ = UserProfile.objects.get_or_create(
@@ -1151,6 +1249,8 @@ def dashboard(request):
     space_views     = sum(s.view_count for s in claimed_spaces)
     active_profiles = len(claimed_artists) + len(claimed_promoters) + len(claimed_venues) + len(claimed_spaces)
 
+    activity_feed = _build_activity_feed(request.user, follow_data)
+
     response = render(request, 'accounts/dashboard.html', {
         'profile': profile,
         'events': events,
@@ -1170,7 +1270,8 @@ def dashboard(request):
         'total_views': artist_views + promoter_views + venue_views + space_views,
         'events_pending': events.filter(status='pending').count(),
         'events_approved': events.filter(status='approved').count(),
-        'active_profiles': active_profiles,
+        'active_profiles':  active_profiles,
+        'activity_feed':    activity_feed,
     })
     response['Cache-Control'] = 'no-store, no-cache, must-revalidate'
     response['Pragma'] = 'no-cache'
@@ -4687,6 +4788,43 @@ def community_space_edit(request, slug):
     # Rebuild asks
     messages.success(request, 'Space updated.')
     return redirect('community_space_edit', slug=space.slug)
+
+
+# ── Comments toggle API ───────────────────────────────────────────────────────
+
+@login_required(login_url='/login/')
+def toggle_comments_api(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    import json as _j
+    try:
+        data  = _j.loads(request.body)
+        model = data.get('model', '')
+        pk    = int(data.get('pk', 0))
+        allow = bool(data.get('allow', False))
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'bad request'}, status=400)
+
+    MODEL_MAP = {
+        'artist':   Artist,
+        'promoter': PromoterProfile,
+        'venue':    Venue,
+        'space':    CommunitySpace,
+    }
+    Klass = MODEL_MAP.get(model)
+    if not Klass:
+        return JsonResponse({'error': 'unknown model'}, status=400)
+
+    claim_field = {
+        'artist':   'claimed_by',
+        'promoter': 'claimed_by',
+        'venue':    'claimed_by',
+        'space':    'claimed_by',
+    }[model]
+    updated = Klass.objects.filter(pk=pk, **{claim_field: request.user}).update(allow_comments=allow)
+    if not updated and not request.user.is_staff:
+        return JsonResponse({'error': 'not found or not yours'}, status=403)
+    return JsonResponse({'ok': True, 'allow': allow})
 
 
 # ── Ko-fi webhook ─────────────────────────────────────────────────────────────

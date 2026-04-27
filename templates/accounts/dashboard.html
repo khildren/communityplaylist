@@ -67,7 +67,7 @@ details[open] .sum-chevron{transform:rotate(180deg)}
 .section-body{padding:0 16px 16px}
 
 /* ── Profile type cards ── */
-.profile-type-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:4px}
+.profile-type-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:4px}
 .ptype-card{background:#111;border:1px solid #222;border-radius:8px;padding:14px;position:relative}
 .ptype-card.has-profile{border-color:#2a2a2a}
 .ptype-icon{font-size:1.4em;margin-bottom:8px}
@@ -135,7 +135,35 @@ details[open] .sum-chevron{transform:rotate(180deg)}
 .fg input{width:100%;background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:8px 10px;color:#eee;font-size:.84em;font-family:inherit}
 .fg input:focus{outline:none;border-color:#ff6b35}
 .sol-note{font-size:.72em;color:#444;margin-top:5px;line-height:1.5}
-@media(max-width:520px){.contact-grid{grid-template-columns:1fr}.stats-strip{grid-template-columns:repeat(3,1fr)}.profile-type-grid{grid-template-columns:1fr}}
+/* ── Comments toggle ── */
+.comments-toggle{display:flex;align-items:center;gap:8px;margin-top:8px}
+.toggle-switch{position:relative;display:inline-block;width:34px;height:18px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0;position:absolute}
+.toggle-slider{position:absolute;inset:0;background:#222;border-radius:18px;cursor:pointer;transition:background .2s;border:1px solid #333}
+.toggle-slider:before{content:'';position:absolute;width:12px;height:12px;left:2px;top:2px;background:#555;border-radius:50%;transition:transform .2s,background .2s}
+.toggle-switch input:checked+.toggle-slider{background:#1a3a2a;border-color:#4caf50}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(16px);background:#4caf50}
+.toggle-label{font-size:.72em;color:#555}
+
+/* ── Activity feed ── */
+.feed-filter-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.feed-tab{background:#111;border:1px solid #222;color:#666;padding:4px 12px;border-radius:20px;font-size:.74em;cursor:pointer;transition:all .15s;font-family:inherit}
+.feed-tab.active,.feed-tab:hover{border-color:#ff6b35;color:#ff6b35;background:#1a0c06}
+.act-row{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #1a1a1a;align-items:flex-start}
+.act-row:last-child{border-bottom:none}
+.act-badge{font-size:.62em;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;border-radius:3px;flex-shrink:0;margin-top:2px;white-space:nowrap}
+.act-badge.board_give{background:#152515;color:#4caf50}
+.act-badge.board_iso{background:#221635;color:#bb88ff}
+.act-badge.board_trade{background:#1a2535;color:#5aabdd}
+.act-badge.ask{background:#252515;color:#ddbb44}
+.act-badge.event_artist{background:#2a1408;color:#ff6b35}
+.act-badge.event_venue,.act-badge.event_space{background:#1a1535;color:#8888ff}
+.act-info{flex:1;min-width:0}
+.act-title{color:#ccc;font-size:.84em;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.act-blurb{color:#555;font-size:.74em;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.act-source{color:#444;font-size:.7em;margin-top:2px}
+
+@media(max-width:520px){.contact-grid{grid-template-columns:1fr}.stats-strip{grid-template-columns:repeat(3,1fr)}.profile-type-grid{grid-template-columns:repeat(2,1fr)}}
 
 /* ── Empty states ── */
 .empty-note{color:#444;font-size:.8em;padding:12px 0}
@@ -219,6 +247,18 @@ details[open] .sum-chevron{transform:rotate(180deg)}
     <div class="stat-label">Crew views</div>
   </div>
   {% endif %}
+  {% if venue_views and claimed_venues %}
+  <div class="stat-card amber">
+    <div class="stat-num">{{ venue_views }}</div>
+    <div class="stat-label">Venue views</div>
+  </div>
+  {% endif %}
+  {% if space_views and claimed_spaces %}
+  <div class="stat-card green">
+    <div class="stat-num">{{ space_views }}</div>
+    <div class="stat-label">Space views</div>
+  </div>
+  {% endif %}
 </div>
 
 {# ── My Profiles ── #}
@@ -236,15 +276,15 @@ details[open] .sum-chevron{transform:rotate(180deg)}
 
       {# Artist #}
       {% if profile.wants_artist %}
-      <div class="ptype-card">
+      <div class="ptype-card has-profile">
         <form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="action" value="toggle_profile_type"><input type="hidden" name="field" value="wants_artist"><button class="ptype-toggle" title="Deactivate artist type">✕</button></form>
         <div class="ptype-icon">🎤</div>
         <div class="ptype-name">Artist / DJ</div>
         {% if claimed_artists %}
           {% for a in claimed_artists %}
-          <div class="ptype-meta" style="margin-top:8px">{{ a.name }} · <span style="color:#ff6b35">{{ a.view_count }} views</span></div>
+          <div class="ptype-meta" style="margin-top:8px">{{ a.name }}<br><span style="color:#ff6b35">{{ a.view_count }} views</span></div>
           <div class="ptype-actions">
-            <a href="/artists/{{ a.slug }}/" class="btn-sm">View page</a>
+            <a href="/artists/{{ a.slug }}/" class="btn-sm">View</a>
             <a href="/artists/{{ a.slug }}/edit/" class="btn-sm">Edit</a>
             <form method="post" style="display:inline" onsubmit="return confirm('Release your claim on {{ a.name }}? The profile stays but becomes unclaimed.')">
               {% csrf_token %}
@@ -252,6 +292,13 @@ details[open] .sum-chevron{transform:rotate(180deg)}
               <input type="hidden" name="pk" value="{{ a.pk }}">
               <button class="btn-sm" type="submit" style="color:#555;border-color:#222">Release</button>
             </form>
+          </div>
+          <div class="comments-toggle">
+            <label class="toggle-switch" title="Allow public comments on this artist page">
+              <input type="checkbox" data-model="artist" data-pk="{{ a.pk }}" data-field="allow_comments" {% if a.allow_comments %}checked{% endif %} onchange="cpToggleComments(this)">
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label">Public comments {% if a.allow_comments %}<span style="color:#4caf50">on</span>{% else %}off{% endif %}</span>
           </div>
           {% endfor %}
         {% else %}
@@ -274,15 +321,15 @@ details[open] .sum-chevron{transform:rotate(180deg)}
 
       {# Crew / Promoter #}
       {% if profile.wants_promoter %}
-      <div class="ptype-card">
+      <div class="ptype-card has-profile">
         <form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="action" value="toggle_profile_type"><input type="hidden" name="field" value="wants_promoter"><button class="ptype-toggle" title="Deactivate crew type">✕</button></form>
         <div class="ptype-icon">📣</div>
         <div class="ptype-name">Crew / Promoter</div>
         {% if claimed_promoters %}
           {% for p in claimed_promoters %}
-          <div class="ptype-meta" style="margin-top:8px">{{ p.name }} · <span style="color:#ff6b35">{{ p.view_count }} views</span></div>
+          <div class="ptype-meta" style="margin-top:8px">{{ p.name }}<br><span style="color:#ff6b35">{{ p.view_count }} views</span></div>
           <div class="ptype-actions">
-            <a href="/promoters/{{ p.slug }}/" class="btn-sm">View page</a>
+            <a href="/promoters/{{ p.slug }}/" class="btn-sm">View</a>
             <a href="/promoters/{{ p.slug }}/edit/" class="btn-sm">Edit</a>
             <form method="post" style="display:inline" onsubmit="return confirm('Release your claim on {{ p.name }}?')">
               {% csrf_token %}
@@ -290,6 +337,13 @@ details[open] .sum-chevron{transform:rotate(180deg)}
               <input type="hidden" name="pk" value="{{ p.pk }}">
               <button class="btn-sm" type="submit" style="color:#555;border-color:#222">Release</button>
             </form>
+          </div>
+          <div class="comments-toggle">
+            <label class="toggle-switch" title="Allow public comments on this crew page">
+              <input type="checkbox" data-model="promoter" data-pk="{{ p.pk }}" data-field="allow_comments" {% if p.allow_comments %}checked{% endif %} onchange="cpToggleComments(this)">
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label">Public comments {% if p.allow_comments %}<span style="color:#4caf50">on</span>{% else %}off{% endif %}</span>
           </div>
           {% endfor %}
         {% else %}
@@ -312,15 +366,15 @@ details[open] .sum-chevron{transform:rotate(180deg)}
 
       {# Venue #}
       {% if profile.wants_venue %}
-      <div class="ptype-card">
+      <div class="ptype-card has-profile">
         <form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="action" value="toggle_profile_type"><input type="hidden" name="field" value="wants_venue"><button class="ptype-toggle" title="Deactivate venue type">✕</button></form>
         <div class="ptype-icon">🏛</div>
         <div class="ptype-name">Venue</div>
         {% if claimed_venues %}
           {% for v in claimed_venues %}
-          <div class="ptype-meta" style="margin-top:8px">{{ v.name }} · <span style="color:#ff6b35">{{ v.view_count }} views</span></div>
+          <div class="ptype-meta" style="margin-top:8px">{{ v.name }}<br><span style="color:#ff6b35">{{ v.view_count }} views</span></div>
           <div class="ptype-actions">
-            <a href="/venues/{{ v.slug }}/" class="btn-sm">View page</a>
+            <a href="/venues/{{ v.slug }}/" class="btn-sm">View</a>
             <a href="/venues/{{ v.slug }}/edit/" class="btn-sm">Edit</a>
             <form method="post" style="display:inline" onsubmit="return confirm('Release your claim on {{ v.name }}?')">
               {% csrf_token %}
@@ -328,6 +382,13 @@ details[open] .sum-chevron{transform:rotate(180deg)}
               <input type="hidden" name="pk" value="{{ v.pk }}">
               <button class="btn-sm" type="submit" style="color:#555;border-color:#222">Release</button>
             </form>
+          </div>
+          <div class="comments-toggle">
+            <label class="toggle-switch" title="Allow public comments on this venue">
+              <input type="checkbox" data-model="venue" data-pk="{{ v.pk }}" data-field="allow_comments" {% if v.allow_comments %}checked{% endif %} onchange="cpToggleComments(this)">
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label">Public comments {% if v.allow_comments %}<span style="color:#4caf50">on</span>{% else %}off{% endif %}</span>
           </div>
           {% endfor %}
         {% else %}
@@ -348,15 +409,15 @@ details[open] .sum-chevron{transform:rotate(180deg)}
       </div>
       {% endif %}
 
-      {# Community Space #}
-      <div class="ptype-card">
+      {# Community Space — in the same grid as other profile types #}
+      <div class="ptype-card {% if claimed_spaces %}has-profile{% endif %}">
         <div class="ptype-icon">🌱</div>
         <div class="ptype-name">Community Space</div>
         {% if claimed_spaces %}
           {% for s in claimed_spaces %}
-          <div class="ptype-meta" style="margin-top:8px">{{ s.name }} · <span style="color:#4caf50">{{ s.view_count }} views</span></div>
+          <div class="ptype-meta" style="margin-top:8px">{{ s.name }}<br><span style="color:#4caf50">{{ s.view_count }} views</span></div>
           <div class="ptype-actions">
-            <a href="/spaces/{{ s.slug }}/" class="btn-sm">View page</a>
+            <a href="/spaces/{{ s.slug }}/" class="btn-sm">View</a>
             <a href="/spaces/{{ s.slug }}/edit/" class="btn-sm">Edit</a>
             <form method="post" style="display:inline" onsubmit="return confirm('Release your claim on {{ s.name }}?')">
               {% csrf_token %}
@@ -364,6 +425,13 @@ details[open] .sum-chevron{transform:rotate(180deg)}
               <input type="hidden" name="pk" value="{{ s.pk }}">
               <button class="btn-sm" type="submit" style="color:#555;border-color:#222">Release</button>
             </form>
+          </div>
+          <div class="comments-toggle">
+            <label class="toggle-switch" title="Allow public comments on this space">
+              <input type="checkbox" data-model="space" data-pk="{{ s.pk }}" data-field="allow_comments" {% if s.allow_comments %}checked{% endif %} onchange="cpToggleComments(this)">
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label">Public comments {% if s.allow_comments %}<span style="color:#4caf50">on</span>{% else %}off{% endif %}</span>
           </div>
           {% endfor %}
         {% else %}
@@ -601,6 +669,52 @@ details[open] .sum-chevron{transform:rotate(180deg)}
   </div>
 </details>
 
+{# ── Activity Feed ── #}
+<details>
+  <summary>
+    <span class="sum-icon">📡</span>
+    <span class="sum-title">Community Feed</span>
+    {% if activity_feed %}<span class="sum-badge">{{ activity_feed|length }}</span>
+    {% else %}<span class="sum-nudge">· nothing new yet</span>{% endif %}
+    <span class="sum-chevron">▼</span>
+  </summary>
+  <div class="section-body">
+    <div class="feed-filter-tabs" id="act-tabs">
+      <button class="feed-tab active" data-filter="all">All</button>
+      <button class="feed-tab" data-filter="board">Resources &amp; Buy Nothing</button>
+      <button class="feed-tab" data-filter="artist">DJ / Artist</button>
+      <button class="feed-tab" data-filter="venue_space">Venue / Space</button>
+      <button class="feed-tab" data-filter="ask">Community Asks</button>
+    </div>
+    {% if activity_feed %}
+    <div id="act-list">
+      {% for item in activity_feed %}
+      <div class="act-row"
+           data-type="{{ item.type }}"
+           data-group="{% if item.type == 'board_give' or item.type == 'board_iso' or item.type == 'board_trade' %}board{% elif item.type == 'event_artist' %}artist{% elif item.type == 'event_venue' or item.type == 'event_space' %}venue_space{% elif item.type == 'ask' %}ask{% endif %}">
+        <span class="act-badge {{ item.type }}">
+          {% if item.type == 'board_give' %}Free
+          {% elif item.type == 'board_iso' %}ISO
+          {% elif item.type == 'board_trade' %}Trade
+          {% elif item.type == 'ask' %}Ask
+          {% elif item.type == 'event_artist' %}Event
+          {% elif item.type == 'event_venue' %}Event
+          {% else %}Update{% endif %}
+        </span>
+        <div class="act-info">
+          <a href="{{ item.url }}" class="act-title" style="text-decoration:none;display:block">{{ item.title }}</a>
+          {% if item.blurb %}<div class="act-blurb">{{ item.blurb }}</div>{% endif %}
+          <div class="act-source">{{ item.source_name }}{% if item.date %} · {{ item.date|date:"N j" }}{% endif %}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="nudge-row"><span class="nudge-icon">📡</span> Follow artists, venues, and spaces to see their activity here — plus recent community board posts.</div>
+    {% endif %}
+  </div>
+</details>
+
 {# ── Contact & Web3 ── #}
 <details>
   <summary>
@@ -698,6 +812,45 @@ details[open] .sum-chevron{transform:rotate(180deg)}
 </div>{# /dash #}
 
 <script>
+// ── Comments toggle ──
+function cpToggleComments(input) {
+  var model = input.dataset.model;
+  var pk    = input.dataset.pk;
+  var on    = input.checked;
+  var label = input.closest('.comments-toggle').querySelector('.toggle-label');
+  fetch('/api/toggle-comments/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+    body: JSON.stringify({model: model, pk: pk, allow: on}),
+  }).then(function(r) {
+    if (!r.ok) { input.checked = !on; return; }
+    if (label) label.innerHTML = 'Public comments ' + (on ? '<span style="color:#4caf50">on</span>' : 'off');
+  }).catch(function() { input.checked = !on; });
+}
+
+function getCookie(n) { var v=document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');return v?v[2]:null; }
+
+// ── Activity feed filter tabs ──
+(function(){
+  var tabs = document.querySelectorAll('#act-tabs .feed-tab');
+  var rows = document.querySelectorAll('#act-list .act-row');
+  if (!tabs.length) return;
+  tabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      tabs.forEach(function(t){ t.classList.remove('active'); });
+      tab.classList.add('active');
+      var filter = tab.dataset.filter;
+      rows.forEach(function(row) {
+        if (filter === 'all' || row.dataset.group === filter) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    });
+  });
+})();
+
 // Remember which <details> are open via localStorage
 (function(){
   var els = document.querySelectorAll('details');

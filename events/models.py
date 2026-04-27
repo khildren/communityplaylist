@@ -195,6 +195,7 @@ class Artist(models.Model):
     link_checked_at  = models.DateTimeField(null=True, blank=True, help_text='Last time website URL was checked')
     youtube_channel_id = models.CharField(max_length=50, blank=True, help_text='Cached YouTube channel ID (UCxxx…)')
     view_count  = models.PositiveIntegerField(default=0)
+    allow_comments = models.BooleanField(default=False, help_text='Allow public comments on profile page')
 
     # Auto-build / enrichment
     is_stub          = models.BooleanField(default=False, help_text='Auto-generated from events — not yet claimed')
@@ -332,6 +333,7 @@ class PromoterProfile(models.Model):
     youtube_channel_id = models.CharField(max_length=50, blank=True, help_text='Cached YouTube channel ID (UCxxx…)')
     created_at  = models.DateTimeField(auto_now_add=True)
     view_count  = models.PositiveIntegerField(default=0)
+    allow_comments = models.BooleanField(default=False, help_text='Allow public comments on profile page')
     name_variants = models.TextField(
         blank=True,
         help_text='Pipe-separated name aliases that should resolve to this profile '
@@ -469,6 +471,7 @@ class CommunitySpace(models.Model):
     is_verified = models.BooleanField(default=False)
     is_public   = models.BooleanField(default=True)
     view_count  = models.PositiveIntegerField(default=0)
+    allow_comments = models.BooleanField(default=False, help_text='Allow public comments on profile page')
     created_at  = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -996,6 +999,7 @@ class Venue(models.Model):
     is_live      = models.BooleanField(default=False, help_text='Currently streaming live (updated by check_live_streams)')
     youtube_channel_id = models.CharField(max_length=50, blank=True, help_text='Cached YouTube channel ID (UCxxx…)')
     view_count   = models.PositiveIntegerField(default=0)
+    allow_comments = models.BooleanField(default=False, help_text='Allow public comments on venue page')
     created_at   = models.DateTimeField(auto_now_add=True)
 
     class Meta:
