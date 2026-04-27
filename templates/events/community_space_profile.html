@@ -98,7 +98,27 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
 .btn-contact{background:transparent;border:1px solid #333;color:#888 !important}
 .btn-view-item{background:transparent;border:1px solid #333;color:#aaa !important;font-size:.72em !important;padding:4px 10px !important}
 
-@media(max-width:480px){h1{font-size:1.15em}.hero-photo,.hero-placeholder{width:72px;height:72px;font-size:1.8em}}
+/* Audio library */
+.audio-list{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
+.audio-row{display:flex;align-items:center;gap:10px;background:#161616;border:1px solid #222;border-radius:10px;padding:9px 12px;cursor:pointer;transition:border-color .15s}
+.audio-row:hover,.audio-row.playing{border-color:var(--accent)}
+.audio-play-btn{width:30px;height:30px;border-radius:50%;background:var(--accent);border:none;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.85em;flex-shrink:0;cursor:pointer;line-height:1}
+.audio-name{flex:1;font-size:.82em;color:#ccc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.audio-progress{width:100%;height:3px;background:#222;border-radius:2px;margin-top:4px;display:none}
+.audio-progress-bar{height:100%;background:var(--accent);border-radius:2px;width:0;transition:width .5s linear}
+.audio-row.playing .audio-progress{display:block}
+
+/* Document library */
+.doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:4px}
+.doc-card{background:#161616;border:1px solid #222;border-radius:10px;overflow:hidden;text-decoration:none;color:#ccc;transition:border-color .15s;display:flex;flex-direction:column}
+.doc-card:hover{border-color:var(--accent)}
+.doc-preview{width:100%;aspect-ratio:3/4;border:none;pointer-events:none}
+.doc-name{font-size:.74em;padding:6px 8px;border-top:1px solid #222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#aaa}
+.doc-card.no-preview{align-items:center;padding:20px 10px;gap:8px;text-align:center}
+.doc-card.no-preview .doc-icon{font-size:2em;line-height:1}
+.doc-card.no-preview .doc-name{border:none;padding:0;font-size:.78em}
+
+@media(max-width:480px){h1{font-size:1.15em}.hero-photo,.hero-placeholder{width:72px;height:72px;font-size:1.8em}.doc-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}}
 </style>
 {% endblock %}
 
@@ -233,6 +253,43 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
 </a>
 {% endif %}
 
+{# ── Audio library ── #}
+{% if audio_files %}
+<div class="section-label" style="margin-top:14px">🎵 Audio</div>
+<div class="audio-list" id="audio-library">
+  {% for af in audio_files %}
+  <div class="audio-row" data-src="{{ af.stream_url }}" data-idx="{{ forloop.counter0 }}">
+    <button class="audio-play-btn" aria-label="Play {{ af.name }}">▶</button>
+    <div style="flex:1;min-width:0">
+      <div class="audio-name">{{ af.name }}</div>
+      <div class="audio-progress"><div class="audio-progress-bar"></div></div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<audio id="space-audio-player" preload="none" style="display:none"></audio>
+{% endif %}
+
+{# ── Document library ── #}
+{% if doc_files %}
+<div class="section-label" style="margin-top:14px">📄 Documents &amp; Zines</div>
+<div class="doc-grid">
+  {% for df in doc_files %}
+  {% if df.mimeType == 'application/pdf' or 'google-apps' in df.mimeType %}
+  <a href="{{ df.preview_url }}" class="doc-card" target="_blank" rel="noopener">
+    <iframe class="doc-preview" src="{{ df.preview_url }}" loading="lazy" title="{{ df.name }}"></iframe>
+    <div class="doc-name">{{ df.name }}</div>
+  </a>
+  {% else %}
+  <a href="{{ df.preview_url }}" class="doc-card no-preview" target="_blank" rel="noopener">
+    <div class="doc-icon">📄</div>
+    <div class="doc-name">{{ df.name }}</div>
+  </a>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
 {# ── Find on maps ── #}
 {% if space.address %}
 <div class="section-label">Location</div>
@@ -347,6 +404,57 @@ document.getElementById('cookie-modal').addEventListener('click', function(e) {
 });
 
 function getCookie(n){var v=document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');return v?v[2]:null}
+
+{% if audio_files %}
+// ── Audio library player ──
+(function(){
+  var player = document.getElementById('space-audio-player');
+  var rows   = document.querySelectorAll('#audio-library .audio-row');
+  var currentIdx = -1;
+
+  function updateRow(idx, playing) {
+    var row = rows[idx];
+    if (!row) return;
+    row.classList.toggle('playing', playing);
+    row.querySelector('.audio-play-btn').textContent = playing ? '⏸' : '▶';
+  }
+
+  function setProgress(idx, pct) {
+    var row = rows[idx];
+    if (!row) return;
+    var bar = row.querySelector('.audio-progress-bar');
+    if (bar) bar.style.width = pct + '%';
+  }
+
+  player.addEventListener('timeupdate', function(){
+    if (!player.duration) return;
+    setProgress(currentIdx, (player.currentTime / player.duration) * 100);
+  });
+
+  player.addEventListener('ended', function(){
+    updateRow(currentIdx, false);
+    setProgress(currentIdx, 0);
+    var next = currentIdx + 1;
+    if (next < rows.length) rows[next].click();
+  });
+
+  rows.forEach(function(row, idx) {
+    row.addEventListener('click', function(){
+      var src = row.dataset.src;
+      if (currentIdx === idx) {
+        if (player.paused) { player.play(); updateRow(idx, true); }
+        else               { player.pause(); updateRow(idx, false); }
+        return;
+      }
+      if (currentIdx >= 0) { updateRow(currentIdx, false); setProgress(currentIdx, 0); }
+      currentIdx = idx;
+      player.src = src;
+      player.play().catch(function(){});
+      updateRow(idx, true);
+    });
+  });
+})();
+{% endif %}
 
 {% if not request.user.is_authenticated %}
 (function() {

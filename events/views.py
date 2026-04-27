@@ -4479,6 +4479,105 @@ def report_page(request):
 
 # ── Community Space ────────────────────────────────────────────────────────────
 
+_AUDIO_MIMETYPES = {
+    'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg',
+    'audio/flac', 'audio/mp4', 'audio/x-m4a', 'audio/aac',
+}
+_DOC_MIMETYPES = {
+    'application/pdf',
+    'application/vnd.google-apps.document',
+    'application/vnd.google-apps.presentation',
+}
+
+
+def _fetch_space_library(folder_url, show_audio, show_docs):
+    """
+    Fetch whitelisted files from a public Google Drive folder.
+    Returns (audio_files, doc_files) — each a list of dicts with
+    id, name, mimeType, thumbnail_url, preview_url.
+    """
+    if not folder_url or not (show_audio or show_docs):
+        return [], []
+
+    import re as _re_lib
+    m = _re_lib.search(r'/folders/([a-zA-Z0-9_-]+)', folder_url)
+    if not m:
+        return [], []
+    folder_id = m.group(1)
+
+    from django.conf import settings as _s_lib
+    api_key = getattr(_s_lib, 'GOOGLE_DRIVE_API_KEY', '')
+    if not api_key:
+        return [], []
+
+    _HDR = {'User-Agent': 'CommunityPlaylist/1.0'}
+
+    def _list_folder(fid, depth=0, max_depth=2):
+        """Recursively list all safe files under fid."""
+        results = []
+
+        # Build a mimeType OR query for whitelisted types
+        wanted = set()
+        if show_audio:
+            wanted |= _AUDIO_MIMETYPES
+        if show_docs:
+            wanted |= _DOC_MIMETYPES
+
+        # Fetch files in this folder
+        from urllib.parse import quote as _q
+        mime_filter = ' or '.join(f"mimeType='{m}'" for m in sorted(wanted))
+        q = _q(f"'{fid}' in parents and ({mime_filter}) and trashed=false")
+        url = (
+            f'https://www.googleapis.com/drive/v3/files'
+            f'?q={q}&orderBy=name'
+            f'&fields=files(id,name,mimeType,size,thumbnailLink)'
+            f'&key={api_key}&pageSize=100'
+        )
+        try:
+            resp = requests.get(url, timeout=10, headers=_HDR)
+            if resp.ok:
+                results.extend(resp.json().get('files', []))
+        except Exception:
+            pass
+
+        # Recurse into sub-folders
+        if depth < max_depth:
+            sub_q = _q(f"'{fid}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false")
+            sub_url = (
+                f'https://www.googleapis.com/drive/v3/files'
+                f'?q={sub_q}&fields=files(id,name)&key={api_key}&pageSize=50'
+            )
+            try:
+                sub_resp = requests.get(sub_url, timeout=10, headers=_HDR)
+                if sub_resp.ok:
+                    for sub in sub_resp.json().get('files', []):
+                        results.extend(_list_folder(sub['id'], depth + 1, max_depth))
+            except Exception:
+                pass
+
+        return results
+
+    all_files = _list_folder(folder_id)
+
+    audio_files, doc_files = [], []
+    for f in all_files:
+        mime = f.get('mimeType', '')
+        entry = {
+            'id':            f['id'],
+            'name':          f.get('name', ''),
+            'mimeType':      mime,
+            'thumbnail_url': f.get('thumbnailLink', ''),
+            'preview_url':   f'https://drive.google.com/file/d/{f["id"]}/preview',
+            'stream_url':    f'https://www.googleapis.com/drive/v3/files/{f["id"]}?alt=media&key={api_key}',
+        }
+        if mime in _AUDIO_MIMETYPES:
+            audio_files.append(entry)
+        elif mime in _DOC_MIMETYPES:
+            doc_files.append(entry)
+
+    return audio_files[:50], doc_files[:50]
+
+
 def community_space_profile(request, slug):
     from django.db.models import F as _F
     space = get_object_or_404(CommunitySpace, slug=slug, is_public=True)
@@ -4497,11 +4596,16 @@ def community_space_profile(request, slug):
         ).exists()
     )
     asks = list(space.asks.exclude(status='fulfilled'))
+    audio_files, doc_files = _fetch_space_library(
+        space.drive_folder_url, space.show_audio, space.show_docs,
+    )
     return render(request, 'events/community_space_profile.html', {
         'space':        space,
         'can_edit':     can_edit,
         'is_following': is_following,
         'asks':         asks,
+        'audio_files':  audio_files,
+        'doc_files':    doc_files,
     })
 
 
@@ -4555,6 +4659,9 @@ def community_space_edit(request, slug):
                   'contact_email', 'instagram', 'bluesky', 'mastodon', 'tiktok',
                   'drive_folder_url', 'sol_wallet', 'donation_url']:
         space.__setattr__(field, request.POST.get(field, '').strip())
+
+    space.show_audio = request.POST.get('show_audio') == '1'
+    space.show_docs  = request.POST.get('show_docs')  == '1'
 
     st = request.POST.get('space_type', '')
     valid_types = [k for k, _ in CommunitySpace.TYPE_CHOICES]

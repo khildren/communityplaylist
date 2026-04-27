@@ -436,6 +436,14 @@ class CommunitySpace(models.Model):
     drive_folder_url = models.URLField(
         blank=True, help_text='Public Google Drive folder — shows as "Resource Library" button',
     )
+    show_audio = models.BooleanField(
+        default=False,
+        help_text='Display audio files from the Drive folder as an inline player on the profile',
+    )
+    show_docs = models.BooleanField(
+        default=False,
+        help_text='Display PDFs / Google Docs / zines from the Drive folder as a document library on the profile',
+    )
 
     # Funding — fedi/crypto only (no PayPal/Stripe)
     sol_wallet   = models.CharField(

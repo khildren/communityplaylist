@@ -141,7 +141,24 @@ h1{color:var(--accent);font-size:1.2em;margin-bottom:22px}
   <div class="fg">
     <label>Google Drive folder URL</label>
     <input type="url" name="drive_folder_url" value="{{ space.drive_folder_url }}" placeholder="https://drive.google.com/drive/folders/...">
-    <div class="hint">Public folder — shows as a "Resource Library" button on your profile. Share settings: Anyone with link → Viewer.</div>
+    <div class="hint">Public folder — Share settings: Anyone with link → Viewer. Paste a folder and choose what to display inline below.</div>
+  </div>
+
+  <div class="fg" style="margin-top:12px">
+    <label style="font-weight:600;font-size:.82em;color:#444;letter-spacing:.03em">Inline library display</label>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:6px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:.88em;cursor:pointer">
+        <input type="checkbox" name="show_audio" value="1" {% if space.show_audio %}checked{% endif %}
+               style="width:18px;height:18px;accent-color:#4caf50">
+        🎵 Audio player — show MP3 / WAV / OGG files as an inline playlist
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:.88em;cursor:pointer">
+        <input type="checkbox" name="show_docs" value="1" {% if space.show_docs %}checked{% endif %}
+               style="width:18px;height:18px;accent-color:#4caf50">
+        📄 Document library — show PDFs, Google Docs &amp; zines as readable cards
+      </label>
+    </div>
+    <div class="hint" style="margin-top:8px">Only safe, whitelisted file types are shown. Audio and documents are fetched live from your Drive folder on each page load.</div>
   </div>
 </div>
 

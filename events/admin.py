@@ -2149,7 +2149,7 @@ class CommunitySpaceAdmin(admin.ModelAdmin):
         ('Identity', {'fields': ['name', 'slug', 'space_type', 'bio', 'photo', 'brand_color', 'is_verified', 'is_public', 'claimed_by']}),
         ('Location', {'fields': ['address', 'neighborhood', 'latitude', 'longitude']}),
         ('Contact & Social', {'fields': ['contact_email', 'website', 'instagram', 'bluesky', 'mastodon', 'tiktok']}),
-        ('Resources & Funding', {'fields': ['drive_folder_url', 'donation_url', 'sol_wallet']}),
+        ('Resources & Funding', {'fields': ['drive_folder_url', 'show_audio', 'show_docs', 'donation_url', 'sol_wallet']}),
         ('Custom Links', {'fields': ['custom_links']}),
         ('Stats', {'fields': ['view_count', 'created_at'], 'classes': ['collapse']}),
     ]
