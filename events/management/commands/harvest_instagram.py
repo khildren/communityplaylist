@@ -136,13 +136,29 @@ def _fetch_posts_private_api(L, user_id: str, max_posts: int) -> list[dict]:
                 cands = child.get('image_versions2', {}).get('candidates', [])
                 if cands:
                     image_url = cands[0].get('url', '')
+            # Usertags — people tagged in this post
+            tagged = [
+                t['user']['username']
+                for t in item.get('usertags', {}).get('in', [])
+                if t.get('user', {}).get('username')
+            ]
+            # Location
+            loc_raw = item.get('location') or {}
+            location = {
+                'name': loc_raw.get('name', ''),
+                'ig_location_id': str(loc_raw.get('pk', '') or ''),
+                'lat': loc_raw.get('lat'),
+                'lng': loc_raw.get('lng'),
+            } if loc_raw else None
             results.append({
-                'ig_post_id': ig_post_id,
-                'shortcode':  shortcode,
-                'caption':    caption,
-                'image_url':  image_url,
-                'is_video':   is_video,
-                'posted_at':  posted_at,
+                'ig_post_id':      ig_post_id,
+                'shortcode':       shortcode,
+                'caption':         caption,
+                'image_url':       image_url,
+                'is_video':        is_video,
+                'posted_at':       posted_at,
+                'tagged_handles':  tagged,
+                'location':        location,
             })
         if not data.get('more_available'):
             break
@@ -237,32 +253,91 @@ class Command(BaseCommand):
                 self.stderr.write(f'    fetch error: {e}')
                 continue
 
+            all_tagged = set()
             for p in posts:
                 if not p['posted_at']:
                     continue
                 if dry_run:
+                    tagged_str = ', '.join(f'@{h}' for h in p['tagged_handles']) if p['tagged_handles'] else ''
                     self.stdout.write(
                         f"    [dry] {p['shortcode']} | "
                         f"{p['posted_at'].strftime('%Y-%m-%d')} | "
-                        f"{p['caption'][:80]}"
+                        f"{p['caption'][:60]}"
+                        + (f' | tags: {tagged_str}' if tagged_str else '')
                     )
+                    all_tagged.update(p['tagged_handles'])
                     continue
-                _, created = InstagramPost.objects.get_or_create(
+                post, created = InstagramPost.objects.get_or_create(
                     ig_post_id=p['ig_post_id'],
                     defaults={
-                        'account':   account,
-                        'shortcode': p['shortcode'],
-                        'caption':   p['caption'],
-                        'image_url': p['image_url'],
-                        'is_video':  p['is_video'],
-                        'posted_at': p['posted_at'],
+                        'account':        account,
+                        'shortcode':      p['shortcode'],
+                        'caption':        p['caption'],
+                        'image_url':      p['image_url'],
+                        'is_video':       p['is_video'],
+                        'posted_at':      p['posted_at'],
+                        'tagged_handles': p['tagged_handles'],
                     }
                 )
                 if created:
                     new_count += 1
+                elif p['tagged_handles'] and post.tagged_handles != p['tagged_handles']:
+                    post.tagged_handles = p['tagged_handles']
+                    post.save(update_fields=['tagged_handles'])
+                all_tagged.update(p['tagged_handles'])
+
+            # ── Usertag discovery ─────────────────────────────────────────────
+            # For each handle tagged across this account's posts, check if we
+            # already know about them. Queue unknown handles as pending accounts.
+            new_accounts = _discover_tagged_accounts(all_tagged, self.stdout)
+            if new_accounts and not dry_run:
+                self.stdout.write(
+                    self.style.SUCCESS(f'    + {new_accounts} new account(s) queued for review')
+                )
 
             if not dry_run:
-                self.stdout.write(f'    ✓ {new_count} new / {len(posts)} checked')
+                self.stdout.write(
+                    f'    ✓ {new_count} new / {len(posts)} checked'
+                    + (f' | {len(all_tagged)} unique tags seen' if all_tagged else '')
+                )
                 total_new += new_count
 
         self.stdout.write(f'\nDone. {total_new} new posts total.')
+
+
+def _discover_tagged_accounts(handles: set, stdout=None) -> int:
+    """
+    For a set of Instagram handles seen in usertags, create pending
+    InstagramAccount records for any that aren't already tracked.
+    Also auto-links to existing Artist/PromoterProfile by instagram handle.
+    Returns count of newly queued accounts.
+    """
+    from events.models import InstagramAccount, Artist, PromoterProfile
+
+    known = set(InstagramAccount.objects.filter(
+        handle__in=handles
+    ).values_list('handle', flat=True))
+
+    new_count = 0
+    for handle in handles - known:
+        if not handle or len(handle) > 100:
+            continue
+
+        # Auto-link to existing profiles by instagram handle field
+        artist   = Artist.objects.filter(instagram__iexact=handle, is_stub=False).first()
+        promoter = PromoterProfile.objects.filter(instagram__iexact=handle).first()
+
+        acc = InstagramAccount.objects.create(
+            handle             = handle,
+            status             = InstagramAccount.STATUS_PENDING,
+            is_active          = False,
+            notes              = 'Auto-discovered via usertag',
+            artist             = artist,
+            promoter_profile   = promoter,
+        )
+        if stdout:
+            linked = f' → links to {artist or promoter}' if (artist or promoter) else ''
+            stdout.write(f'      queued @{handle}{linked}')
+        new_count += 1
+
+    return new_count

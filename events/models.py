@@ -1318,8 +1318,16 @@ class InstagramAccount(models.Model):
         (STATUS_REJECTED, 'Rejected — skip'),
     ]
 
-    handle          = models.CharField(max_length=100, unique=True,
-                                       help_text='Handle without @, e.g. rave.pdx')
+    handle           = models.CharField(max_length=100, unique=True,
+                                        help_text='Handle without @, e.g. rave.pdx')
+    promoter_profile = models.OneToOneField(
+        'PromoterProfile', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='instagram_account', help_text='Linked promoter/crew profile'
+    )
+    artist           = models.OneToOneField(
+        'Artist', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='instagram_account', help_text='Linked artist profile'
+    )
     ig_user_id      = models.CharField(max_length=50, blank=True)
     display_name    = models.CharField(max_length=200, blank=True)
     bio             = models.TextField(blank=True)
@@ -1360,6 +1368,8 @@ class InstagramPost(models.Model):
     sourced_event   = models.ForeignKey('Event', null=True, blank=True,
                                         on_delete=models.SET_NULL, related_name='instagram_sources',
                                         help_text='Event created from this post by flyer scan')
+    tagged_handles  = models.JSONField(default=list, blank=True,
+                                       help_text='Instagram handles tagged in this post')
 
     class Meta:
         ordering = ['-posted_at']

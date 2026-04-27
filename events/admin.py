@@ -1913,15 +1913,18 @@ class InstagramPostInline(admin.TabularInline):
 
 @admin.register(InstagramAccount)
 class InstagramAccountAdmin(admin.ModelAdmin):
-    list_display   = ['handle', 'display_name', 'status_badge', 'follower_count', 'post_count', 'harvest_for_events', 'last_fetched']
+    list_display   = ['handle', 'display_name', 'status_badge', 'follower_count', 'post_count', 'harvest_for_events', 'linked_badge', 'last_fetched']
     list_filter    = ['status', 'harvest_for_events']
     search_fields  = ['handle', 'display_name', 'bio', 'notes']
     readonly_fields = ['ig_user_id', 'display_name', 'bio', 'follower_count', 'last_fetched']
     list_editable  = ['harvest_for_events']
     inlines        = [InstagramPostInline]
-    actions        = ['approve_selected', 'reject_selected', 'harvest_selected', 'enable_flyer_scan', 'disable_flyer_scan']
+    actions        = ['approve_selected', 'reject_selected', 'harvest_selected',
+                      'enable_flyer_scan', 'disable_flyer_scan',
+                      'create_promoter_stubs', 'auto_link_profiles']
     fieldsets = [
         (None, {'fields': ['handle', 'status', 'harvest_for_events', 'notes']}),
+        ('Linked profiles', {'fields': ['promoter_profile', 'artist']}),
         ('Fetched data', {'fields': ['ig_user_id', 'display_name', 'bio', 'follower_count', 'last_fetched'],
                           'classes': ['collapse']}),
     ]
@@ -1929,6 +1932,20 @@ class InstagramAccountAdmin(admin.ModelAdmin):
     def post_count(self, obj):
         return obj.posts.count()
     post_count.short_description = 'Posts'
+
+    def linked_badge(self, obj):
+        if obj.promoter_profile_id:
+            return format_html(
+                '<a href="/admin/events/promoterprofile/{}/change/" style="color:#4caf50;font-size:.8em">promoter</a>',
+                obj.promoter_profile_id
+            )
+        if obj.artist_id:
+            return format_html(
+                '<a href="/admin/events/artist/{}/change/" style="color:#4caf50;font-size:.8em">artist</a>',
+                obj.artist_id
+            )
+        return format_html('<span style="color:#555;font-size:.8em">—</span>')
+    linked_badge.short_description = 'Linked'
 
     def status_badge(self, obj):
         colours = {
@@ -1962,6 +1979,71 @@ class InstagramAccountAdmin(admin.ModelAdmin):
             harvested += 1
         self.message_user(request, f'Harvested {harvested} active account(s).')
     harvest_selected.short_description = '📥 Harvest posts now'
+
+    def create_promoter_stubs(self, request, queryset):
+        """
+        For each selected InstagramAccount that has profile data and no linked
+        PromoterProfile, create a pending PromoterProfile stub.
+        """
+        from events.models import PromoterProfile
+        created = skipped = already = 0
+        for acc in queryset:
+            if acc.promoter_profile_id or acc.artist_id:
+                already += 1
+                continue
+            if not acc.display_name and not acc.bio:
+                skipped += 1
+                continue
+            name = acc.display_name or f'@{acc.handle}'
+            if PromoterProfile.objects.filter(name__iexact=name).exists():
+                # Link the existing one
+                acc.promoter_profile = PromoterProfile.objects.filter(name__iexact=name).first()
+                acc.save(update_fields=['promoter_profile'])
+                already += 1
+                continue
+            p = PromoterProfile.objects.create(
+                name      = name,
+                instagram = acc.handle,
+                bio       = acc.bio or '',
+                is_public = False,
+                notes     = f'Auto-created from @{acc.handle} Instagram account.',
+            )
+            acc.promoter_profile = p
+            acc.save(update_fields=['promoter_profile'])
+            created += 1
+        parts = [f'{created} created']
+        if already: parts.append(f'{already} already linked')
+        if skipped: parts.append(f'{skipped} skipped (no profile data yet — harvest first)')
+        self.message_user(request, ' · '.join(parts),
+                          messages.SUCCESS if created else messages.WARNING)
+    create_promoter_stubs.short_description = '🎪 Create PromoterProfile stubs from selected accounts'
+
+    def auto_link_profiles(self, request, queryset):
+        """
+        Match unlinked InstagramAccounts to existing Artist/PromoterProfile
+        records by their instagram handle field.
+        """
+        from events.models import Artist, PromoterProfile
+        linked = skipped = 0
+        for acc in queryset:
+            if acc.promoter_profile_id or acc.artist_id:
+                skipped += 1
+                continue
+            artist   = Artist.objects.filter(instagram__iexact=acc.handle, is_stub=False).first()
+            promoter = PromoterProfile.objects.filter(instagram__iexact=acc.handle).first()
+            if artist:
+                acc.artist = artist
+                acc.save(update_fields=['artist'])
+                linked += 1
+            elif promoter:
+                acc.promoter_profile = promoter
+                acc.save(update_fields=['promoter_profile'])
+                linked += 1
+            else:
+                skipped += 1
+        self.message_user(request, f'{linked} linked · {skipped} no match found',
+                          messages.SUCCESS if linked else messages.WARNING)
+    auto_link_profiles.short_description = '🔗 Auto-link to existing Artist/Promoter by handle'
 
     def enable_flyer_scan(self, request, queryset):
         n = queryset.update(harvest_for_events=True)
