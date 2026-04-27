@@ -14,12 +14,12 @@
 <style>
 /* ── Corner Player Widget ── */
 .cp-player{
-  position:fixed;bottom:0;left:0;z-index:9000;
+  position:fixed;bottom:0;right:0;z-index:9000;
   width:300px;
   background:#111;
   border-top:1px solid #2a2a2a;
-  border-right:1px solid #2a2a2a;
-  border-top-right-radius:12px;
+  border-left:1px solid #2a2a2a;
+  border-top-left-radius:12px;
   display:none;
   flex-direction:column;
   font-family:sans-serif;font-size:.82em;
@@ -27,7 +27,7 @@
 }
 
 /* Collapse handle */
-.cp-collapser{width:100%;display:flex;align-items:center;gap:8px;padding:6px 10px 5px;background:transparent;border:none;border-bottom:1px solid #1c1c1c;cursor:pointer;flex-shrink:0;user-select:none}
+.cp-collapser{width:100%;display:flex;align-items:center;gap:8px;padding:6px 10px 5px;background:transparent;border:none;cursor:pointer;flex-shrink:0;user-select:none}
 .cp-drag-pill{width:32px;height:3px;background:#2a2a2a;border-radius:2px;flex-shrink:0}
 .cp-collapse-track{flex:1;font-size:.72em;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
 .cp-collapse-chevron{font-size:.65em;color:#3a3a3a;transition:transform .2s;flex-shrink:0}
@@ -118,12 +118,12 @@
   border-radius:6px;
   display:flex;flex-direction:column;gap:3px;padding:5px 4px;
   min-width:88px;
-  visibility:hidden;opacity:0;transform:translateY(6px);
+  visibility:hidden;opacity:0;transform:translateY(6px);pointer-events:none;
   transition:opacity .15s,transform .15s,visibility .15s;
   z-index:9100;max-height:260px;overflow-y:auto;scrollbar-width:none;
 }
 .cp-channels::-webkit-scrollbar{display:none}
-.cp-channels.open{visibility:visible;opacity:1;transform:translateY(0)}
+.cp-channels.open{visibility:visible;opacity:1;transform:translateY(0);pointer-events:auto}
 .cp-ch{background:transparent;border:1px solid #2a2a2a;color:#555;padding:3px 10px;border-radius:2px;cursor:pointer;font-family:monospace;font-size:.72em;white-space:nowrap;transition:all .12s;text-align:left;width:100%}
 .cp-ch:hover{border-color:#ff6b35;color:#ff6b35}
 .cp-ch.active{background:#ff6b35;color:#111;border-color:#ff6b35}
@@ -417,6 +417,236 @@ body.view-map .sh-search{display:none}
 .aid-marquee-soft{color:#3a5a3a;font-size:.75em;font-weight:400}
 .aid-marquee-sep{color:#1a4a1a;margin:0 20px;font-size:.75em;user-select:none}
 @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* ── CP Expanded Player (Plexamp-style) ── */
+#cp-expanded{
+  position:fixed;bottom:0;right:0;
+  width:300px;max-height:calc(100vh - 8px);
+  overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
+  background:#111;
+  border-top:1px solid #2a2a2a;border-left:1px solid #2a2a2a;border-top-left-radius:12px;
+  z-index:9005;
+  display:flex;flex-direction:column;
+  font-family:sans-serif;
+  transform:translateY(100%);
+  transition:transform .32s cubic-bezier(.4,0,.2,1);
+}
+#cp-expanded::-webkit-scrollbar{display:none}
+#cp-expanded.open{transform:translateY(0)}
+#cp-expanded.cp-exp-fs{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  width:100%;max-height:100dvh;height:100dvh;
+  border-radius:0;border:none;z-index:10000;
+  overflow:hidden;
+}
+/* In fullscreen the art area fills remaining vertical space instead of locking to 1:1 square */
+#cp-expanded.cp-exp-fs .cp-exp-art{
+  aspect-ratio:auto;flex:1;min-height:0;width:100%;
+}
+/* Queue scrolls within the fixed panel height */
+#cp-expanded.cp-exp-fs .cp-exp-queue{
+  max-height:200px;overflow-y:auto;flex-shrink:0;
+}
+/* Collapser wrap — holds collapse button + expand button side by side */
+.cp-collapser-wrap{
+  display:flex;align-items:center;
+  border-bottom:1px solid #1c1c1c;flex-shrink:0;
+}
+.cp-collapser-wrap .cp-collapser{
+  border-bottom:none;flex:1;
+}
+/* Fixed FAB — always bottom-right, never moves, cycles player sizes */
+#cp-fab{
+  position:fixed;bottom:14px;right:14px;z-index:10001;
+  width:34px;height:34px;border-radius:50%;
+  background:rgba(17,17,17,.9);border:1px solid #2a2a2a;
+  color:#555;cursor:pointer;font-size:.9em;
+  display:none;align-items:center;justify-content:center;
+  transition:color .15s,border-color .15s,box-shadow .15s;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+}
+#cp-fab:hover{color:#ff6b35;border-color:#ff6b35;box-shadow:0 0 12px rgba(255,107,53,.25)}
+/* Expanded header — logo only, centered */
+.cp-exp-header{
+  display:flex;align-items:center;justify-content:center;
+  padding:7px 12px 6px;border-bottom:1px solid #1c1c1c;flex-shrink:0;
+}
+.cp-exp-logo-btn{
+  background:transparent;border:none;
+  font-size:.7em;color:#333;letter-spacing:.12em;font-family:monospace;
+  cursor:pointer;padding:2px 8px;border-radius:3px;
+  transition:color .15s;
+}
+.cp-exp-logo-btn:hover{color:#ff6b35}
+/* Art */
+.cp-exp-art{
+  width:100%;aspect-ratio:1/1;flex-shrink:0;
+  overflow:visible;position:relative;background:#0a0a0a;
+}
+.cp-exp-art-grad{
+  width:100%;height:100%;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .6s ease;
+}
+.cp-exp-art-init{
+  font-size:5.5em;color:rgba(255,255,255,.18);
+  font-weight:700;user-select:none;
+  text-shadow:0 0 60px rgba(255,255,255,.08);
+}
+.cp-exp-art-img{
+  position:absolute;top:0;left:0;
+  width:100%;height:100%;object-fit:cover;
+  display:none;
+}
+#cp-exp-art-video{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  background:#000;display:none;z-index:2;
+}
+#cp-exp-canvas{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  display:none;z-index:1;pointer-events:none;
+}
+/* Seek */
+.cp-exp-seek{
+  height:3px;background:#1e1e1e;cursor:pointer;
+  position:relative;flex-shrink:0;transition:height .15s;
+}
+.cp-exp-seek:hover{height:5px}
+.cp-exp-seek-fill{
+  height:100%;background:#ff6b35;
+  position:relative;pointer-events:none;min-width:0;
+}
+.cp-exp-seek-dot{
+  position:absolute;right:-5px;top:50%;transform:translateY(-50%);
+  width:11px;height:11px;background:#ff6b35;border-radius:50%;
+  opacity:0;transition:opacity .15s;pointer-events:none;
+}
+.cp-exp-seek:hover .cp-exp-seek-dot{opacity:1}
+.cp-exp-times{
+  display:flex;justify-content:space-between;
+  padding:4px 10px 0;font-size:.66em;color:#444;
+  font-family:monospace;flex-shrink:0;
+}
+/* Info */
+.cp-exp-info{
+  padding:10px 14px 2px;text-align:center;flex-shrink:0;
+}
+.cp-exp-title{
+  font-size:1em;font-weight:700;color:#eee;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;
+}
+.cp-exp-artist{
+  font-size:.85em;color:#888;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;
+}
+.cp-exp-meta{
+  font-size:.68em;color:#444;font-family:monospace;letter-spacing:.05em;
+}
+/* Main controls */
+.cp-exp-controls{
+  display:flex;align-items:center;justify-content:center;
+  gap:22px;padding:10px 14px 6px;flex-shrink:0;
+}
+.cp-exp-ctrl-btn{
+  background:transparent;border:none;color:#666;
+  cursor:pointer;font-size:1.15em;
+  width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:50%;transition:all .12s;
+}
+.cp-exp-ctrl-btn:hover{color:#ddd}
+.cp-exp-play-btn{
+  width:52px;height:52px;
+  background:#ff6b35;color:#111!important;
+  border-radius:50%;font-size:1.4em;
+}
+.cp-exp-play-btn:hover{background:#e55a25!important}
+/* Secondary controls */
+.cp-exp-secondary{
+  display:flex;align-items:center;justify-content:center;
+  gap:6px;padding:2px 14px 8px;flex-shrink:0;
+}
+.cp-exp-sec-btn{
+  background:transparent;border:none;color:#444;cursor:pointer;
+  font-size:.85em;width:30px;height:30px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:3px;transition:color .12s;flex-shrink:0;
+}
+.cp-exp-sec-btn:hover{color:#aaa}
+.cp-exp-sec-btn.active{color:#ff6b35}
+.cp-exp-vol-wrap{
+  display:flex;align-items:center;gap:4px;flex:1;max-width:90px;
+}
+.cp-exp-vol{
+  -webkit-appearance:none;appearance:none;
+  width:100%;height:3px;background:#2a2a2a;border-radius:2px;
+  cursor:pointer;outline:none;flex:1;
+}
+.cp-exp-vol::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:#ff6b35;cursor:pointer}
+.cp-exp-vol::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:#ff6b35;border:none;cursor:pointer}
+/* Queue */
+.cp-exp-queue{border-top:1px solid #1c1c1c;flex-shrink:0}
+.cp-exp-q-header{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 12px 5px;font-size:.68em;color:#555;
+  font-family:monospace;letter-spacing:.08em;
+}
+.cp-exp-q-count{color:#333;margin-left:auto}
+.cp-exp-q-empty{padding:12px;font-size:.78em;color:#333;text-align:center}
+.cp-exp-q-item{
+  display:flex;align-items:center;gap:9px;
+  padding:6px 10px;cursor:pointer;transition:background .12s;
+}
+.cp-exp-q-item:hover{background:#141414}
+.cp-exp-q-item.cp-exp-q-active{background:#1a1a1a}
+.cp-exp-q-art{
+  width:34px;height:34px;border-radius:3px;
+  background:#1a1a1a;border:1px solid #222;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.9em;color:#444;flex-shrink:0;overflow:hidden;
+}
+.cp-exp-q-art img{width:100%;height:100%;object-fit:cover}
+.cp-exp-q-info{flex:1;min-width:0}
+.cp-exp-q-title{
+  font-size:.8em;color:#ccc;font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.cp-exp-q-artist{
+  font-size:.72em;color:#555;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+/* Channel strip */
+.cp-exp-ch-strip{
+  display:flex;flex-wrap:wrap;gap:4px;
+  padding:8px 10px 10px;border-top:1px solid #1c1c1c;flex-shrink:0;
+}
+.cp-exp-ch-strip .cp-ch{width:auto;font-size:.68em}
+/* Track art panel — square for audio, dynamic ratio for video */
+.cp-art-panel{
+  width:100%;overflow:hidden;background:#0d0d0d;
+  flex-shrink:0;position:relative;aspect-ratio:1/1;
+  transition:aspect-ratio .3s ease;
+}
+.cp-art-img{width:100%;height:100%;object-fit:cover;display:block}
+.cp-art-fallback{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:4em;color:#1e1e1e;user-select:none;
+}
+/* Mini play in collapser row */
+.cp-mini-play{
+  background:transparent;border:none;color:#666;
+  cursor:pointer;font-size:.85em;
+  width:28px;height:100%;min-height:28px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:color .12s;
+  border-left:1px solid #1c1c1c;padding:0;
+}
+.cp-mini-play:hover{color:#ff6b35}
+/* Mobile: full-width expanded panel */
+@media(max-width:640px){
+  #cp-expanded{width:100%;border-top-left-radius:0;border-left:none}
+  .cp-player{width:100%;border-top-left-radius:0;border-left:none}
+}
 </style>
 </head>
 <body>

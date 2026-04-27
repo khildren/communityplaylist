@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CP Player · PDX</title>
+  <link rel="manifest" href="/player/manifest.json">
+  <meta name="theme-color" content="#ff6b35">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CP Player">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;background:#0a0a0a;color:#eee;font-family:sans-serif;overflow:hidden}
+    /* Grow-from-corner entrance when launched from the site widget */
+    @keyframes growFromCorner{
+      from{opacity:0;transform-origin:bottom right;transform:scale(.06) translate(47vw,46vh)}
+      60% {opacity:1;transform-origin:bottom right;transform:scale(1.03) translate(0,0)}
+      to  {opacity:1;transform-origin:bottom right;transform:scale(1) translate(0,0)}
+    }
+    body.from-widget .pl-wrap{animation:growFromCorner .45s cubic-bezier(.22,.68,0,1.2) both}
+
+    /* ── Layout ── */
+    .pl-wrap{display:flex;flex-direction:column;height:100vh}
+    .pl-header{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:10px 18px;border-bottom:1px solid #1a1a1a;flex-shrink:0;
+      background:#111;
+    }
+    .pl-logo{font-weight:700;font-size:.9em;color:#ff6b35;letter-spacing:.1em}
+    .pl-header-right{display:flex;align-items:center;gap:10px}
+    .pl-header a{color:#555;font-size:.8em;text-decoration:none}
+    .pl-header a:hover{color:#ff6b35}
+    #pl-install-btn:hover{color:#ff6b35}
+    /* Hide back link when opened as popup or standalone */
+    @media(display-mode:standalone){#pl-back-link{display:none}}
+    .pl-body{display:flex;flex:1;overflow:hidden}
+
+    /* ── Stage (left) ── */
+    .pl-stage{
+      flex:0 0 auto;width:min(50vw,520px);
+      display:flex;flex-direction:column;
+      border-right:1px solid #1a1a1a;overflow:hidden;
+    }
+
+    /* Art area */
+    .pl-art{
+      position:relative;width:100%;
+      aspect-ratio:1/1;flex-shrink:0;overflow:hidden;
+      background:#0a0a0a;
+    }
+    /* Square art area works for both portrait and landscape video — YT letterboxes/pillarboxes within */
+    .pl-art-grad{
+      position:absolute;inset:0;
+      display:flex;align-items:center;justify-content:center;
+      transition:background .6s ease;
+    }
+    .pl-art-init{
+      font-size:7em;color:rgba(255,255,255,.15);
+      font-weight:700;user-select:none;
+      text-shadow:0 0 80px rgba(255,255,255,.08);
+    }
+    .pl-art-img{
+      position:absolute;inset:0;width:100%;height:100%;
+      object-fit:cover;display:none;
+    }
+    #pl-canvas{
+      position:absolute;inset:0;width:100%;height:100%;
+      display:none;pointer-events:none;z-index:1;
+    }
+    /* Video lives here — no z-index tricks, just a natural child */
+    .pl-video-area{
+      position:absolute;inset:0;display:none;z-index:2;background:#000;
+    }
+    .pl-video-area iframe,
+    .pl-video-area > div{
+      position:absolute;inset:0;width:100%;height:100%;border:none;
+    }
+
+    /* Seek */
+    .pl-seek-row{
+      display:flex;align-items:center;gap:8px;
+      padding:6px 16px 2px;flex-shrink:0;
+    }
+    .pl-seek-row span{font-size:.72em;color:#555;width:34px;flex-shrink:0}
+    .pl-seek-row span:last-child{text-align:right}
+    .pl-seek{
+      flex:1;height:4px;background:#1e1e1e;border-radius:2px;
+      cursor:pointer;position:relative;transition:height .15s;
+    }
+    .pl-seek:hover{height:6px}
+    .pl-seek-fill{
+      height:100%;background:#ff6b35;border-radius:2px;width:0%;
+    }
+
+    /* Info */
+    .pl-info{padding:10px 18px 4px;flex-shrink:0}
+    .pl-title{
+      font-size:1.05em;font-weight:700;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .pl-artist{font-size:.82em;color:#aaa;margin-top:2px}
+    .pl-meta{font-size:.7em;color:#555;letter-spacing:.07em;margin-top:2px}
+
+    /* Controls */
+    .pl-controls{
+      display:flex;align-items:center;justify-content:center;
+      gap:14px;padding:8px 18px 4px;flex-shrink:0;
+    }
+    .pl-btn{
+      background:none;border:none;color:#bbb;cursor:pointer;
+      font-size:1em;padding:4px;border-radius:4px;transition:color .15s;
+    }
+    .pl-btn:hover{color:#ff6b35}
+    .pl-btn.active{color:#ff6b35}
+    #pl-play{
+      width:50px;height:50px;border-radius:50%;
+      background:#ff6b35;color:#fff;font-size:1.25em;
+      display:flex;align-items:center;justify-content:center;
+      transition:background .15s;
+    }
+    #pl-play:hover{background:#ff8555}
+
+    /* Secondary */
+    .pl-secondary{
+      display:flex;align-items:center;gap:8px;
+      padding:4px 18px 12px;flex-shrink:0;
+    }
+    #pl-vol{flex:1;accent-color:#ff6b35;cursor:pointer}
+
+    /* ── Sidebar ── */
+    .pl-sidebar{
+      flex:1;display:flex;flex-direction:column;
+      overflow:hidden;padding:14px 16px;gap:12px;
+    }
+
+    /* Channels / genre chips */
+    .pl-channels{display:flex;flex-wrap:wrap;gap:6px;flex-shrink:0}
+    .pl-ch{
+      background:#1a1a1a;border:1px solid #252525;color:#777;
+      border-radius:20px;padding:4px 13px;font-size:.75em;
+      cursor:pointer;transition:background .15s,color .15s,border-color .15s;
+    }
+    .pl-ch:hover{color:#ff6b35;border-color:#ff6b35}
+    .pl-ch.active{background:#ff6b35;border-color:#ff6b35;color:#fff}
+
+    /* Queue */
+    .pl-q-label{
+      font-size:.7em;color:#444;letter-spacing:.08em;
+      text-transform:uppercase;flex-shrink:0;
+    }
+    .pl-q-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;scrollbar-width:thin;scrollbar-color:#222 transparent}
+    .pl-q-item{
+      display:flex;align-items:center;gap:10px;padding:6px 8px;
+      border-radius:6px;cursor:pointer;transition:background .12s;
+    }
+    .pl-q-item:hover{background:#161616}
+    .pl-q-art{
+      width:34px;height:34px;border-radius:4px;background:#1a1a1a;
+      flex-shrink:0;overflow:hidden;display:flex;align-items:center;
+      justify-content:center;font-size:.9em;color:#555;
+    }
+    .pl-q-art img{width:100%;height:100%;object-fit:cover}
+    .pl-q-info{flex:1;min-width:0}
+    .pl-q-title{font-size:.8em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pl-q-artist{font-size:.7em;color:#555;margin-top:1px}
+
+    /* Mobile */
+    @media(max-width:620px){
+      html,body{overflow:auto}
+      .pl-body{flex-direction:column}
+      .pl-stage{width:100%;flex:none}
+      .pl-sidebar{min-height:300px}
+    }
+  </style>
+</head>
+<body>
+<div class="pl-wrap">
+
+  <header class="pl-header">
+    <span class="pl-logo">CP · PDX</span>
+    <span id="pl-ch-label" style="font-size:.8em;color:#555">ALL</span>
+    <span class="pl-header-right">
+      <button id="pl-install-btn" title="Install app" style="display:none;background:none;border:none;color:#555;cursor:pointer;font-size:.8em;padding:2px 6px;border-radius:4px;transition:color .15s">⊕ Install</button>
+      <a href="/" id="pl-back-link">← Events</a>
+    </span>
+  </header>
+
+  <div class="pl-body">
+
+    <!-- Stage -->
+    <div class="pl-stage">
+
+      <div class="pl-art" id="pl-art">
+        <div class="pl-art-grad" id="pl-art-grad">
+          <span class="pl-art-init" id="pl-art-init">♪</span>
+        </div>
+        <img class="pl-art-img" id="pl-art-img" alt="">
+        <canvas id="pl-canvas"></canvas>
+        <!-- Video renders right here — no floating overlay needed -->
+        <div class="pl-video-area" id="pl-video-area"></div>
+      </div>
+
+      <div class="pl-seek-row">
+        <span id="pl-cur">0:00</span>
+        <div class="pl-seek" id="pl-seek">
+          <div class="pl-seek-fill" id="pl-seek-fill"></div>
+        </div>
+        <span id="pl-dur">—</span>
+      </div>
+
+      <div class="pl-info">
+        <div class="pl-title" id="pl-title">Loading...</div>
+        <div class="pl-artist" id="pl-artist"></div>
+        <div class="pl-meta" id="pl-meta"></div>
+      </div>
+
+      <div class="pl-controls">
+        <button class="pl-btn" id="pl-shuffle" title="Shuffle">⇄</button>
+        <button class="pl-btn" id="pl-prev" title="Previous">◀◀</button>
+        <button class="pl-btn" id="pl-play" title="Play/Pause">▶</button>
+        <button class="pl-btn" id="pl-next" title="Next">▶▶</button>
+        <button class="pl-btn" id="pl-repeat" title="Repeat">↻</button>
+      </div>
+
+      <div class="pl-secondary">
+        <button class="pl-btn" id="pl-mute" title="Mute">🔈</button>
+        <input type="range" id="pl-vol" min="0" max="100" value="80">
+        <button class="pl-btn" id="pl-video-btn" title="Video mode">📺</button>
+      </div>
+
+    </div>
+
+    <!-- Sidebar -->
+    <div class="pl-sidebar">
+      <div class="pl-channels" id="pl-channels"></div>
+      <div class="pl-q-label">UP NEXT &nbsp;<span id="pl-q-count"></span></div>
+      <div class="pl-q-list" id="pl-q-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<audio id="pl-audio" preload="none" crossorigin="anonymous"></audio>
+
+<script>
+// Animate in from widget corner if launched from the site player
+if (new URLSearchParams(location.search).get('from') === 'widget') {
+  document.body.classList.add('from-widget');
+}
+(function() {
+  'use strict';
+
+  /* ── Genre gradient palette ── */
+  var GP = {
+    'techno':      ['#4a0f82','#0c0830'],
+    'house':       ['#821028','#2e0818'],
+    'deep house':  ['#0f3a82','#080c2e'],
+    'ambient':     ['#0f8255','#081e12'],
+    'jazz':        ['#825c0f','#2e1e08'],
+    'soul':        ['#82350f','#2e1408'],
+    'hip hop':     ['#1a820f','#082e08'],
+    'rap':         ['#1a820f','#082e08'],
+    'drum':        ['#82200f','#2e0808'],
+    'electronic':  ['#280f82','#080830'],
+    'experimental':['#5f820f','#1c2e08'],
+    'punk':        ['#820f0f','#2e0808'],
+    'metal':       ['#3a3a3a','#141414'],
+  };
+  function genreColors(g) {
+    var gl = (g || '').toLowerCase();
+    for (var k in GP) { if (gl.includes(k)) return GP[k]; }
+    var h = 0;
+    for (var i = 0; i < gl.length; i++) h = (h * 31 + gl.charCodeAt(i)) | 0;
+    var hue = Math.abs(h) % 360;
+    return ['hsl('+hue+',55%,12%)', 'hsl('+((hue+40)%360)+',45%,6%)'];
+  }
+
+  /* ── State ── */
+  var audio      = document.getElementById('pl-audio');
+  var allTracks  = [];
+  var tracks     = [];
+  var current    = 0;
+  var shuffleOn  = false;
+  var shuffleOrd = [];
+  var repeatMode = 0;   // 0=off 1=one 2=all
+  var isVideo    = false;
+  var ytPlayer   = null;
+  var ytReady    = false;
+  var videoQueue = [];
+  var videoIdx   = 0;
+  var progInt    = null;
+
+  /* Visualizer */
+  var visCtx = null, visAnalyser = null, visRaf = null, visInit = false;
+
+  /* ── DOM ── */
+  var artEl    = document.getElementById('pl-art');
+  var artGrad  = document.getElementById('pl-art-grad');
+  var artImg   = document.getElementById('pl-art-img');
+  var artInit  = document.getElementById('pl-art-init');
+  var canvas   = document.getElementById('pl-canvas');
+  var videoArea= document.getElementById('pl-video-area');
+  var seekEl   = document.getElementById('pl-seek');
+  var seekFill = document.getElementById('pl-seek-fill');
+  var curEl    = document.getElementById('pl-cur');
+  var durEl    = document.getElementById('pl-dur');
+  var titleEl  = document.getElementById('pl-title');
+  var artistEl = document.getElementById('pl-artist');
+  var metaEl   = document.getElementById('pl-meta');
+  var chLabel  = document.getElementById('pl-ch-label');
+  var playBtn  = document.getElementById('pl-play');
+  var prevBtn  = document.getElementById('pl-prev');
+  var nextBtn  = document.getElementById('pl-next');
+  var shuffleBtn = document.getElementById('pl-shuffle');
+  var repeatBtn  = document.getElementById('pl-repeat');
+  var muteBtn    = document.getElementById('pl-mute');
+  var volSlide   = document.getElementById('pl-vol');
+  var videoBtn   = document.getElementById('pl-video-btn');
+  var qList      = document.getElementById('pl-q-list');
+  var qCount     = document.getElementById('pl-q-count');
+  var channels   = document.getElementById('pl-channels');
+
+  /* ── Helpers ── */
+  function fmt(s) {
+    if (!s || isNaN(s) || s < 0) return '0:00';
+    var m = Math.floor(s / 60), sec = Math.floor(s % 60);
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+  }
+  function esc(s) {
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function mk(tag, cls, text) {
+    var el = document.createElement(tag);
+    if (cls)  el.className = cls;
+    if (text != null) el.textContent = text;
+    return el;
+  }
+
+  /* ── Art ── */
+  function updateArt(url, genre, artist) {
+    var colors = genreColors(genre || artist || '');
+    artGrad.style.background = 'linear-gradient(135deg,'+colors[0]+' 0%,'+colors[1]+' 100%)';
+    artInit.textContent = (artist || '♪').charAt(0).toUpperCase();
+    if (url) {
+      artImg.onload  = function() { artImg.style.display = 'block'; artGrad.style.display = 'none'; };
+      artImg.onerror = function() { artImg.style.display = 'none';  artGrad.style.display = 'flex'; };
+      artImg.src = url;
+    } else {
+      artImg.src = ''; artImg.style.display = 'none'; artGrad.style.display = 'flex';
+    }
+  }
+
+  /* ── Visualizer ── */
+  function initVis() {
+    if (visInit) return; visInit = true;
+    try {
+      var ac = new (window.AudioContext || window.webkitAudioContext)();
+      visAnalyser = ac.createAnalyser();
+      visAnalyser.fftSize = 512;
+      visAnalyser.smoothingTimeConstant = 0.8;
+      var src = ac.createMediaElementSource(audio);
+      src.connect(visAnalyser);
+      visAnalyser.connect(ac.destination);
+    } catch(e) {}
+  }
+  function startVis(colors) {
+    if (!canvas || !visAnalyser || visRaf) return;
+    canvas.style.display = 'block';
+    visCtx = canvas.getContext('2d');
+    var data = new Uint8Array(visAnalyser.frequencyBinCount);
+    (function draw() {
+      visRaf = requestAnimationFrame(draw);
+      var w = canvas.width  = canvas.offsetWidth;
+      var h = canvas.height = canvas.offsetHeight;
+      visCtx.clearRect(0, 0, w, h);
+      visAnalyser.getByteFrequencyData(data);
+      var bars = 52, bw = w / bars - 1;
+      for (var i = 0; i < bars; i++) {
+        var di = Math.floor(i * data.length / bars);
+        var bh = (data[di] / 255) * h * 0.85;
+        visCtx.fillStyle = 'rgba(255,255,255,0.18)';
+        visCtx.fillRect(i * (bw + 1), h - bh, bw, bh);
+      }
+    })();
+  }
+  function stopVis() {
+    if (visRaf) { cancelAnimationFrame(visRaf); visRaf = null; }
+    canvas.style.display = 'none';
+    if (visCtx) visCtx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  /* ── Audio ── */
+  function loadTrack(idx) {
+    if (!tracks.length) return;
+    current = ((idx % tracks.length) + tracks.length) % tracks.length;
+    var t = tracks[current];
+    audio.src = t.stream_url || '';
+    titleEl.textContent  = t.title  || '—';
+    artistEl.textContent = t.artist || '';
+    metaEl.textContent   = t.genre  ? t.genre.toUpperCase() : '';
+    updateArt(t.art_url || '', t.genre, t.artist);
+    document.title = (t.title || '—') + ' · CP Player';
+    buildQueue();
+  }
+  function play() {
+    if (isVideo) return;
+    audio.play().catch(function(){});
+    playBtn.textContent = '⏸';
+    stopVis(); initVis();
+    var t = tracks[current];
+    startVis(t ? genreColors(t.genre || t.artist || '') : null);
+  }
+  function pause() {
+    audio.pause(); playBtn.textContent = '▶'; stopVis();
+  }
+  function nextTrack() { loadTrack(getNext()); play(); }
+  function prevTrack() {
+    if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+    loadTrack(getPrev()); if (!audio.paused) play();
+  }
+
+  /* ── Shuffle ── */
+  function buildShuffleOrder() {
+    var arr = [];
+    for (var i = 0; i < tracks.length; i++) arr.push(i);
+    var ci = arr.indexOf(current);
+    if (ci > -1) { arr.splice(ci, 1); arr.unshift(current); }
+    for (var j = arr.length - 1; j > 1; j--) {
+      var k = 1 + Math.floor(Math.random() * j);
+      var tmp = arr[j]; arr[j] = arr[k]; arr[k] = tmp;
+    }
+    shuffleOrd = arr;
+  }
+  function getNext() {
+    if (shuffleOn) {
+      var pos = shuffleOrd.indexOf(current);
+      return shuffleOrd[(pos + 1) % shuffleOrd.length];
+    }
+    return (current + 1) % tracks.length;
+  }
+  function getPrev() {
+    if (shuffleOn) {
+      var pos = shuffleOrd.indexOf(current);
+      return shuffleOrd[(pos - 1 + shuffleOrd.length) % shuffleOrd.length];
+    }
+    return (current - 1 + tracks.length) % tracks.length;
+  }
+
+  /* ── Audio events ── */
+  audio.addEventListener('timeupdate', function() {
+    if (!audio.duration || isNaN(audio.duration)) return;
+    var pct = audio.currentTime / audio.duration * 100;
+    seekFill.style.width = pct + '%';
+    curEl.textContent = fmt(audio.currentTime);
+    durEl.textContent = fmt(audio.duration);
+  });
+  audio.addEventListener('ended', function() {
+    if (repeatMode === 1) { audio.currentTime = 0; play(); }
+    else if (repeatMode === 2 || tracks.length > 1) nextTrack();
+  });
+
+  /* ── Genre channels ── */
+  var activeGenre = 'ALL';
+  function buildChannels(genres) {
+    channels.innerHTML = '';
+    var all = mk('button', 'pl-ch active', 'ALL');
+    all.addEventListener('click', function() { setGenre('ALL'); });
+    channels.appendChild(all);
+    genres.forEach(function(g) {
+      var b = mk('button', 'pl-ch', g);
+      b.addEventListener('click', function() { setGenre(g); });
+      channels.appendChild(b);
+    });
+    var vb = mk('button', 'pl-ch', '📺 VIDEO');
+    vb.id = 'pl-ch-video';
+    vb.addEventListener('click', function() {
+      if (isVideo) leaveVideo(); else enterVideo();
+    });
+    channels.appendChild(vb);
+  }
+  function setGenre(g) {
+    activeGenre = g;
+    Array.from(channels.querySelectorAll('.pl-ch')).forEach(function(b) {
+      b.classList.toggle('active', b.textContent === g);
+    });
+    chLabel.textContent = g;
+    if (g === 'ALL') tracks = allTracks.slice();
+    else tracks = allTracks.filter(function(t) {
+      return (t.genre || '').toLowerCase().includes(g.toLowerCase());
+    });
+    if (tracks.length) {
+      loadTrack(0);
+      if (!audio.paused) play();
+    }
+    buildQueue();
+  }
+
+  /* ── Queue ── */
+  function buildQueue() {
+    qList.innerHTML = '';
+    var total = tracks.length;
+    if (qCount) qCount.textContent = total > 1 ? (total - 1) + ' tracks' : '';
+    var shown = Math.min(10, total - 1);
+    for (var i = 1; i <= shown; i++) {
+      var idx = (current + i) % total;
+      var t = tracks[idx];
+      var row  = mk('div', 'pl-q-item');
+      var art  = mk('div', 'pl-q-art');
+      if (t.art_url) {
+        var img = mk('img'); img.src = t.art_url; img.alt = ''; art.appendChild(img);
+      } else {
+        art.textContent = (t.artist || t.title || '?').charAt(0).toUpperCase();
+      }
+      var info = mk('div', 'pl-q-info');
+      info.innerHTML = '<div class="pl-q-title">'+esc(t.title||'—')+'</div>'
+                     + '<div class="pl-q-artist">'+esc(t.artist||'')+'</div>';
+      row.appendChild(art); row.appendChild(info);
+      row.addEventListener('click', (function(i) {
+        return function() { loadTrack(i); play(); };
+      })(idx));
+      qList.appendChild(row);
+    }
+  }
+
+  /* ── Seek ── */
+  seekEl.addEventListener('click', function(e) {
+    var rect = seekEl.getBoundingClientRect();
+    var pct  = (e.clientX - rect.left) / rect.width;
+    if (isVideo && ytPlayer && ytPlayer.getDuration) {
+      var dur = ytPlayer.getDuration() || 0;
+      if (dur > 0) ytPlayer.seekTo(pct * dur, true);
+      return;
+    }
+    if (!audio.duration || isNaN(audio.duration)) return;
+    audio.currentTime = pct * audio.duration;
+  });
+
+  /* ── Controls ── */
+  playBtn.addEventListener('click', function() {
+    if (isVideo) {
+      if (!ytPlayer || !ytPlayer.getPlayerState) return;
+      var st = ytPlayer.getPlayerState();
+      if (st === 1) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
+      return;
+    }
+    if (audio.paused) play(); else pause();
+  });
+  prevBtn.addEventListener('click', function() {
+    if (isVideo) { prevVideoFn(); return; } prevTrack();
+  });
+  nextBtn.addEventListener('click', function() {
+    if (isVideo) { nextVideoFn(); return; } nextTrack();
+  });
+  shuffleBtn.addEventListener('click', function() {
+    shuffleOn = !shuffleOn;
+    if (shuffleOn) buildShuffleOrder();
+    shuffleBtn.classList.toggle('active', shuffleOn);
+    shuffleBtn.title = shuffleOn ? 'Shuffle: on' : 'Shuffle: off';
+  });
+  repeatBtn.addEventListener('click', function() {
+    repeatMode = (repeatMode + 1) % 3;
+    repeatBtn.classList.toggle('active', repeatMode > 0);
+    repeatBtn.textContent = repeatMode === 1 ? '⟳' : '↻';
+    repeatBtn.title = ['Repeat: off','Repeat: one','Repeat: all'][repeatMode];
+  });
+  muteBtn.addEventListener('click', function() {
+    audio.muted = !audio.muted;
+    muteBtn.textContent = audio.muted ? '🔇' : '🔈';
+  });
+  volSlide.addEventListener('input', function() {
+    audio.volume = parseInt(this.value) / 100;
+  });
+  videoBtn.addEventListener('click', function() {
+    if (isVideo) leaveVideo(); else enterVideo();
+  });
+
+  /* ── Video mode ── */
+  function enterVideo() {
+    if (isVideo) return;
+    isVideo = true;
+    audio.pause(); stopVis();
+    // Show video area, switch art to 16:9
+    artGrad.style.display = 'none';
+    artImg.style.display  = 'none';
+    videoArea.style.display = 'block';
+    // art area stays square — works for portrait and landscape equally
+    videoBtn.classList.add('active');
+    metaEl.textContent = '📺 VIDEO';
+    var vb = document.getElementById('pl-ch-video');
+    if (vb) vb.classList.add('active');
+
+    if (!videoQueue.length) {
+      fetch('/api/videos/')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          videoQueue = d.videos || [];
+          if (!videoQueue.length) { leaveVideo(); return; }
+          loadYTAPI(); playVideoFn(0);
+        })
+        .catch(leaveVideo);
+    } else {
+      loadYTAPI(); playVideoFn(videoIdx);
+    }
+  }
+
+  function leaveVideo() {
+    if (!isVideo) return;
+    isVideo = false;
+    clearInterval(progInt);
+    videoArea.style.display = 'none';
+    // (art stays square — nothing to revert)
+    videoBtn.classList.remove('active');
+    var vb = document.getElementById('pl-ch-video');
+    if (vb) vb.classList.remove('active');
+    if (ytPlayer) { try { ytPlayer.pauseVideo(); } catch(e) {} }
+    var t = tracks[current];
+    if (t) {
+      titleEl.textContent  = t.title  || '—';
+      artistEl.textContent = t.artist || '';
+      metaEl.textContent   = t.genre  ? t.genre.toUpperCase() : '';
+      updateArt(t.art_url || '', t.genre, t.artist);
+    }
+    artGrad.style.display = 'flex';
+    play();
+  }
+
+  function playVideoFn(idx) {
+    if (!videoQueue.length) return;
+    videoIdx = ((idx % videoQueue.length) + videoQueue.length) % videoQueue.length;
+    var v = videoQueue[videoIdx];
+    titleEl.textContent  = v.title  || '—';
+    artistEl.textContent = v.artist || '';
+    document.title = (v.title || 'Video') + ' · CP Player';
+    playBtn.textContent = '⏸';
+
+    // Resolve YouTube ID
+    var ytId = null;
+    if (v.embed_url) { var m = v.embed_url.match(/embed\/([^?&]+)/); ytId = m ? m[1] : null; }
+    if (!ytId) ytId = v.video_id;
+    if (!ytId) { nextVideoFn(); return; }
+
+    if (ytPlayer && ytPlayer.loadVideoById) {
+      ytPlayer.loadVideoById(ytId);
+    } else if (ytReady) {
+      createYTPlayer(ytId);
+    } else {
+      window._plPendingYt = ytId;
+    }
+
+    // Progress polling
+    clearInterval(progInt);
+    progInt = setInterval(function() {
+      if (!ytPlayer) return;
+      var cur = 0, dur = 0;
+      try { cur = ytPlayer.getCurrentTime() || 0; } catch(e) {}
+      try { dur = ytPlayer.getDuration()    || 0; } catch(e) {}
+      seekFill.style.width = dur > 0 ? (cur / dur * 100) + '%' : '0%';
+      curEl.textContent = fmt(cur);
+      durEl.textContent = dur > 0 ? fmt(dur) : '—';
+    }, 1000);
+  }
+  function nextVideoFn() { playVideoFn(videoIdx + 1); }
+  function prevVideoFn() { playVideoFn(videoIdx - 1); }
+
+  /* ── YouTube API ── */
+  function loadYTAPI() {
+    if (window.YT && window.YT.Player) { ytReady = true; return; }
+    if (document.getElementById('pl-yt-api')) return;
+    var s = document.createElement('script');
+    s.id = 'pl-yt-api';
+    s.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(s);
+  }
+  var _prevOnReady = window.onYouTubeIframeAPIReady;
+  window.onYouTubeIframeAPIReady = function() {
+    ytReady = true;
+    if (window._plPendingYt) { createYTPlayer(window._plPendingYt); window._plPendingYt = null; }
+    if (typeof _prevOnReady === 'function') _prevOnReady();
+  };
+  function createYTPlayer(videoId) {
+    if (ytPlayer) { try { ytPlayer.destroy(); } catch(e) {} }
+    videoArea.innerHTML = '<div id="pl-yt-ph"></div>';
+    ytPlayer = new YT.Player('pl-yt-ph', {
+      videoId: videoId,
+      playerVars: { autoplay:1, rel:0, modestbranding:1, playsinline:1, controls:0 },
+      events: {
+        onStateChange: function(e) {
+          if (e.data === YT.PlayerState.ENDED) nextVideoFn();
+          playBtn.textContent = e.data === YT.PlayerState.PLAYING ? '⏸' : '▶';
+        },
+        onError: function() { nextVideoFn(); },
+      },
+    });
+  }
+
+  /* ── Load tracks ── */
+  fetch('/api/tracks/')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      allTracks = d.tracks || [];
+      tracks    = allTracks.slice();
+      var genres = [];
+      allTracks.forEach(function(t) {
+        if (t.genre && !genres.includes(t.genre)) genres.push(t.genre);
+      });
+      buildChannels(genres);
+      if (tracks.length) loadTrack(0);
+    })
+    .catch(function(e) { titleEl.textContent = 'Could not load tracks'; });
+
+  audio.volume = 0.8;
+
+  /* ── PWA install prompt ── */
+  var _installPrompt = null;
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    _installPrompt = e;
+    var btn = document.getElementById('pl-install-btn');
+    if (btn) btn.style.display = 'inline-block';
+  });
+  var installBtn = document.getElementById('pl-install-btn');
+  if (installBtn) {
+    installBtn.addEventListener('click', function() {
+      if (!_installPrompt) return;
+      _installPrompt.prompt();
+      _installPrompt.userChoice.then(function() { _installPrompt = null; installBtn.style.display = 'none'; });
+    });
+  }
+
+  /* Hide back link when opened as popup */
+  if (window.opener) {
+    var backLink = document.getElementById('pl-back-link');
+    if (backLink) backLink.style.display = 'none';
+  }
+})();
+</script>
+</body>
+</html>

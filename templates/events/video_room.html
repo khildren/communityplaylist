@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>CP Theater</title>
+<meta name="theme-color" content="#0a0a0a">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#0a0a0a;font-family:sans-serif;color:#ddd}
+
+/* ── Layout ── */
+#vr-wrap{
+  display:grid;
+  grid-template-columns:1fr 320px;
+  grid-template-rows:1fr;
+  height:100vh;
+  height:100dvh;
+}
+/* Mobile: stack video over chat */
+@media(max-width:700px){
+  #vr-wrap{grid-template-columns:1fr;grid-template-rows:56vw 1fr}
+  #vr-chat{border-left:none;border-top:1px solid #1e1e1e}
+}
+
+/* ── Video / Visualizer pane ── */
+#vr-stage{
+  position:relative;
+  background:#000;
+  overflow:hidden;
+  display:flex;flex-direction:column;
+}
+#vr-video-wrap{
+  flex:1;position:relative;
+}
+#vr-video-wrap iframe{
+  position:absolute;top:0;left:0;width:100%;height:100%;border:none;
+}
+/* Canvas visualizer — shown when audio-only */
+#vr-canvas{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  display:none;
+}
+/* Gradient placeholder when nothing loaded */
+#vr-placeholder{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:16px;
+}
+.vr-ph-init{
+  font-size:7em;color:rgba(255,255,255,.08);font-weight:700;user-select:none;
+}
+.vr-ph-label{
+  font-size:.75em;color:#333;letter-spacing:.12em;font-family:monospace;
+}
+/* Lower-third info overlay */
+#vr-info{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:16px 20px 14px;
+  background:linear-gradient(transparent,rgba(0,0,0,.85) 60%);
+  pointer-events:none;
+}
+#vr-info-artist{font-size:.75em;color:#aaa;margin-bottom:3px;letter-spacing:.04em}
+#vr-info-title{font-size:1.15em;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#vr-info-meta{font-size:.68em;color:#555;margin-top:3px;font-family:monospace;letter-spacing:.05em}
+
+/* Video controls bar */
+#vr-controls{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 14px;
+  background:#0d0d0d;border-top:1px solid #1a1a1a;
+  flex-shrink:0;
+}
+.vr-btn{
+  background:transparent;border:1px solid #2a2a2a;color:#666;
+  cursor:pointer;font-size:.85em;
+  padding:4px 10px;border-radius:3px;
+  transition:all .12s;white-space:nowrap;
+}
+.vr-btn:hover{border-color:#ff6b35;color:#ff6b35}
+.vr-btn.active{background:#ff6b35;color:#111;border-color:#ff6b35}
+#vr-seek{
+  flex:1;height:3px;background:#1e1e1e;cursor:pointer;
+  border-radius:2px;position:relative;
+}
+#vr-seek-fill{height:100%;background:#ff6b35;border-radius:2px;width:0%;pointer-events:none}
+#vr-live-badge{
+  display:none;align-items:center;gap:5px;
+  font-size:.72em;color:#ff4444;font-family:monospace;
+}
+.vr-live-dot{width:6px;height:6px;background:#ff4444;border-radius:50%;animation:vr-pulse 1.2s ease-in-out infinite}
+@keyframes vr-pulse{0%,100%{opacity:1}50%{opacity:.3}}
+#vr-vol{
+  -webkit-appearance:none;appearance:none;
+  width:70px;height:3px;background:#2a2a2a;border-radius:2px;cursor:pointer;outline:none;
+}
+#vr-vol::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:#ff6b35}
+#vr-vol::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:#ff6b35;border:none}
+#vr-mode-label{font-size:.68em;color:#333;font-family:monospace;letter-spacing:.06em;white-space:nowrap}
+
+/* ── Chat pane ── */
+#vr-chat{
+  display:flex;flex-direction:column;
+  border-left:1px solid #1a1a1a;
+  background:#0d0d0d;
+  overflow:hidden;
+}
+#vr-chat-header{
+  padding:10px 14px 8px;
+  border-bottom:1px solid #1a1a1a;
+  font-size:.72em;color:#444;
+  letter-spacing:.1em;font-family:monospace;
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+}
+.vr-chat-dot{width:6px;height:6px;background:#333;border-radius:50%}
+.vr-chat-dot.live{background:#4caf50;animation:vr-pulse 1.5s infinite}
+#vr-chat-queue{
+  padding:8px 10px 4px;border-bottom:1px solid #141414;
+  flex-shrink:0;max-height:140px;overflow-y:auto;scrollbar-width:none;
+}
+#vr-chat-queue::-webkit-scrollbar{display:none}
+.vr-q-item{
+  display:flex;align-items:center;gap:8px;
+  padding:5px 6px;border-radius:4px;cursor:pointer;
+  transition:background .12s;
+}
+.vr-q-item:hover{background:#141414}
+.vr-q-item.active{background:#1a0f08;border-left:2px solid #ff6b35;padding-left:4px}
+.vr-q-art{
+  width:32px;height:32px;border-radius:3px;
+  background:#1a1a1a;border:1px solid #222;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.85em;color:#444;flex-shrink:0;overflow:hidden;
+}
+.vr-q-art img{width:100%;height:100%;object-fit:cover}
+.vr-q-info{flex:1;min-width:0}
+.vr-q-title{font-size:.78em;color:#bbb;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vr-q-artist{font-size:.7em;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Messages */
+#vr-messages{
+  flex:1;overflow-y:auto;padding:10px 12px;
+  display:flex;flex-direction:column;gap:6px;
+  scrollbar-width:thin;scrollbar-color:#1e1e1e transparent;
+}
+#vr-messages::-webkit-scrollbar{width:3px}
+#vr-messages::-webkit-scrollbar-track{background:transparent}
+#vr-messages::-webkit-scrollbar-thumb{background:#1e1e1e}
+.vr-msg{display:flex;flex-direction:column;gap:1px}
+.vr-msg-author{font-size:.68em;color:#555;font-family:monospace}
+.vr-msg-author.vr-me{color:#ff6b35}
+.vr-msg-content{font-size:.82em;color:#bbb;line-height:1.45;word-break:break-word}
+.vr-msg-time{font-size:.62em;color:#333;font-family:monospace}
+/* Chat form */
+#vr-chat-form{
+  padding:8px 10px;
+  border-top:1px solid #1a1a1a;
+  display:flex;gap:6px;flex-shrink:0;
+  flex-wrap:wrap;
+}
+#vr-chat-name{
+  width:100%;padding:5px 8px;border-radius:3px;border:1px solid #2a2a2a;
+  background:#111;color:#aaa;font-size:.75em;outline:none;
+  display:none; /* shown only for anon users */
+}
+#vr-chat-input{
+  flex:1;min-width:0;padding:6px 10px;border-radius:3px;
+  border:1px solid #2a2a2a;background:#111;color:#ddd;
+  font-size:.82em;outline:none;resize:none;
+}
+#vr-chat-input:focus,#vr-chat-name:focus{border-color:#ff6b35}
+#vr-chat-send{
+  background:#ff6b35;border:none;color:#111;
+  padding:6px 12px;border-radius:3px;cursor:pointer;
+  font-size:.82em;font-weight:700;flex-shrink:0;
+  transition:background .12s;
+}
+#vr-chat-send:hover{background:#e55a25}
+/* Nav bar */
+#vr-nav{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 12px;border-bottom:1px solid #141414;
+  flex-shrink:0;background:#0a0a0a;
+}
+.vr-nav-logo{
+  font-size:.75em;font-family:monospace;color:#333;
+  letter-spacing:.12em;flex:1;
+}
+.vr-nav-logo a{color:inherit;text-decoration:none}
+.vr-nav-logo a:hover{color:#ff6b35}
+.vr-nav-btn{
+  background:transparent;border:1px solid #1e1e1e;color:#444;
+  padding:3px 9px;border-radius:3px;cursor:pointer;font-size:.72em;
+  transition:all .12s;text-decoration:none;display:inline-block;
+}
+.vr-nav-btn:hover{border-color:#ff6b35;color:#ff6b35}
+</style>
+</head>
+<body>
+
+<div id="vr-wrap">
+
+  <!-- ── Stage (video / canvas) ── -->
+  <div id="vr-stage">
+
+    <div id="vr-nav">
+      <div class="vr-nav-logo"><a href="/">CP · PDX</a> / THEATER</div>
+      <button class="vr-nav-btn" id="vr-audio-mode-btn">🎵 AUDIO</button>
+      <button class="vr-nav-btn" id="vr-video-mode-btn" style="border-color:#ff6b35;color:#ff6b35">📺 VIDEO</button>
+      <a class="vr-nav-btn" href="/">← Site</a>
+    </div>
+
+    <div id="vr-video-wrap">
+      <div id="vr-placeholder">
+        <div class="vr-ph-init" id="vr-ph-init">CP</div>
+        <div class="vr-ph-label">LOADING QUEUE…</div>
+      </div>
+      <canvas id="vr-canvas"></canvas>
+      <!-- YT / Twitch iframes injected here -->
+    </div>
+
+    <div id="vr-info">
+      <div id="vr-info-artist"></div>
+      <div id="vr-info-title">Community Playlist Theater</div>
+      <div id="vr-info-meta"></div>
+    </div>
+
+    <div id="vr-controls">
+      <button class="vr-btn" id="vr-prev" title="Previous">⏮</button>
+      <button class="vr-btn" id="vr-play" title="Play/Pause">⏸</button>
+      <button class="vr-btn" id="vr-next" title="Next">⏭</button>
+      <div id="vr-seek"><div id="vr-seek-fill"></div></div>
+      <div id="vr-live-badge"><span class="vr-live-dot"></span>LIVE</div>
+      <span id="vr-mode-label">VIDEO</span>
+      <input type="range" id="vr-vol" min="0" max="100" value="60" title="Volume">
+    </div>
+  </div>
+
+  <!-- ── Chat pane ── -->
+  <div id="vr-chat">
+    <div id="vr-chat-header">
+      <span class="vr-chat-dot live" id="vr-chat-dot"></span>
+      THEATER CHAT
+      <span id="vr-viewer-count" style="margin-left:auto;color:#2a2a2a"></span>
+    </div>
+
+    <!-- Queue / Up next -->
+    <div id="vr-chat-queue"></div>
+
+    <!-- Messages -->
+    <div id="vr-messages">
+      <div class="vr-msg" style="opacity:.4">
+        <div class="vr-msg-content">Welcome to CP Theater 🎬</div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <form id="vr-chat-form" autocomplete="off">
+      {% if not request.user.is_authenticated %}
+      <input type="text" id="vr-chat-name" placeholder="Your name (optional)" maxlength="40" style="display:block">
+      {% endif %}
+      <input type="text" id="vr-chat-input" placeholder="Say something…" maxlength="400" autocomplete="off">
+      <button type="submit" id="vr-chat-send">→</button>
+    </form>
+  </div>
+
+</div>
+
+<audio id="vr-audio" preload="none"></audio>
+
+<script>
+(function(){
+  'use strict';
+
+  // ── Mode: 'video' or 'audio' ─────────────────────────────────────────────
+  var mode         = 'video'; // 'video' | 'audio'
+  var videoQueue   = [];
+  var videoIdx     = 0;
+  var ytPlayer     = null;
+  var ytAPIReady   = false;
+  var ytPending    = null;
+
+  var audioTracks  = [];
+  var audioIdx     = 0;
+  var audio        = document.getElementById('vr-audio');
+  var audioCtx     = null;
+  var analyser     = null;
+  var animFrame    = null;
+  var genre        = 'all';
+
+  var placeholder  = document.getElementById('vr-placeholder');
+  var canvas       = document.getElementById('vr-canvas');
+  var canvasCtx    = canvas.getContext('2d');
+  var videoWrap    = document.getElementById('vr-video-wrap');
+  var seekBar      = document.getElementById('vr-seek');
+  var seekFill     = document.getElementById('vr-seek-fill');
+  var liveBadge    = document.getElementById('vr-live-badge');
+  var modeLabel    = document.getElementById('vr-mode-label');
+  var phInit       = document.getElementById('vr-ph-init');
+  var queueEl      = document.getElementById('vr-chat-queue');
+
+  // ── Genre palette (matches expanded player) ──
+  var GP = {
+    'techno':['#4a0f82','#0c0830'],'house':['#821028','#2e0818'],
+    'deep house':['#0f3a82','#080c2e'],'ambient':['#0f8255','#081e12'],
+    'jazz':['#825c0f','#2e1e08'],'soul':['#82350f','#2e1408'],
+    'hip hop':['#1a820f','#082e08'],'rap':['#1a820f','#082e08'],
+    'drum':['#82200f','#2e0808'],'electronic':['#280f82','#080830'],
+    'experimental':['#5f820f','#1c2e08'],'punk':['#820f0f','#2e0808'],
+    'metal':['#3a3a3a','#141414'],
+  };
+  function genreColors(g) {
+    g = (g || '').toLowerCase();
+    for (var k in GP) { if (g.includes(k)) return GP[k]; }
+    var h = 0; for (var i = 0; i < g.length; i++) h = (h * 31 + g.charCodeAt(i)) | 0;
+    var hue = Math.abs(h) % 360;
+    return ['hsl('+hue+',55%,22%)','hsl('+((hue+40)%360)+',45%,10%)'];
+  }
+
+  // ── Info display ──────────────────────────────────────────────────────────
+  function setInfo(title, artist, meta, isLive) {
+    document.getElementById('vr-info-title').textContent  = title  || '—';
+    document.getElementById('vr-info-artist').textContent = artist || '';
+    document.getElementById('vr-info-meta').textContent   = meta   || '';
+    if (liveBadge) liveBadge.style.display = isLive ? 'inline-flex' : 'none';
+  }
+
+  function setStageGradient(g, initial) {
+    var colors = genreColors(g || initial || '');
+    document.getElementById('vr-stage').style.background =
+      'linear-gradient(135deg,'+colors[0]+' 0%,'+colors[1]+' 100%)';
+    if (phInit) phInit.textContent = initial || 'CP';
+  }
+
+  // ── Resize canvas to match container ─────────────────────────────────────
+  function resizeCanvas() {
+    canvas.width  = videoWrap.clientWidth;
+    canvas.height = videoWrap.clientHeight;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  // ── Audio Visualizer ─────────────────────────────────────────────────────
+  function initAnalyser() {
+    if (analyser) return;
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var src  = audioCtx.createMediaElementSource(audio);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize          = 512;
+      analyser.smoothingTimeConstant = 0.8;
+      src.connect(analyser);
+      src.connect(audioCtx.destination);
+    } catch(e) { analyser = null; }
+  }
+
+  function drawVisualizer() {
+    if (!analyser) return;
+    animFrame = requestAnimationFrame(drawVisualizer);
+    resizeCanvas();
+
+    var W = canvas.width, H = canvas.height;
+    var bufLen = analyser.frequencyBinCount;
+    var data   = new Uint8Array(bufLen);
+    analyser.getByteFrequencyData(data);
+
+    canvasCtx.clearRect(0, 0, W, H);
+
+    // Background already handled by stage gradient — canvas is transparent
+    var barW   = (W / bufLen) * 2.5;
+    var gap    = 1;
+    var curG   = audioTracks[audioIdx] ? audioTracks[audioIdx].genre : genre;
+    var colors = genreColors(curG);
+
+    for (var i = 0; i < bufLen; i++) {
+      var barH = (data[i] / 255) * H * 0.9;
+      if (barH < 1) barH = 1;
+      var x = i * (barW + gap);
+
+      var grad = canvasCtx.createLinearGradient(x, H - barH, x, H);
+      grad.addColorStop(0, colors[0]);
+      grad.addColorStop(0.5, colors[1]);
+      grad.addColorStop(1, 'rgba(0,0,0,0.2)');
+      canvasCtx.fillStyle = grad;
+      canvasCtx.fillRect(Math.floor(x), Math.floor(H - barH), Math.max(1, Math.floor(barW - gap)), Math.ceil(barH));
+    }
+  }
+
+  function startVisualizer() {
+    resizeCanvas();
+    canvas.style.display = 'block';
+    placeholder.style.display = 'none';
+    initAnalyser();
+    if (animFrame) cancelAnimationFrame(animFrame);
+    drawVisualizer();
+  }
+
+  function stopVisualizer() {
+    if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+    canvas.style.display = 'none';
+  }
+
+  // ── Audio mode ────────────────────────────────────────────────────────────
+  function fetchAudioTracks(g) {
+    var url = g && g !== 'all'
+      ? '/api/tracks/?genre=' + encodeURIComponent(g)
+      : '/api/tracks/';
+    fetch(url).then(function(r){ return r.json(); }).then(function(d){
+      audioTracks = d.tracks || [];
+      if (!audioTracks.length) return;
+      playAudio(0);
+    }).catch(function(){});
+  }
+
+  function playAudio(idx) {
+    if (!audioTracks.length) return;
+    audioIdx = ((idx % audioTracks.length) + audioTracks.length) % audioTracks.length;
+    var t = audioTracks[audioIdx];
+    audio.src = t.stream_url;
+    audio.volume = parseInt(document.getElementById('vr-vol').value) / 100;
+    audio.play().catch(function(){});
+    var g = t.genre || genre;
+    setInfo(t.title, t.artist, (g || '').toUpperCase() + (t.recorded_at ? ' · ' + t.recorded_at : ''), false);
+    setStageGradient(g, (t.artist || '?').charAt(0).toUpperCase());
+    startVisualizer();
+    buildAudioQueue();
+    modeLabel.textContent = 'AUDIO';
+    document.getElementById('vr-play').textContent = '⏸';
+  }
+
+  function buildAudioQueue() {
+    if (!queueEl) return;
+    queueEl.innerHTML = '';
+    var shown = Math.min(8, audioTracks.length);
+    for (var i = 0; i < shown; i++) {
+      var idx = (audioIdx + i) % audioTracks.length;
+      var t   = audioTracks[idx];
+      var row = document.createElement('div');
+      row.className = 'vr-q-item' + (i === 0 ? ' active' : '');
+      var art = document.createElement('div');
+      art.className = 'vr-q-art';
+      if (t.art_url) {
+        var img = document.createElement('img'); img.src = t.art_url; img.alt = ''; art.appendChild(img);
+      } else {
+        art.textContent = (t.artist || '?').charAt(0).toUpperCase();
+      }
+      var info = document.createElement('div');
+      info.className = 'vr-q-info';
+      info.innerHTML = '<div class="vr-q-title">' + _esc(t.title || '—') + '</div>'
+                     + '<div class="vr-q-artist">' + _esc(t.artist || '') + '</div>';
+      row.appendChild(art);
+      row.appendChild(info);
+      row.addEventListener('click', (function(i){ return function(){ playAudio(i); }; })(idx));
+      queueEl.appendChild(row);
+    }
+  }
+
+  audio.addEventListener('ended', function(){ playAudio(audioIdx + 1); });
+  audio.addEventListener('timeupdate', function(){
+    if (!audio.duration || isNaN(audio.duration)) return;
+    seekFill.style.width = (audio.currentTime / audio.duration * 100) + '%';
+  });
+
+  // ── YouTube IFrame API ────────────────────────────────────────────────────
+  function loadYTAPI() {
+    if (window.YT && window.YT.Player) { ytAPIReady = true; return; }
+    if (document.getElementById('vr-yt-api')) return;
+    var s = document.createElement('script');
+    s.id  = 'vr-yt-api';
+    s.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(s);
+  }
+  window.onYouTubeIframeAPIReady = function() {
+    ytAPIReady = true;
+    if (ytPending) { createYTPlayer(ytPending); ytPending = null; }
+  };
+
+  function _clearVideoWrap() {
+    if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
+    // Remove any iframes but keep canvas + placeholder
+    Array.from(videoWrap.querySelectorAll('iframe,#vr-yt-ph')).forEach(function(el){ el.remove(); });
+  }
+
+  function createYTPlayer(videoId) {
+    _clearVideoWrap();
+    var ph = document.createElement('div');
+    ph.id  = 'vr-yt-ph';
+    videoWrap.appendChild(ph);
+    ytPlayer = new YT.Player('vr-yt-ph', {
+      videoId: videoId,
+      playerVars: { autoplay:1, rel:0, modestbranding:1, playsinline:1, controls:0 },
+      events: {
+        onStateChange: function(e) {
+          if (e.data === YT.PlayerState.ENDED) nextVideo();
+          if (e.data === YT.PlayerState.PLAYING) {
+            document.getElementById('vr-play').textContent = '⏸';
+            if (ytPlayer.getCurrentTime) {
+              clearInterval(_seekTimer);
+              _seekTimer = setInterval(function(){
+                if (!ytPlayer || !ytPlayer.getCurrentTime) return;
+                var cur = ytPlayer.getCurrentTime();
+                var dur = ytPlayer.getDuration ? ytPlayer.getDuration() : 0;
+                if (dur > 0) seekFill.style.width = (cur / dur * 100) + '%';
+              }, 500);
+            }
+          }
+          if (e.data === YT.PlayerState.PAUSED) document.getElementById('vr-play').textContent = '▶';
+        },
+        onReady: function() {
+          placeholder.style.display = 'none';
+          if (document.getElementById('vr-vol')) {
+            ytPlayer.setVolume(parseInt(document.getElementById('vr-vol').value));
+          }
+        },
+        onError: function() { nextVideo(); },
+      }
+    });
+  }
+  var _seekTimer = null;
+
+  function createTwitchPlayer(embedUrl) {
+    _clearVideoWrap();
+    var iframe = document.createElement('iframe');
+    iframe.src = embedUrl;
+    iframe.allow = 'autoplay; fullscreen';
+    iframe.allowFullscreen = true;
+    videoWrap.appendChild(iframe);
+    placeholder.style.display = 'none';
+  }
+
+  // ── Video mode ────────────────────────────────────────────────────────────
+  function playVideo(idx) {
+    if (!videoQueue.length) return;
+    videoIdx = ((idx % videoQueue.length) + videoQueue.length) % videoQueue.length;
+    var v = videoQueue[videoIdx];
+    stopVisualizer();
+
+    var isLive   = v.is_live;
+    var isTwitch = v.source_type === 'twitch_live' || v.source_type === 'twitch_vod';
+    setInfo(v.title, v.artist, isLive ? 'LIVE' : (v.has_show_soon ? '↗ PLAYING SOON' : ''), isLive);
+    setStageGradient(null, (v.artist || 'CP').charAt(0).toUpperCase());
+    modeLabel.textContent = isLive ? '🔴 LIVE' : 'VIDEO';
+    document.getElementById('vr-play').style.display = isLive ? 'none' : '';
+    buildVideoQueue();
+
+    if (isTwitch) { createTwitchPlayer(v.embed_url); return; }
+
+    var ytMatch = v.embed_url.match(/embed\/([^?]+)/);
+    var ytId    = ytMatch ? ytMatch[1] : v.video_id;
+    if (!ytAPIReady) { ytPending = ytId; return; }
+    if (ytPlayer && ytPlayer.loadVideoById) {
+      ytPlayer.loadVideoById({ videoId: ytId, startSeconds: 0 });
+    } else {
+      createYTPlayer(ytId);
+    }
+  }
+
+  function nextVideo() { playVideo(videoIdx + 1); }
+  function prevVideo() { playVideo(videoIdx - 1); }
+
+  function buildVideoQueue() {
+    if (!queueEl) return;
+    queueEl.innerHTML = '';
+    var shown = Math.min(8, videoQueue.length);
+    for (var i = 0; i < shown; i++) {
+      var idx = (videoIdx + i) % videoQueue.length;
+      var v   = videoQueue[idx];
+      var row = document.createElement('div');
+      row.className = 'vr-q-item' + (i === 0 ? ' active' : '');
+      var art = document.createElement('div');
+      art.className = 'vr-q-art';
+      if (v.thumbnail) {
+        var img = document.createElement('img'); img.src = v.thumbnail; img.alt = ''; art.appendChild(img);
+      } else {
+        art.textContent = (v.artist || 'CP').charAt(0).toUpperCase();
+      }
+      var info = document.createElement('div');
+      info.className = 'vr-q-info';
+      info.innerHTML = '<div class="vr-q-title">' + _esc(v.title || '—') + '</div>'
+                     + '<div class="vr-q-artist">' + _esc(v.artist || '') + '</div>';
+      row.appendChild(art);
+      row.appendChild(info);
+      row.addEventListener('click', (function(i){ return function(){ playVideo(i); }; })(idx));
+      queueEl.appendChild(row);
+    }
+  }
+
+  function loadVideoQueue() {
+    fetch('/api/videos/').then(function(r){ return r.json(); }).then(function(d){
+      videoQueue = d.videos || [];
+      if (!videoQueue.length) return;
+      loadYTAPI();
+      playVideo(0);
+    }).catch(function(){});
+  }
+
+  function _esc(s) {
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Controls ──────────────────────────────────────────────────────────────
+  document.getElementById('vr-play').addEventListener('click', function(){
+    if (mode === 'video') {
+      if (!ytPlayer || !ytPlayer.getPlayerState) return;
+      var st = ytPlayer.getPlayerState();
+      if (st === 1) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
+    } else {
+      if (audio.paused) audio.play(); else audio.pause();
+      this.textContent = audio.paused ? '▶' : '⏸';
+    }
+  });
+  document.getElementById('vr-prev').addEventListener('click', function(){
+    if (mode === 'video') prevVideo(); else playAudio(audioIdx - 1);
+  });
+  document.getElementById('vr-next').addEventListener('click', function(){
+    if (mode === 'video') nextVideo(); else playAudio(audioIdx + 1);
+  });
+
+  seekBar.addEventListener('click', function(e){
+    var rect = seekBar.getBoundingClientRect();
+    var pct  = (e.clientX - rect.left) / rect.width;
+    if (mode === 'video' && ytPlayer && ytPlayer.getDuration) {
+      ytPlayer.seekTo(ytPlayer.getDuration() * pct, true);
+    } else if (mode === 'audio' && audio.duration) {
+      audio.currentTime = audio.duration * pct;
+    }
+  });
+
+  document.getElementById('vr-vol').addEventListener('input', function(){
+    var v = parseInt(this.value);
+    if (mode === 'video' && ytPlayer && ytPlayer.setVolume) ytPlayer.setVolume(v);
+    else audio.volume = v / 100;
+  });
+
+  document.getElementById('vr-audio-mode-btn').addEventListener('click', function(){
+    if (mode === 'audio') return;
+    mode = 'audio';
+    if (ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
+    clearInterval(_seekTimer);
+    document.getElementById('vr-audio-mode-btn').classList.add('active');
+    document.getElementById('vr-video-mode-btn').classList.remove('active');
+    fetchAudioTracks(genre);
+  });
+
+  document.getElementById('vr-video-mode-btn').addEventListener('click', function(){
+    if (mode === 'video') return;
+    mode = 'video';
+    audio.pause();
+    stopVisualizer();
+    document.getElementById('vr-video-mode-btn').classList.add('active');
+    document.getElementById('vr-audio-mode-btn').classList.remove('active');
+    if (videoQueue.length) { playVideo(videoIdx); }
+    else { loadVideoQueue(); }
+  });
+
+  // ── Chat ──────────────────────────────────────────────────────────────────
+  var messagesEl    = document.getElementById('vr-messages');
+  var chatForm      = document.getElementById('vr-chat-form');
+  var chatInput     = document.getElementById('vr-chat-input');
+  var chatName      = document.getElementById('vr-chat-name');
+  var lastMessageId = 0;
+  var isLoggedIn    = {% if request.user.is_authenticated %}true{% else %}false{% endif %};
+
+  function renderMessage(msg) {
+    var me  = isLoggedIn
+      ? msg.author === '{{ request.user.username|escapejs }}'
+      : false;
+    var div = document.createElement('div');
+    div.className = 'vr-msg';
+    div.innerHTML =
+      '<div class="vr-msg-author' + (me ? ' vr-me' : '') + '">' + _esc(msg.author) + ' <span class="vr-msg-time">' + msg.created_at + '</span></div>' +
+      '<div class="vr-msg-content">' + _esc(msg.content) + '</div>';
+    messagesEl.appendChild(div);
+    if (lastMessageId < msg.id) lastMessageId = msg.id;
+  }
+
+  function scrollChat() {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function pollMessages() {
+    fetch('/api/video-room/messages/')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var msgs = d.messages || [];
+        var newMsgs = msgs.filter(function(m){ return m.id > lastMessageId; });
+        var atBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 60;
+        newMsgs.forEach(renderMessage);
+        if (atBottom && newMsgs.length) scrollChat();
+      }).catch(function(){});
+  }
+
+  // Load initial messages
+  pollMessages();
+  setInterval(pollMessages, 3000);
+
+  if (chatForm) {
+    chatForm.addEventListener('submit', function(e){
+      e.preventDefault();
+      var content = chatInput.value.trim();
+      if (!content) return;
+      var name = chatName ? chatName.value.trim() : '';
+      chatInput.value = '';
+      fetch('/api/video-room/messages/', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','X-CSRFToken': getCookie('csrftoken')},
+        body: JSON.stringify({content: content, name: name}),
+      }).then(function(r){ return r.json(); }).then(function(msg){
+        if (msg.id) { renderMessage(msg); scrollChat(); }
+      }).catch(function(){});
+    });
+    // Ctrl+Enter / Cmd+Enter to send
+    chatInput.addEventListener('keydown', function(e){
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') chatForm.dispatchEvent(new Event('submit'));
+    });
+  }
+
+  function getCookie(name) {
+    var v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+    return v ? v[2] : '';
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  // Start with video mode
+  loadVideoQueue();
+
+})();
+</script>
+</body>
+</html>

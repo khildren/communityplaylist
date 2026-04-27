@@ -1,14 +1,23 @@
 {% comment %}CP Music Player — bottom-left corner widget; styles in base.html{% endcomment %}
 <div id="cp-player" class="cp-player" style="display:none" role="region" aria-label="Community Playlist music player" data-turbo-permanent>
 
-  {% comment %}Collapse handle — always visible, drag pill + current track name{% endcomment %}
-  <button id="cp-collapser" class="cp-collapser" aria-label="Collapse player">
-    <span class="cp-drag-pill"></span>
-    <span id="cp-collapse-track" class="cp-collapse-track"></span>
-    <span class="cp-collapse-chevron">▾</span>
-  </button>
+  {% comment %}Collapse handle + mini play{% endcomment %}
+  <div class="cp-collapser-wrap">
+    <button id="cp-collapser" class="cp-collapser" aria-label="Collapse player">
+      <span class="cp-drag-pill"></span>
+      <span id="cp-collapse-track" class="cp-collapse-track"></span>
+      <span class="cp-collapse-chevron">▾</span>
+    </button>
+    <button id="cp-mini-play" class="cp-mini-play" aria-label="Play/Pause" title="Play/Pause">▶</button>
+  </div>
 
-  {% comment %}Event rotator card — hidden until cpEventsList is available{% endcomment %}
+  {% comment %}Track art panel (audio: 1:1 square, video: dynamic ratio){% endcomment %}
+  <div id="cp-art-panel" class="cp-art-panel" style="display:none">
+    <div class="cp-art-fallback">♫</div>
+    <img id="cp-art-img" class="cp-art-img" alt="" style="display:none">
+  </div>
+
+  {% comment %}Event rotator card{% endcomment %}
   <div id="cp-event-rotator" style="display:none">
     <div id="cp-er-card" class="cp-er-card">
       <div id="cp-er-dot" class="cp-er-dot"></div>
@@ -27,7 +36,7 @@
     </div>
   </div>
 
-  {% comment %}PDXTV video section — embedded at top of corner panel{% endcomment %}
+  {% comment %}PDXTV video section{% endcomment %}
   <div id="cp-video-panel">
     <button id="cp-video-exit" aria-label="Exit video">✕ exit</button>
     <div id="cp-video-iframe-wrap">
@@ -43,7 +52,7 @@
     </div>
   </div>
 
-  {% comment %}Seek bar — full width at top of controls area{% endcomment %}
+  {% comment %}Seek bar{% endcomment %}
   <div class="cp-seek" id="cp-seek">
     <div class="cp-seek-fill" id="cp-seek-fill" style="width:0%">
       <div class="cp-seek-dot"></div>
@@ -77,34 +86,97 @@
     <span class="cp-video-ch-label" id="cp-video-ch-label" style="display:none" title="PDXTV video channel">📺 VIDEO</span>
   </div>
 
-  {% comment %}Channel popup — position set via JS to appear above the panel{% endcomment %}
+  {% comment %}Channel popup{% endcomment %}
   <div class="cp-channels" id="cp-channels"></div>
 
 </div>
 
+{% comment %}Expanded Plexamp-style player panel{% endcomment %}
+<div id="cp-expanded" aria-hidden="true" data-turbo-permanent>
+
+  <div class="cp-exp-header">
+    <button id="cp-exp-logo-btn" class="cp-exp-logo-btn" title="Open CP Player app" aria-label="Open standalone player">CP · PDX</button>
+  </div>
+
+  <div class="cp-exp-art" id="cp-exp-art">
+    <div class="cp-exp-art-grad" id="cp-exp-art-grad">
+      <span class="cp-exp-art-init" id="cp-exp-art-init"></span>
+    </div>
+    <img class="cp-exp-art-img" id="cp-exp-art-img" alt="">
+    <canvas id="cp-exp-canvas"></canvas>
+    <div id="cp-exp-art-video"></div>
+  </div>
+
+  <div class="cp-exp-seek" id="cp-exp-seek">
+    <div class="cp-exp-seek-fill" id="cp-exp-seek-fill">
+      <div class="cp-exp-seek-dot"></div>
+    </div>
+  </div>
+  <div class="cp-exp-times">
+    <span id="cp-exp-cur">0:00</span>
+    <span id="cp-exp-dur">—</span>
+  </div>
+
+  <div class="cp-exp-info">
+    <div class="cp-exp-title" id="cp-exp-title">—</div>
+    <div class="cp-exp-artist" id="cp-exp-artist"></div>
+    <div class="cp-exp-meta" id="cp-exp-meta"></div>
+  </div>
+
+  <div class="cp-exp-controls">
+    <button class="cp-exp-ctrl-btn" id="cp-exp-prev" title="Previous">⏮</button>
+    <button class="cp-exp-ctrl-btn cp-exp-play-btn" id="cp-exp-play" title="Play / Pause">▶</button>
+    <button class="cp-exp-ctrl-btn" id="cp-exp-next" title="Next">⏭</button>
+  </div>
+
+  <div class="cp-exp-secondary">
+    <button class="cp-exp-sec-btn" id="cp-exp-shuffle" title="Shuffle: off">⇄</button>
+    <button class="cp-exp-sec-btn" id="cp-exp-repeat" title="Repeat: off">↻</button>
+    <div class="cp-exp-vol-wrap">
+      <button class="cp-exp-sec-btn" id="cp-exp-mute" title="Mute">🔈</button>
+      <input type="range" class="cp-exp-vol" id="cp-exp-vol" min="0" max="100" value="8">
+    </div>
+    <button class="cp-exp-sec-btn cp-exp-logo-btn" id="cp-exp-video-btn" title="Toggle video channel"><img src="/static/img/cp_logo_face.png" alt="CP" style="width:22px;height:22px;object-fit:contain;border-radius:50%;opacity:.75;vertical-align:middle"></button>
+    <button class="cp-exp-sec-btn" id="cp-popout-btn" title="Open standalone player" aria-label="Pop out player">⬡</button>
+  </div>
+
+  <div class="cp-exp-queue">
+    <div class="cp-exp-q-header">
+      <span>UP NEXT</span>
+      <span class="cp-exp-q-count" id="cp-exp-q-count"></span>
+    </div>
+    <div class="cp-exp-q-list" id="cp-exp-q-list"></div>
+  </div>
+
+  <div class="cp-exp-ch-strip" id="cp-exp-ch-strip"></div>
+
+</div>
+
+{% comment %}Fixed size-cycle FAB — always bottom-right, never moves{% endcomment %}
+<button id="cp-fab" class="cp-fab" aria-label="Player size" title="Open player" style="display:none">⛶</button>
+
 <audio id="cp-audio" preload="none" data-turbo-permanent></audio>
 
 <script>
+// ── Audio Player ─────────────────────────────────────────────────────────────
 (function(){
-  // Only initialise once — Turbo re-runs this script on each page swap,
-  // but the player element is data-turbo-permanent so it's already live.
   if (window.cpInitialized) return;
   window.cpInitialized = true;
 
-  var audio    = document.getElementById('cp-audio');
-  var player   = document.getElementById('cp-player');
-  var titleEl  = document.getElementById('cp-title');
-  var artistEl = document.getElementById('cp-artist');
+  var audio      = document.getElementById('cp-audio');
+  var player     = document.getElementById('cp-player');
+  var titleEl    = document.getElementById('cp-title');
+  var artistEl   = document.getElementById('cp-artist');
   var trackInner = document.getElementById('cp-track-inner');
-  var playBtn  = document.getElementById('cp-play');
-  var prevBtn  = document.getElementById('cp-prev');
-  var nextBtn  = document.getElementById('cp-next');
-  var muteBtn  = document.getElementById('cp-mute');
-  var volSlide = document.getElementById('cp-vol');
-  var channels  = document.getElementById('cp-channels');
-  var chToggle  = document.getElementById('cp-ch-toggle');
-  var seekBar   = document.getElementById('cp-seek');
-  var seekFill = document.getElementById('cp-seek-fill');
+  var playBtn    = document.getElementById('cp-play');
+  var prevBtn    = document.getElementById('cp-prev');
+  var nextBtn    = document.getElementById('cp-next');
+  var muteBtn    = document.getElementById('cp-mute');
+  var volSlide   = document.getElementById('cp-vol');
+  var channels   = document.getElementById('cp-channels');
+  var chToggle   = document.getElementById('cp-ch-toggle');
+  var seekBar    = document.getElementById('cp-seek');
+  var seekFill   = document.getElementById('cp-seek-fill');
 
   var tracks  = [];
   var current = 0;
@@ -112,27 +184,29 @@
   var muted   = false;
   var STORE   = 'cp_state';
 
+  // Shuffle / repeat state
+  var shuffleMode  = false;
+  var shuffleOrder = [];
+  var repeatMode   = 0; // 0=off 1=one 2=all
+
   audio.volume = 0.08;
 
   function show() {
     player.style.display = 'flex';
     document.body.classList.add('has-player');
+    var fab = document.getElementById('cp-fab');
+    if (fab) fab.style.display = 'flex';
     if (window.cpUpdateEventPanelOffset) window.cpUpdateEventPanelOffset();
   }
 
-  // Pre-inject has-player into the incoming body BEFORE the swap —
-  // prevents a one-frame layout jump where the new body renders without bottom padding.
   document.addEventListener('turbo:before-render', function(e){
     if (player.style.display !== 'none') {
       e.detail.newBody.classList.add('has-player');
     }
-    // Determine if the incoming page is the event list (has .hybrid-wrap).
-    // If so, pre-apply is-hybrid to <html> BEFORE the swap so there's no
-    // one-frame layout flash. Mirror the getDefaultView() logic exactly.
     var isEventList = !!e.detail.newBody.querySelector('.hybrid-wrap');
     if (isEventList) {
       var _sv = localStorage.getItem('cp_view');
-      var _w = window.innerWidth;
+      var _w  = window.innerWidth;
       var _resolved;
       if (_sv) {
         if (_w < 640 && (_sv === 'map' || _sv === 'hybrid')) _resolved = 'list';
@@ -141,28 +215,19 @@
       } else {
         _resolved = _w >= 900 ? 'hybrid' : (_w >= 768 ? 'map' : 'list');
       }
-      if (_resolved === 'hybrid') {
-        document.documentElement.classList.add('is-hybrid');
-      } else {
-        document.documentElement.classList.remove('is-hybrid');
-      }
+      if (_resolved === 'hybrid') document.documentElement.classList.add('is-hybrid');
+      else document.documentElement.classList.remove('is-hybrid');
     } else {
-      // Not the event list — strip is-hybrid so other pages don't inherit it.
       document.documentElement.classList.remove('is-hybrid');
     }
   });
-  // Belt-and-suspenders: also apply after load in case of non-Turbo navigations
-  // or Turbo page-cache restores that bypass before-render.
+
   document.addEventListener('turbo:load', function(){
-    if (player.style.display !== 'none') {
-      document.body.classList.add('has-player');
-    }
-    // Reconcile is-hybrid: turbo:before-render handles the common case but
-    // page-cache restores (back button) can bypass it.
+    if (player.style.display !== 'none') document.body.classList.add('has-player');
     var isEventList = !!document.querySelector('.hybrid-wrap');
     if (isEventList) {
       var _sv2 = localStorage.getItem('cp_view');
-      var _w2 = window.innerWidth;
+      var _w2  = window.innerWidth;
       var _resolved2;
       if (_sv2) {
         if (_w2 < 640 && (_sv2 === 'map' || _sv2 === 'hybrid')) _resolved2 = 'list';
@@ -171,15 +236,11 @@
       } else {
         _resolved2 = _w2 >= 900 ? 'hybrid' : (_w2 >= 768 ? 'map' : 'list');
       }
-      if (_resolved2 === 'hybrid') {
-        document.documentElement.classList.add('is-hybrid');
-      } else {
-        document.documentElement.classList.remove('is-hybrid');
-      }
+      if (_resolved2 === 'hybrid') document.documentElement.classList.add('is-hybrid');
+      else document.documentElement.classList.remove('is-hybrid');
     } else {
       document.documentElement.classList.remove('is-hybrid');
     }
-    // Re-process HTMX attributes on every Turbo navigation.
     if (typeof htmx !== 'undefined') htmx.process(document.body);
   });
 
@@ -188,13 +249,9 @@
     var t = tracks[current];
     try {
       sessionStorage.setItem(STORE, JSON.stringify({
-        url:        t.stream_url,
-        title:      t.title,
-        artist:     t.artist || '',
-        source_url: t.source_url || '',
-        genre:      genre,
-        idx:        current,
-        time:       Math.floor(audio.currentTime)
+        url: t.stream_url, title: t.title, artist: t.artist || '',
+        source_url: t.source_url || '', genre: genre,
+        idx: current, time: Math.floor(audio.currentTime)
       }));
     } catch(e){}
   }
@@ -205,13 +262,10 @@
     var row = document.querySelector('.track-row.playing');
     if (row) {
       var bg = row.querySelector('.track-bg-progress');
-      if (!bg) {
-        bg = document.createElement('div');
-        bg.className = 'track-bg-progress';
-        row.insertBefore(bg, row.firstChild);
-      }
+      if (!bg) { bg = document.createElement('div'); bg.className = 'track-bg-progress'; row.insertBefore(bg, row.firstChild); }
       bg.style.width = pct + '%';
     }
+    if (window.cpExp) window.cpExp.onProgress(audio.currentTime, audio.duration || 0);
   }
 
   function clearRowProgress() {
@@ -219,23 +273,15 @@
   }
 
   function setTitleLink(url) {
-    if (url) {
-      titleEl.href = url;
-      titleEl.style.cursor = 'pointer';
-      titleEl.title = 'Go to source page';
-    } else {
-      titleEl.href = '#';
-      titleEl.style.cursor = 'default';
-      titleEl.title = '';
-    }
+    if (url) { titleEl.href = url; titleEl.style.cursor = 'pointer'; titleEl.title = 'Go to source page'; }
+    else      { titleEl.href = '#'; titleEl.style.cursor = 'default'; titleEl.title = ''; }
   }
 
   function applyMarquee() {
-    // Measure overflow and animate if text wider than container
     trackInner.classList.remove('marquee');
     trackInner.style.removeProperty('--marquee-dist');
     requestAnimationFrame(function(){
-      var parent = trackInner.parentElement;
+      var parent   = trackInner.parentElement;
       var overflow = trackInner.scrollWidth - parent.clientWidth;
       if (overflow > 10) {
         trackInner.style.setProperty('--marquee-dist', '-' + overflow + 'px');
@@ -248,57 +294,110 @@
     titleEl.textContent  = title  || '—';
     artistEl.textContent = artist || '';
     applyMarquee();
+    if (window.cpExp) window.cpExp.onTitleUpdate(title, artist);
+  }
+
+  // ── Shuffle helpers ──
+  function buildShuffleOrder() {
+    shuffleOrder = [];
+    for (var i = 0; i < tracks.length; i++) shuffleOrder.push(i);
+    for (var j = shuffleOrder.length - 1; j > 0; j--) {
+      var k = Math.floor(Math.random() * (j + 1));
+      var tmp = shuffleOrder[j]; shuffleOrder[j] = shuffleOrder[k]; shuffleOrder[k] = tmp;
+    }
+    var ci = shuffleOrder.indexOf(current);
+    if (ci > 0) { shuffleOrder.splice(ci, 1); shuffleOrder.unshift(current); }
+  }
+
+  function getNextIdx() {
+    if (!tracks.length) return 0;
+    if (shuffleMode) {
+      var ci = shuffleOrder.indexOf(current);
+      return shuffleOrder[(ci + 1) % shuffleOrder.length];
+    }
+    return (current + 1) % tracks.length;
+  }
+
+  function getPrevIdx() {
+    if (!tracks.length) return 0;
+    if (shuffleMode) {
+      var ci = shuffleOrder.indexOf(current);
+      return shuffleOrder[(ci - 1 + shuffleOrder.length) % shuffleOrder.length];
+    }
+    return (current - 1 + tracks.length) % tracks.length;
   }
 
   function loadTrack(idx, seekTo) {
     if (!tracks.length) return;
     current = ((idx % tracks.length) + tracks.length) % tracks.length;
-    var t = tracks[current];
+    var t   = tracks[current];
     audio.src = t.stream_url;
     setTrackDisplay(t.title, t.artist);
     setTitleLink(t.source_url || '');
     artistEl.href = t.source_url || '#';
     seekFill.style.width = '0%';
     clearRowProgress();
+    // Update mini player art panel (only show in audio mode)
+    if (!window.cpVideo || !window.cpVideo.isActive()) {
+      var artPanel = document.getElementById('cp-art-panel');
+      var artImg   = document.getElementById('cp-art-img');
+      var artFb    = artPanel ? artPanel.querySelector('.cp-art-fallback') : null;
+      if (artPanel) {
+        artPanel.style.display = 'block';
+        artPanel.style.aspectRatio = '1/1';
+        if (t.art_url && artImg) {
+          artImg.src = t.art_url;
+          artImg.style.display = 'block';
+          if (artFb) artFb.style.display = 'none';
+        } else {
+          if (artImg) artImg.style.display = 'none';
+          if (artFb) artFb.style.display = 'flex';
+        }
+      }
+    }
     if (seekTo > 0) {
       audio.addEventListener('loadedmetadata', function seek(){
         audio.currentTime = seekTo;
         audio.removeEventListener('loadedmetadata', seek);
       });
     }
+    // Expose globals so expanded player can read them
+    window._cpTracks  = tracks;
+    window._cpCurrent = current;
+    if (window.cpExp) window.cpExp.onTrackLoad(t, current);
     saveState();
   }
 
   function play() {
-    audio.play().then(function(){ playBtn.textContent = '⏸'; }).catch(function(){});
+    audio.play()
+      .then(function(){
+        playBtn.textContent = '⏸';
+        if (window.cpExp) window.cpExp.onPlayState(true);
+      })
+      .catch(function(){});
   }
+
   function pause() {
     audio.pause();
     playBtn.textContent = '▶';
+    if (window.cpExp) window.cpExp.onPlayState(false);
   }
 
-  // cachedGenres holds the last genre list from /api/tracks/ so we can
-  // rebuild the channel strip even when switching to the SAVED channel.
   var cachedGenres = [];
 
   function fetchTracks(g, restoreIdx, seekTo) {
-    var url;
-    if (g === 'saved') {
-      url = '/api/saved-tracks/';
-    } else {
-      url = '/api/tracks/' + (g && g !== 'all' ? '?genre=' + encodeURIComponent(g) : '');
-    }
+    var url = g === 'saved'
+      ? '/api/saved-tracks/'
+      : '/api/tracks/' + (g && g !== 'all' ? '?genre=' + encodeURIComponent(g) : '');
     fetch(url).then(function(r){ return r.json(); }).then(function(data){
       tracks = data.tracks || [];
-      // Always rebuild channels — for saved channel use the cached genre list
       if (g !== 'saved') cachedGenres = data.genres || [];
       buildChannels(cachedGenres);
-      if (!tracks.length) {
-        show();  // show player so user can see SAVED is empty and switch channels
-        setTrackDisplay('No saved tracks', '');
-        return;
-      }
+      if (!tracks.length) { show(); setTrackDisplay('No saved tracks', ''); return; }
       show();
+      if (shuffleMode) buildShuffleOrder();
+      window._cpTracks  = tracks;
+      window._cpCurrent = current;
       loadTrack(restoreIdx || 0, seekTo || 0);
     }).catch(function(){});
   }
@@ -306,18 +405,18 @@
   function closeChannels() {
     channels.classList.remove('open');
     if (chToggle) chToggle.classList.remove('open');
+    channels.style.bottom = '';
+    channels.style.right  = '';
   }
 
   function buildChannels(genres) {
     channels.innerHTML = '';
     var activeLabel = 'ALL';
-    // ALL channel
     var all = document.createElement('button');
     all.className = 'cp-ch' + (genre === 'all' ? ' active' : '');
     all.textContent = 'ALL';
     all.onclick = function(){ setChannel('all'); closeChannels(); };
     channels.appendChild(all);
-    // Genre channels — compare case-insensitively
     genres.forEach(function(g){
       var isActive = genre.toLowerCase() === g.toLowerCase();
       var btn = document.createElement('button');
@@ -327,7 +426,6 @@
       channels.appendChild(btn);
       if (isActive) activeLabel = g.toUpperCase();
     });
-    // SAVED channel always last
     var saved = document.createElement('button');
     var isSaved = genre === 'saved';
     saved.className = 'cp-ch saved-ch' + (isSaved ? ' active' : '');
@@ -335,37 +433,36 @@
     saved.onclick = function(){ setChannel('saved'); closeChannels(); };
     channels.appendChild(saved);
     if (isSaved) activeLabel = '♥';
-    // Update toggle label to show active channel
     if (chToggle) chToggle.textContent = activeLabel + ' ▾';
+    if (window.cpExp && window.cpExp.onChannelsBuilt) window.cpExp.onChannelsBuilt();
   }
 
   function setChannel(g) {
     genre   = g;
     current = 0;
-    // Rebuild channels immediately so active state is correct
     buildChannels(cachedGenres);
     fetchTracks(g);
   }
 
-  // Toggle channel popup — position fixed above the player corner
   if (chToggle) {
     chToggle.addEventListener('click', function(e){
       e.stopPropagation();
-      var isOpen = channels.classList.toggle('open');
-      chToggle.classList.toggle('open', isOpen);
-      if (isOpen) {
+      var wasOpen = channels.classList.contains('open');
+      closeChannels();
+      if (!wasOpen) {
         var r = player.getBoundingClientRect();
         channels.style.bottom = (window.innerHeight - r.top + 4) + 'px';
-        channels.style.left   = r.left + 'px';
+        channels.style.right  = (window.innerWidth - r.right) + 'px';
+        channels.style.left   = '';
         channels.style.width  = r.width + 'px';
+        channels.classList.add('open');
+        chToggle.classList.add('open');
       }
     });
   }
-  // Click outside closes the popup
+
   document.addEventListener('click', function(e){
-    if (!channels.contains(e.target) && e.target !== chToggle) {
-      closeChannels();
-    }
+    if (channels.classList.contains('open') && !channels.contains(e.target) && e.target !== chToggle) closeChannels();
   });
 
   seekBar.addEventListener('click', function(e){
@@ -375,10 +472,40 @@
     updateProgress();
   });
 
-  playBtn.onclick = function(){ if (audio.paused) { play(); } else { pause(); } };
-  prevBtn.onclick = function(){ loadTrack(current - 1); play(); };
-  nextBtn.onclick = function(){ loadTrack(current + 1); play(); };
-  audio.addEventListener('ended', function(){ loadTrack(current + 1); play(); });
+  playBtn.onclick = function(){ if (audio.paused) play(); else pause(); };
+  prevBtn.onclick = function(){ loadTrack(getPrevIdx()); play(); };
+  nextBtn.onclick = function(){ loadTrack(getNextIdx()); play(); };
+
+  // Mini play button in collapser row — syncs with main play state
+  var miniPlayBtn = document.getElementById('cp-mini-play');
+  function syncMiniPlay() {
+    if (!miniPlayBtn) return;
+    var isVid = window.cpVideo && window.cpVideo.isActive();
+    if (isVid) {
+      miniPlayBtn.textContent = (window.cpVideo && window.cpVideo.togglePlay) ? '⏸' : '▶';
+    } else {
+      miniPlayBtn.textContent = audio.paused ? '▶' : '⏸';
+    }
+  }
+  if (miniPlayBtn) {
+    miniPlayBtn.addEventListener('click', function(e){
+      e.stopPropagation();
+      if (window.cpVideo && window.cpVideo.isActive()) {
+        window.cpVideo.togglePlay();
+      } else {
+        if (audio.paused) play(); else pause();
+      }
+      setTimeout(syncMiniPlay, 80);
+    });
+  }
+  audio.addEventListener('play',  syncMiniPlay);
+  audio.addEventListener('pause', syncMiniPlay);
+
+
+  audio.addEventListener('ended', function(){
+    if (repeatMode === 1) { audio.currentTime = 0; audio.play(); return; }
+    loadTrack(getNextIdx()); play();
+  });
   audio.addEventListener('timeupdate', updateProgress);
 
   volSlide.oninput = function(){
@@ -396,8 +523,8 @@
 
   setInterval(function(){ if (!audio.paused) saveState(); }, 5000);
 
+  // ── Public API ──
   window.cpLoad = function(url, title, artist, sourceUrl) {
-    // Exit video mode if active so the audio player takes over
     if (window.cpVideo && window.cpVideo.leave) window.cpVideo.leave();
     show();
     audio.src = url;
@@ -406,35 +533,44 @@
     seekFill.style.width = '0%';
     clearRowProgress();
     audio.volume = parseFloat(volSlide.value) / 100;
-    audio.play().then(function(){ playBtn.textContent = '⏸'; }).catch(function(){});
-    // Push a single-track queue so prev/next still works via channel
-    tracks = [{stream_url: url, title: title, artist: artist, source_url: sourceUrl || ''}];
+    audio.play().then(function(){ playBtn.textContent = '⏸'; if (window.cpExp) window.cpExp.onPlayState(true); }).catch(function(){});
+    tracks  = [{stream_url: url, title: title, artist: artist, source_url: sourceUrl || '', art_url: ''}];
     current = 0;
-    try {
-      sessionStorage.setItem(STORE, JSON.stringify({url: url, title: title, artist: artist, source_url: sourceUrl || '', genre: genre, idx: 0, time: 0}));
-    } catch(e){}
+    window._cpTracks  = tracks;
+    window._cpCurrent = current;
+    try { sessionStorage.setItem(STORE, JSON.stringify({url, title, artist, source_url: sourceUrl||'', genre, idx:0, time:0})); } catch(e){}
   };
 
-  // Load a full list of tracks as the player queue and start at startIdx.
-  // trackList: [{stream_url, title, artist, source_url}, ...]
   window.cpLoadQueue = function(trackList, startIdx) {
     if (!trackList || !trackList.length) return;
     if (window.cpVideo && window.cpVideo.leave) window.cpVideo.leave();
-    tracks = trackList;
+    tracks  = trackList;
     current = Math.max(0, Math.min(startIdx || 0, trackList.length - 1));
+    window._cpTracks  = tracks;
+    window._cpCurrent = current;
     show();
     seekFill.style.width = '0%';
     clearRowProgress();
     audio.volume = parseFloat(volSlide.value) / 100;
     loadTrack(current);
     play();
-    try {
-      var t = tracks[current];
-      sessionStorage.setItem(STORE, JSON.stringify({url: t.stream_url, title: t.title, artist: t.artist, source_url: t.source_url || '', genre: genre, idx: current, time: 0}));
-    } catch(e){}
   };
 
-  // Restore state on first load
+  // Shuffle / repeat — callable from expanded panel
+  window.cpSetShuffle = function(on) {
+    shuffleMode = on;
+    if (on) buildShuffleOrder();
+    window._cpShuffleMode = shuffleMode;
+  };
+  window.cpSetRepeat = function(mode) {
+    repeatMode = mode;
+    window._cpRepeatMode = repeatMode;
+  };
+  window.cpPlayIdx    = function(idx){ loadTrack(idx); play(); };
+  window.cpGetNextIdx = getNextIdx;
+  window.cpGetPrevIdx = getPrevIdx;
+
+  // Restore state
   var savedGenre = 'all', savedIdx = 0, savedTime = 0;
   try {
     var s = JSON.parse(sessionStorage.getItem(STORE) || 'null');
@@ -450,14 +586,17 @@
 
   fetchTracks(savedGenre, savedIdx, savedTime);
 
-  // ── Expose video-mode toggle for the video IIFE below ──
   window.cpAudioShow   = show;
   window.cpAudioPlayer = player;
   window.cpAudio       = audio;
   window.cpAudioPause  = pause;
+  window._cpTracks     = tracks;
+  window._cpCurrent    = current;
+  window._cpShuffleMode = shuffleMode;
+  window._cpRepeatMode  = repeatMode;
 })();
 
-// ── PDXTV Video Channel ──────────────────────────────────────────────────────────
+// ── PDXTV Video Channel ──────────────────────────────────────────────────────
 (function(){
   if (window.cpVideoInitialized) return;
   window.cpVideoInitialized = true;
@@ -471,18 +610,76 @@
   var liveBadge  = document.getElementById('cp-live-badge');
   var footerBar  = document.getElementById('cp-player');
 
-  var videoQueue   = [];
-  var videoIdx     = 0;
-  var ytPlayer     = null;
-  var ytAPIReady   = false;
-  var ytPending    = null;   // embed_url to play once API is ready
-  var isVideoMode  = false;
+  var videoQueue  = [];
+  var videoIdx    = 0;
+  var ytPlayer    = null;
+  var ytAPIReady  = false;
+  var ytPending   = null;
+  var isVideoMode = false;
+  var _vidProgInterval = null;
   var exitHideTimer = null;
   var STORE_V = 'cp_video_state';
-  var _pendingStartSeconds = 0;  // timestamp to resume after Turbo nav
-  var exitBtn  = document.getElementById('cp-video-exit');
+  var _pendingStartSeconds = 0;
+  var exitBtn = document.getElementById('cp-video-exit');
 
-  // ── Load YouTube IFrame API once ──
+  var _videoInExpanded   = false;
+  var _vPanelOrigParent  = null;
+  var _vPanelOrigNextSib = null;
+  var _savedWrapPadding  = null;
+
+  // Move #cp-video-panel into #cp-exp-art-video (no second YT instance, no z-index fights)
+  function _enterExpandedVideo() {
+    if (_videoInExpanded) return;
+    var artVideo = document.getElementById('cp-exp-art-video');
+    var vPanel   = document.getElementById('cp-video-panel');
+    if (!artVideo || !vPanel) return;
+    _vPanelOrigParent  = vPanel.parentNode;
+    _vPanelOrigNextSib = vPanel.nextSibling;
+    artVideo.appendChild(vPanel);
+    vPanel.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column';
+    var iw = document.getElementById('cp-video-iframe-wrap');
+    if (iw) iw.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;padding-bottom:0';
+    artVideo.style.display = 'block';
+    _videoInExpanded = true;
+    var tc = document.getElementById('cp-video-title-card');
+    var ex = document.getElementById('cp-video-exit');
+    if (tc) tc.style.display = 'none';
+    if (ex) ex.style.display = 'none';
+    var vb = document.getElementById('cp-exp-video-btn');
+    if (vb) vb.classList.add('active');
+    var ag = document.getElementById('cp-exp-art-grad');
+    var ai = document.getElementById('cp-exp-art-img');
+    if (ag) ag.style.display = 'none';
+    if (ai) ai.style.display = 'none';
+  }
+
+  // Move #cp-video-panel back to its original location in #cp-player
+  function _exitExpandedVideo() {
+    if (!_videoInExpanded) return;
+    _videoInExpanded = false;
+    var artVideo = document.getElementById('cp-exp-art-video');
+    var vPanel   = document.getElementById('cp-video-panel');
+    if (vPanel && _vPanelOrigParent) {
+      if (_vPanelOrigNextSib && _vPanelOrigNextSib.parentNode === _vPanelOrigParent) {
+        _vPanelOrigParent.insertBefore(vPanel, _vPanelOrigNextSib);
+      } else {
+        _vPanelOrigParent.appendChild(vPanel);
+      }
+    }
+    if (vPanel) vPanel.style.cssText = '';
+    var iw = document.getElementById('cp-video-iframe-wrap');
+    if (iw) { iw.style.cssText = ''; if (_savedWrapPadding) iw.style.paddingBottom = _savedWrapPadding; }
+    if (artVideo) artVideo.style.display = 'none';
+    _vPanelOrigParent = null; _vPanelOrigNextSib = null;
+    var tc = document.getElementById('cp-video-title-card');
+    var ex = document.getElementById('cp-video-exit');
+    if (tc) tc.style.display = '';
+    if (ex) ex.style.display = '';
+    var vb = document.getElementById('cp-exp-video-btn');
+    if (vb) vb.classList.remove('active');
+    if (window.cpExp && window.cpExp.onVideoExit) window.cpExp.onVideoExit();
+  }
+
   function loadYTAPI() {
     if (window.YT && window.YT.Player) { ytAPIReady = true; return; }
     if (document.getElementById('cp-yt-api-script')) return;
@@ -492,7 +689,6 @@
     document.head.appendChild(s);
   }
 
-  // Chain with any existing onYouTubeIframeAPIReady (e.g. _embeds.html uploads player)
   var _prevYtReady = window.onYouTubeIframeAPIReady;
   window.onYouTubeIframeAPIReady = function() {
     ytAPIReady = true;
@@ -500,40 +696,49 @@
     if (typeof _prevYtReady === 'function') _prevYtReady();
   };
 
-  // ── Rebuild the iframe container (shared by YouTube and Twitch) ──
   function _resetWrap() {
     var wrap = document.getElementById('cp-video-iframe-wrap');
     if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
     wrap.innerHTML = '';
-    var ph = document.createElement('div');
-    ph.id = 'cp-yt-placeholder';
+    wrap.style.paddingBottom = ''; // reset aspect ratio to CSS default (56.25%)
+    var ph = document.createElement('div'); ph.id = 'cp-yt-placeholder';
     wrap.appendChild(ph);
     ytWrap = ph;
   }
 
-  // ── YouTube player (YT IFrame API — needed for onEnded auto-advance) ──
   function createYTPlayer(videoId) {
     _resetWrap();
     var startAt = _pendingStartSeconds || 0;
     _pendingStartSeconds = 0;
     ytPlayer = new YT.Player('cp-yt-placeholder', {
       videoId: videoId,
-      playerVars: { autoplay:1, rel:0, modestbranding:1, playsinline:1, controls:1, start: startAt },
+      playerVars: { autoplay:1, rel:0, modestbranding:1, playsinline:1, controls:0, start: startAt },
       events: {
+        onReady: function() {
+          // Adapt video panel aspect ratio to actual video dimensions
+          try {
+            var iframe = ytPlayer.getIframe();
+            var vw = iframe.videoWidth  || 0;
+            var vh = iframe.videoHeight || 0;
+            if (!vw || !vh) return;
+            _savedWrapPadding = (vh / vw * 100) + '%';
+            var wrap = document.getElementById('cp-video-iframe-wrap');
+            if (wrap && !_videoInExpanded) wrap.style.paddingBottom = _savedWrapPadding;
+          } catch(e) {}
+        },
         onStateChange: function(e) {
-          if (e.data === YT.PlayerState.ENDED) { nextVideo(); }
-          var playBtn = document.getElementById('cp-play');
-          if (playBtn) playBtn.textContent = (e.data === YT.PlayerState.PLAYING) ? '⏸' : '▶';
+          if (e.data === YT.PlayerState.ENDED) nextVideo();
+          var pb = document.getElementById('cp-play');
+          if (pb) pb.textContent = (e.data === YT.PlayerState.PLAYING) ? '⏸' : '▶';
         },
         onError: function() { nextVideo(); },
       },
     });
   }
 
-  // ── Twitch player — plain iframe (no JS API needed; live streams don't end) ──
   function createTwitchPlayer(embedUrl) {
     _resetWrap();
-    ytPlayer = null;  // no YT player in Twitch mode
+    ytPlayer = null;
     var iframe = document.createElement('iframe');
     iframe.src = embedUrl;
     iframe.allow = 'autoplay; fullscreen';
@@ -546,91 +751,48 @@
     if (!videoQueue.length) return;
     videoIdx = ((idx % videoQueue.length) + videoQueue.length) % videoQueue.length;
     var v = videoQueue[videoIdx];
-
     var isLive   = v.is_live;
     var isTwitch = v.source_type === 'twitch_live' || v.source_type === 'twitch_vod';
-
-    // ── Update title card lower-third ──
     if (titleCard)  titleCard.textContent  = v.title  || '—';
-    if (artistCard) {
-      artistCard.textContent = v.artist || '';
-      artistCard.href = v.source_url || '#';
-    }
+    if (artistCard) { artistCard.textContent = v.artist || ''; artistCard.href = v.source_url || '#'; }
     if (showSoon) {
       var showIt = !isLive && v.has_show_soon;
       showSoon.style.display = showIt ? 'inline-block' : 'none';
       if (showIt && v.show_soon_event_slug) {
         var _slug = v.show_soon_event_slug;
         showSoon.href = '/events/' + _slug + '/';
-        showSoon.removeAttribute('target');
-        showSoon.removeAttribute('rel');
+        showSoon.removeAttribute('target'); showSoon.removeAttribute('rel');
         showSoon.onclick = function(e) {
-          // On the map/events page: stay in place, snap rotator + pan map
           var onMapPage = !!document.querySelector('.hybrid-wrap');
-          if (onMapPage && window.cpRotatorFocus && window.cpRotatorFocus(_slug)) {
-            e.preventDefault();
-          }
-          // Off map page: let Turbo navigate normally
+          if (onMapPage && window.cpRotatorFocus && window.cpRotatorFocus(_slug)) e.preventDefault();
         };
-      } else {
-        showSoon.href = '#';
-        showSoon.removeAttribute('target');
-        showSoon.onclick = null;
-      }
+      } else { showSoon.href = '#'; showSoon.removeAttribute('target'); showSoon.onclick = null; }
     }
-
-    // Badge in title card
     var badge = document.getElementById('cp-ch-badge-card');
     if (badge) badge.textContent = isLive ? '🔴 LIVE' : 'CH 4';
-
-    // LIVE badge in footer
     if (liveBadge) liveBadge.style.display = isLive ? 'inline-flex' : 'none';
-
-    // ── Update footer track info ──
     var titleEl  = document.getElementById('cp-title');
     var artistEl = document.getElementById('cp-artist');
-    if (titleEl) {
-      titleEl.textContent = v.title;
-      titleEl.href   = v.source_url || '#';
-      titleEl.target = '_blank';  // open in new tab — keep user on current page
-      titleEl.rel    = 'noopener noreferrer';
-    }
-    if (artistEl) {
-      artistEl.textContent = v.artist || '';
-      artistEl.href = v.source_url || '#';
-    }
-
-    // ── Hide play button for live streams (no pause/seek) ──
-    var playBtn = document.getElementById('cp-play');
-    if (playBtn) playBtn.style.display = isLive ? 'none' : 'flex';
-
-    // Save state
+    if (titleEl)  { titleEl.textContent  = v.title; titleEl.href = v.source_url || '#'; titleEl.target = '_blank'; titleEl.rel = 'noopener noreferrer'; }
+    if (artistEl) { artistEl.textContent = v.artist || ''; artistEl.href = v.source_url || '#'; }
+    var pb = document.getElementById('cp-play');
+    if (pb) pb.style.display = isLive ? 'none' : 'flex';
+    // Push title/artist/meta into expanded player
+    if (window.cpExp && window.cpExp.onVideoPlay) window.cpExp.onVideoPlay(v.title, v.artist || '', isLive);
     try { sessionStorage.setItem(STORE_V, JSON.stringify({idx: videoIdx})); } catch(e){}
-
-    if (isTwitch) {
-      createTwitchPlayer(v.embed_url);
-      return;
-    }
-
-    // YouTube path
-    // Extract raw video ID from embed_url for YT.Player API
+    if (isTwitch) { createTwitchPlayer(v.embed_url); return; }
     var ytMatch = v.embed_url.match(/embed\/([^?]+)/);
     var ytId    = ytMatch ? ytMatch[1] : v.video_id;
-
     if (!ytAPIReady) { ytPending = ytId; return; }
     if (ytPlayer && ytPlayer.loadVideoById) {
-      var startAt = _pendingStartSeconds || 0;
-      _pendingStartSeconds = 0;
+      var startAt = _pendingStartSeconds || 0; _pendingStartSeconds = 0;
       ytPlayer.loadVideoById({ videoId: ytId, startSeconds: startAt });
-    } else {
-      createYTPlayer(ytId);
-    }
+    } else { createYTPlayer(ytId); }
   }
 
   function nextVideo() { playVideo(videoIdx + 1); }
   function prevVideo() { playVideo(videoIdx - 1); }
 
-  // ── TV static flash effect ──
   function staticFlash(cb) {
     var el = document.createElement('div');
     el.className = 'cp-static-flash';
@@ -638,7 +800,6 @@
     setTimeout(function(){ el.remove(); if (cb) cb(); }, 380);
   }
 
-  // ── Wiggle-to-show exit button ──
   function showExitHint() {
     if (!isVideoMode || !exitBtn) return;
     exitBtn.classList.add('vis');
@@ -647,179 +808,136 @@
   }
   document.addEventListener('mousemove', showExitHint);
   document.addEventListener('touchstart', showExitHint, {passive: true});
-  if (exitBtn) {
-    exitBtn.addEventListener('click', function(){
-      staticFlash(leaveVideoMode);
-    });
-  }
+  if (exitBtn) exitBtn.addEventListener('click', function(){ staticFlash(leaveVideoMode); });
 
-  // ── Enter / leave video mode ──
   function enterVideoMode() {
     if (isVideoMode) return;
     isVideoMode = true;
     try { sessionStorage.removeItem('cp_video_off'); } catch(e){}
-
-    // Pause audio
     if (window.cpAudio) { try { window.cpAudio.pause(); } catch(e){} }
-
-    // Show panel + flip footer
     panel.classList.add('active');
-    if (footerBar) {
-      footerBar.style.display = 'flex';
-      footerBar.classList.add('video-mode');
-      document.body.classList.add('has-player');
-    }
-    // Keep label visible — change text to signal "click to exit"
-    if (chLabel) { chLabel.textContent = '📺 ✕'; }
-
-    // Brief exit hint so user knows about the wiggle mechanic
+    var artPanel = document.getElementById('cp-art-panel');
+    if (artPanel) artPanel.style.display = 'none';
+    if (footerBar) { footerBar.style.display = 'flex'; footerBar.classList.add('video-mode'); document.body.classList.add('has-player'); }
+    if (chLabel) chLabel.textContent = '📺 ✕';
     setTimeout(showExitHint, 400);
-
-    // Wire footer controls to video
-    var playBtn = document.getElementById('cp-play');
-    var prevBtn = document.getElementById('cp-prev');
-    var nextBtn = document.getElementById('cp-next');
-    if (playBtn) playBtn.onclick = function(){
-      if (!ytPlayer) return;
-      var state = ytPlayer.getPlayerState ? ytPlayer.getPlayerState() : -1;
-      if (state === 1) { ytPlayer.pauseVideo(); playBtn.textContent = '▶'; }
-      else { ytPlayer.playVideo(); playBtn.textContent = '⏸'; }
-    };
-    if (prevBtn) prevBtn.onclick = prevVideo;
-    if (nextBtn) nextBtn.onclick = nextVideo;
-
-    // Fetch queue if empty, then play
+    var pb   = document.getElementById('cp-play');
+    var prvB = document.getElementById('cp-prev');
+    var nxtB = document.getElementById('cp-next');
+    if (pb)   pb.onclick   = function(){ if (!ytPlayer) return; var st = ytPlayer.getPlayerState ? ytPlayer.getPlayerState() : -1; if (st === 1) { ytPlayer.pauseVideo(); pb.textContent = '▶'; } else { ytPlayer.playVideo(); pb.textContent = '⏸'; } };
+    if (prvB) prvB.onclick = prevVideo;
+    if (nxtB) nxtB.onclick = nextVideo;
+    function _afterEnterVideo() {
+      // Always move video into expanded art area; open expanded panel if needed
+      _enterExpandedVideo();
+      if (window.cpExp && window.cpExp.open && !window.cpExp.isOpen()) {
+        window.cpExp.open();
+      }
+      // Poll YT progress → expanded seek bar
+      clearInterval(_vidProgInterval);
+      _vidProgInterval = setInterval(function() {
+        if (!isVideoMode || !ytPlayer) return;
+        var cur = 0, dur = 0;
+        try { cur = ytPlayer.getCurrentTime() || 0; } catch(e){}
+        try { dur = ytPlayer.getDuration()    || 0; } catch(e){}
+        if (window.cpExp && window.cpExp.onProgress) window.cpExp.onProgress(cur, dur);
+      }, 1000);
+    }
     if (!videoQueue.length) {
       fetch('/api/videos/').then(function(r){ return r.json(); }).then(function(d){
         videoQueue = d.videos || [];
         if (!videoQueue.length) { leaveVideoMode(); return; }
-        // Restore position
-        try {
-          var saved = JSON.parse(sessionStorage.getItem(STORE_V) || 'null');
-          if (saved && saved.idx < videoQueue.length) videoIdx = saved.idx;
-        } catch(e){}
-        loadYTAPI();
-        playVideo(videoIdx);
+        try { var sv = JSON.parse(sessionStorage.getItem(STORE_V) || 'null'); if (sv && sv.idx < videoQueue.length) videoIdx = sv.idx; } catch(e){}
+        loadYTAPI(); playVideo(videoIdx); _afterEnterVideo();
       }).catch(function(){ leaveVideoMode(); });
-    } else {
-      loadYTAPI();
-      playVideo(videoIdx);
-    }
+    } else { loadYTAPI(); playVideo(videoIdx); _afterEnterVideo(); }
   }
 
   function leaveVideoMode() {
     if (!isVideoMode) return;
     isVideoMode = false;
-    // Remember that the user explicitly stopped video — prevent Turbo nav from restoring it
+    clearInterval(_vidProgInterval);
     try { sessionStorage.setItem('cp_video_off', '1'); } catch(e){}
-
+    if (_videoInExpanded) _exitExpandedVideo();
     panel.classList.remove('active');
     if (footerBar) footerBar.classList.remove('video-mode');
-    // Restore label text
-    if (chLabel) { chLabel.textContent = '📺 VIDEO'; chLabel.style.display = 'inline-block'; }
-    if (exitBtn) { exitBtn.classList.remove('vis'); }
-
-    // Pause video player
+    if (chLabel)  { chLabel.textContent = '📺 VIDEO'; chLabel.style.display = 'inline-block'; }
+    if (exitBtn)  exitBtn.classList.remove('vis');
     if (ytPlayer && ytPlayer.pauseVideo) { try { ytPlayer.pauseVideo(); } catch(e){} }
-
-    // Restore audio controls
-    var playBtn = document.getElementById('cp-play');
-    var prevBtn = document.getElementById('cp-prev');
-    var nextBtn = document.getElementById('cp-next');
+    var pb   = document.getElementById('cp-play');
+    var prvB = document.getElementById('cp-prev');
+    var nxtB = document.getElementById('cp-next');
     var cpAudio = window.cpAudio;
-    if (playBtn) { playBtn.style.display = 'flex'; playBtn.textContent = (cpAudio && !cpAudio.paused) ? '⏸' : '▶'; }
-    if (prevBtn) prevBtn.onclick = null;
-    if (nextBtn) nextBtn.onclick = null;
+    if (pb)   { pb.style.display = 'flex'; pb.textContent = (cpAudio && !cpAudio.paused) ? '⏸' : '▶'; pb.onclick = null; }
+    if (prvB) prvB.onclick = null;
+    if (nxtB) nxtB.onclick = null;
+    // Sync expanded player play button
+    if (window.cpExp && window.cpExp.onPlayState) window.cpExp.onPlayState(cpAudio && !cpAudio.paused);
+    // Restore audio art panel
+    var t = (window._cpTracks || [])[window._cpCurrent || 0];
+    var artPanel = document.getElementById('cp-art-panel');
+    var artImg   = document.getElementById('cp-art-img');
+    var artFb    = artPanel ? artPanel.querySelector('.cp-art-fallback') : null;
+    if (artPanel) {
+      artPanel.style.display = 'block';
+      artPanel.style.aspectRatio = '1/1';
+      if (t && t.art_url && artImg) {
+        artImg.src = t.art_url;
+        artImg.style.display = 'block';
+        if (artFb) artFb.style.display = 'none';
+      } else {
+        if (artImg) artImg.style.display = 'none';
+        if (artFb) artFb.style.display = 'flex';
+      }
+    }
   }
 
-  // ── Wire VIDEO label in footer ──
   if (chLabel) {
-    chLabel.addEventListener('click', function(e) {
+    chLabel.addEventListener('click', function(e){
       e.stopPropagation();
-      staticFlash(function(){
-        if (isVideoMode) { leaveVideoMode(); }
-        else { enterVideoMode(); }
-      });
+      staticFlash(function(){ if (isVideoMode) leaveVideoMode(); else enterVideoMode(); });
     });
   }
 
-  // ── Wire VIDEO channel in the genre popup ──
-  // Called by the audio IIFE's buildChannels after it renders — we inject a VIDEO btn
-  var _origBuildChannels = null;
-  // Patch: after cpInitialized runs, decorate buildChannels
-  // We do this by checking periodically until it's available, then patching once
-  function patchChannelMenu() {
-    var channels = document.getElementById('cp-channels');
-    if (!channels) return;
-    // Add VIDEO button at the end of the channel popup
-    var existing = channels.querySelector('[data-cp-video-btn]');
+  var _channelObs = new MutationObserver(function(){
+    var ch = document.getElementById('cp-channels');
+    if (!ch) return;
+    var existing = ch.querySelector('[data-cp-video-btn]');
     if (existing) return;
-
     var btn = document.createElement('button');
     btn.className = 'cp-ch';
     btn.dataset.cpVideoBtn = '1';
     btn.textContent = '📺 VIDEO';
     btn.style.cssText = 'border-color:#ff6b35;color:#ff6b35';
     btn.onclick = function(){
-      channels.classList.remove('open');
+      ch.classList.remove('open');
       var toggle = document.getElementById('cp-ch-toggle');
       if (toggle) toggle.classList.remove('open');
-      staticFlash(enterVideoMode);
+      staticFlash(isVideoMode ? leaveVideoMode : enterVideoMode);
     };
-    channels.appendChild(btn);
-  }
-
-  // Observe channel popup so we can inject VIDEO button after buildChannels runs
-  var _channelObs = new MutationObserver(function(){ patchChannelMenu(); });
+    ch.appendChild(btn);
+  });
   var channelEl = document.getElementById('cp-channels');
   if (channelEl) _channelObs.observe(channelEl, {childList: true});
 
-  // Show the VIDEO label once the player first shows, unless in video mode (already shown)
   function _syncVideoLabel() {
     if (!footerBar || footerBar.style.display === 'none' || !chLabel) return;
-    if (isVideoMode) {
-      // Keep the exit label visible; ensure panel state is correct
-      chLabel.textContent = '📺 ✕';
-      chLabel.style.display = 'inline-block';
-    } else {
-      // If user explicitly stopped video, make sure panel is off
-      var userStopped = false;
-      try { userStopped = sessionStorage.getItem('cp_video_off') === '1'; } catch(e){}
-      if (userStopped && panel.classList.contains('active')) {
-        panel.classList.remove('active');
-        if (footerBar) footerBar.classList.remove('video-mode');
-      }
-      chLabel.textContent = '📺 VIDEO';
-      chLabel.style.display = 'inline-block';
+    if (isVideoMode) { chLabel.textContent = '📺 ✕'; chLabel.style.display = 'inline-block'; return; }
+    var userStopped = false;
+    try { userStopped = sessionStorage.getItem('cp_video_off') === '1'; } catch(e){}
+    if (userStopped && panel.classList.contains('active')) {
+      panel.classList.remove('active');
+      if (footerBar) footerBar.classList.remove('video-mode');
     }
+    chLabel.textContent = '📺 VIDEO'; chLabel.style.display = 'inline-block';
   }
-  // ── Video continuity across Turbo navigation ─────────────────────────────
-  // Chrome reloads cross-origin iframes whenever they are detached from the
-  // document — even briefly. Turbo's permanent-element transplant detaches
-  // #cp-player during the body swap, so the YouTube iframe always reloads.
-  //
-  // Strategy: accept the reload; save position before the swap and recreate
-  // the player from the saved state so playback resumes at the right spot.
-  // The brief loading gap (~1-2 s) is preferable to restarting from 0.
 
   document.addEventListener('turbo:before-render', function() {
     if (!isVideoMode) return;
-    // Save current playhead position
     var t = 0;
-    if (ytPlayer) {
-      try { t = Math.floor(ytPlayer.getCurrentTime() || 0); } catch(e) {}
-    }
-    try {
-      sessionStorage.setItem('cp_video_nav', JSON.stringify({
-        wasPlaying: true,
-        idx: videoIdx,
-        startSeconds: t
-      }));
-    } catch(e) {}
-    // Null out ytPlayer so turbo:load knows the player needs to be rebuilt.
-    // (The iframe will reload when Turbo transplants the permanent element.)
-    isVideoMode = false;
-    ytPlayer = null;
+    if (ytPlayer) { try { t = Math.floor(ytPlayer.getCurrentTime() || 0); } catch(e){} }
+    try { sessionStorage.setItem('cp_video_nav', JSON.stringify({wasPlaying: true, idx: videoIdx, startSeconds: t})); } catch(e){}
+    isVideoMode = false; ytPlayer = null;
   });
 
   document.addEventListener('turbo:load', function() {
@@ -829,12 +947,9 @@
         sessionStorage.removeItem('cp_video_nav');
         videoIdx = nav.idx || 0;
         _pendingStartSeconds = nav.startSeconds || 0;
-        // isVideoMode is false, ytPlayer is null → enterVideoMode → createYTPlayer
-        // with start: _pendingStartSeconds so video resumes at saved position.
-        enterVideoMode();
-        return;
+        enterVideoMode(); return;
       }
-    } catch(e) {}
+    } catch(e){}
     _syncVideoLabel();
   });
   _syncVideoLabel();
@@ -842,16 +957,7 @@
   if (footerBar) _playerObs.observe(footerBar, {attributes: true, attributeFilter: ['style']});
 
   function _makeVQItem(it) {
-    return {
-      video_id:    it.video_id,
-      embed_url:   'https://www.youtube.com/embed/' + it.video_id,
-      title:       it.title  || '—',
-      artist:      it.artist || '',
-      source_url:  it.source_url || ('https://www.youtube.com/watch?v=' + it.video_id),
-      is_live:     false,
-      has_show_soon: false,
-      source_type: 'youtube',
-    };
+    return { video_id: it.video_id, embed_url: 'https://www.youtube.com/embed/' + it.video_id, title: it.title || '—', artist: it.artist || '', source_url: it.source_url || ('https://www.youtube.com/watch?v=' + it.video_id), is_live: false, has_show_soon: false, source_type: 'youtube' };
   }
 
   window.cpVideo = {
@@ -859,24 +965,38 @@
     leave: leaveVideoMode,
     next:  nextVideo,
     prev:  prevVideo,
-    // Load a single video into the player and play it immediately
+    isActive: function() { return isVideoMode; },
+    togglePlay: function() {
+      if (!ytPlayer || !ytPlayer.getPlayerState) return;
+      var st = ytPlayer.getPlayerState();
+      if (st === 1 /* PLAYING */) ytPlayer.pauseVideo();
+      else ytPlayer.playVideo();
+    },
     load: function(videoId, title, artist, sourceUrl) {
       if (!videoId) return;
       videoQueue = [_makeVQItem({video_id: videoId, title: title, artist: artist, source_url: sourceUrl})];
       videoIdx   = 0;
       if (window.cpAudio && !window.cpAudio.paused) window.cpAudio.pause();
-      enterVideoMode();
-      playVideo(0);
+      enterVideoMode(); playVideo(0);
     },
-    // Load an array of {video_id, title, artist} and play from startIdx (default 0)
     queue: function(items, startIdx) {
       if (!items || !items.length) return;
       videoQueue = items.map(_makeVQItem);
       videoIdx   = startIdx || 0;
       if (window.cpAudio && !window.cpAudio.paused) window.cpAudio.pause();
-      enterVideoMode();
-      playVideo(videoIdx);
+      enterVideoMode(); playVideo(videoIdx);
     },
+    seekTo: function(pct) {
+      if (!ytPlayer || !ytPlayer.getDuration) return;
+      var dur = ytPlayer.getDuration() || 0;
+      if (dur > 0) ytPlayer.seekTo(pct * dur, true);
+    },
+    enterExpanded:    _enterExpandedVideo,
+    exitExpanded:     _exitExpandedVideo,
+    isVideoInExpanded: function() { return _videoInExpanded; },
+    getQueue:         function() { return videoQueue; },
+    getCurrentIdx:    function() { return videoIdx; },
+    playAt:           function(idx) { playVideo(idx); },
   };
 })();
 
@@ -884,9 +1004,9 @@
 (function(){
   if (window.cpCollapserInit) return;
   window.cpCollapserInit = true;
-  var btn      = document.getElementById('cp-collapser');
-  var player   = document.getElementById('cp-player');
-  var trackSpan= document.getElementById('cp-collapse-track');
+  var btn       = document.getElementById('cp-collapser');
+  var player    = document.getElementById('cp-player');
+  var trackSpan = document.getElementById('cp-collapse-track');
   if (!btn || !player) return;
   var collapsed = false;
   try { collapsed = sessionStorage.getItem('cp_collapsed') === '1'; } catch(e){}
@@ -896,7 +1016,6 @@
     player.classList.toggle('collapsed', collapsed);
     try { sessionStorage.setItem('cp_collapsed', collapsed ? '1' : '0'); } catch(e){}
     if (window.cpUpdateEventPanelOffset) window.cpUpdateEventPanelOffset();
-    // Snap map back to Portland overview on collapse — only when autopilot is not routing
     if (collapsed && !window._cpCycling && window.map) {
       try { window.map.setView([45.5051, -122.6750], 12, {animate:true, duration:0.8}); } catch(e){}
     }
@@ -906,9 +1025,7 @@
     if (el && trackSpan) trackSpan.textContent = el.textContent || '';
   }
   var ti = document.getElementById('cp-track-inner');
-  if (ti && window.MutationObserver) {
-    new MutationObserver(syncTitle).observe(ti, {childList:true, subtree:true, characterData:true});
-  }
+  if (ti && window.MutationObserver) new MutationObserver(syncTitle).observe(ti, {childList:true, subtree:true, characterData:true});
   window.cpSyncCollapseTitle = syncTitle;
   syncTitle();
 })();
@@ -950,12 +1067,9 @@
       erLinks.appendChild(a);
     }
     if (flash) {
-      erCard.classList.remove('artist-show');
-      void erCard.offsetWidth;
-      erCard.classList.add('artist-show');
+      erCard.classList.remove('artist-show'); void erCard.offsetWidth; erCard.classList.add('artist-show');
       setTimeout(function(){ erCard.classList.remove('artist-show'); }, 2200);
     }
-    // Pan map to event location — only when autopilot routing is not active
     if (!window._cpCycling && window.map && ev.latitude && ev.longitude) {
       try { window.map.setView([ev.latitude, ev.longitude], 14, {animate:true, duration:1.0}); } catch(e){}
     }
@@ -973,12 +1087,7 @@
       for (var i = 0; i < events.length; i++) {
         var t = (events[i].title || '').toLowerCase();
         var match = t.includes(norm) || words.some(function(w){ return t.includes(w); });
-        if (match) {
-          var m = events.splice(i, 1)[0];
-          events.unshift(m);
-          flashFirst = true;
-          break;
-        }
+        if (match) { var m = events.splice(i, 1)[0]; events.unshift(m); flashFirst = true; break; }
       }
     }
     rotator.style.display = '';
@@ -1001,36 +1110,568 @@
   window.cpRotatorLoad = load;
   window.cpRotatorTryLoad = tryLoad;
   window.cpRotatorShowSlug = function(slug) {
-    for (var i = 0; i < events.length; i++) {
-      if (events[i].slug === slug) { showCard(i, false); return; }
-    }
+    for (var i = 0; i < events.length; i++) { if (events[i].slug === slug) { showCard(i, false); return; } }
   };
-  // Focus an event by slug: snap rotator, expand detail panel, show rotator
   window.cpRotatorFocus = function(slug) {
     for (var i = 0; i < events.length; i++) {
       if (events[i].slug === slug) {
-        rotator.style.display = '';
-        showCard(i, true);
-        expanded = true;
-        if (erDetail) erDetail.classList.add('open');
-        return true;
+        rotator.style.display = ''; showCard(i, true);
+        expanded = true; if (erDetail) erDetail.classList.add('open'); return true;
       }
     }
     return false;
   };
 
-  // Re-check artist when track changes
   var aArtistEl = document.getElementById('cp-artist');
   if (aArtistEl && window.MutationObserver) {
     new MutationObserver(function(){ if (window.cpEventsList && window.cpEventsList.length) tryLoad(); })
       .observe(aArtistEl, {childList:true, characterData:true, subtree:true});
   }
-
   if (erPrev) erPrev.addEventListener('click', function(e){ e.stopPropagation(); showCard(idx - 1); });
   if (erNext) erNext.addEventListener('click', function(e){ e.stopPropagation(); showCard(idx + 1); });
-  if (erCard) erCard.addEventListener('click', function(){
-    expanded = !expanded;
-    erDetail.classList.toggle('open', expanded);
+  if (erCard) erCard.addEventListener('click', function(){ expanded = !expanded; erDetail.classList.toggle('open', expanded); });
+})();
+
+// ── Expanded Player (Plexamp-style) ──────────────────────────────────────────
+(function(){
+  if (window.cpExpInit) return;
+  window.cpExpInit = true;
+
+  var panel      = document.getElementById('cp-expanded');
+  var expSeek    = document.getElementById('cp-exp-seek');
+  var expFill    = document.getElementById('cp-exp-seek-fill');
+  var curEl      = document.getElementById('cp-exp-cur');
+  var durEl      = document.getElementById('cp-exp-dur');
+  var titleEl    = document.getElementById('cp-exp-title');
+  var artistEl   = document.getElementById('cp-exp-artist');
+  var metaEl     = document.getElementById('cp-exp-meta');
+  var artGrad    = document.getElementById('cp-exp-art-grad');
+  var artImg     = document.getElementById('cp-exp-art-img');
+  var artInit    = document.getElementById('cp-exp-art-init');
+  var playBtn    = document.getElementById('cp-exp-play');
+  var prevBtn    = document.getElementById('cp-exp-prev');
+  var nextBtn    = document.getElementById('cp-exp-next');
+  var shuffleBtn = document.getElementById('cp-exp-shuffle');
+  var repeatBtn  = document.getElementById('cp-exp-repeat');
+  var muteBtn    = document.getElementById('cp-exp-mute');
+  var volSlide   = document.getElementById('cp-exp-vol');
+  var videoBtn   = document.getElementById('cp-exp-video-btn');
+  var qList      = document.getElementById('cp-exp-q-list');
+  var qCount     = document.getElementById('cp-exp-q-count');
+  var chStrip    = document.getElementById('cp-exp-ch-strip');
+
+  var isOpen = false;
+  var _playerSize = 'mini'; // 'mini' | 'expanded' | 'fullscreen'
+
+  function _updateSizeBtns() {
+    var fab = document.getElementById('cp-fab');
+    if (!fab) return;
+    if (_playerSize === 'fullscreen') { fab.textContent = '⊡'; fab.title = 'Exit fullscreen'; }
+    else if (_playerSize === 'expanded') { fab.textContent = '⛶'; fab.title = 'Fullscreen'; }
+    else                              { fab.textContent = '⛶'; fab.title = 'Open player'; }
+  }
+
+  function cyclePlayerSize() {
+    if (!isOpen) {
+      open();                  // mini → expanded
+    } else if (!panel.classList.contains('cp-exp-fs')) {
+      _playerSize = 'fullscreen';
+      panel.classList.add('cp-exp-fs');
+      document.body.style.overflow = 'hidden';
+      if (panel.requestFullscreen) panel.requestFullscreen().catch(function(){});
+      _updateSizeBtns();       // expanded → fullscreen
+    } else {
+      close();                 // fullscreen → mini
+    }
+  }
+
+  function _videoIsInExpanded() {
+    return !!(window.cpVideo && window.cpVideo.isVideoInExpanded && window.cpVideo.isVideoInExpanded());
+  }
+
+  // ── Audio visualizer ──
+  var _visCtx = null, _visAnalyser = null, _visRaf = null, _visSource = null, _visInit = false;
+
+  function _initVisualizer() {
+    if (_visInit) return;
+    var audio = window.cpAudio;
+    if (!audio) return;
+    try {
+      var actx = new (window.AudioContext || window.webkitAudioContext)();
+      _visAnalyser = actx.createAnalyser();
+      _visAnalyser.fftSize = 512;
+      _visAnalyser.smoothingTimeConstant = 0.8;
+      _visSource = actx.createMediaElementSource(audio);
+      _visSource.connect(_visAnalyser);
+      _visAnalyser.connect(actx.destination);
+      _visInit = true;
+    } catch(e) { _visInit = true; /* no Web Audio */ }
+  }
+
+  function _startVisualizer(colors) {
+    var canvas = document.getElementById('cp-exp-canvas');
+    if (!canvas || !_visAnalyser) return;
+    if (_visRaf) return; // already running
+    canvas.style.display = 'block';
+    _visCtx = canvas.getContext('2d');
+    var c1 = colors ? colors[0] : '#4a0f82';
+    var c2 = colors ? colors[1] : '#0c0830';
+    var data = new Uint8Array(_visAnalyser.frequencyBinCount);
+    function draw() {
+      _visRaf = requestAnimationFrame(draw);
+      var w = canvas.width = canvas.offsetWidth;
+      var h = canvas.height = canvas.offsetHeight;
+      _visCtx.clearRect(0, 0, w, h);
+      _visAnalyser.getByteFrequencyData(data);
+      var bars = 48;
+      var bw = w / bars - 1;
+      for (var i = 0; i < bars; i++) {
+        var di = Math.floor(i * data.length / bars);
+        var bh = (data[di] / 255) * h * 0.85;
+        var pct = i / bars;
+        // interpolate c1→c2
+        _visCtx.fillStyle = 'rgba(255,255,255,0.15)';
+        _visCtx.fillRect(i * (bw + 1), h - bh, bw, bh);
+      }
+    }
+    draw();
+  }
+
+  function _stopVisualizer() {
+    if (_visRaf) { cancelAnimationFrame(_visRaf); _visRaf = null; }
+    var canvas = document.getElementById('cp-exp-canvas');
+    if (canvas) { canvas.style.display = 'none'; if (_visCtx) _visCtx.clearRect(0, 0, canvas.width, canvas.height); }
+  }
+
+  // Genre → dark gradient colors
+  var GP = {
+    'techno':      ['#4a0f82','#0c0830'],
+    'house':       ['#821028','#2e0818'],
+    'deep house':  ['#0f3a82','#080c2e'],
+    'ambient':     ['#0f8255','#081e12'],
+    'jazz':        ['#825c0f','#2e1e08'],
+    'soul':        ['#82350f','#2e1408'],
+    'hip hop':     ['#1a820f','#082e08'],
+    'rap':         ['#1a820f','#082e08'],
+    'drum':        ['#82200f','#2e0808'],
+    'electronic':  ['#280f82','#080830'],
+    'experimental':['#5f820f','#1c2e08'],
+    'punk':        ['#820f0f','#2e0808'],
+    'metal':       ['#3a3a3a','#141414'],
+  };
+
+  function genreColors(genre) {
+    var g = (genre || '').toLowerCase();
+    for (var k in GP) { if (g.includes(k)) return GP[k]; }
+    // hash fallback
+    var h = 0;
+    for (var i = 0; i < g.length; i++) h = (h * 31 + g.charCodeAt(i)) | 0;
+    var hue = Math.abs(h) % 360;
+    return ['hsl('+hue+',55%,12%)', 'hsl('+((hue+40)%360)+',45%,6%)'];
+  }
+
+  function fmtTime(s) {
+    if (!s || isNaN(s) || s < 0) return '0:00';
+    var m = Math.floor(s / 60);
+    var sec = Math.floor(s % 60);
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+  }
+
+  function _esc(s) {
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+
+  function open() {
+    if (isOpen) return;
+    isOpen = true;
+    _playerSize = 'expanded';
+    _updateSizeBtns();
+    var ch = document.getElementById('cp-channels');
+    var ct = document.getElementById('cp-ch-toggle');
+    if (ch) ch.classList.remove('open');
+    if (ct) ct.classList.remove('open');
+    panel.classList.add('open');
+    panel.setAttribute('aria-hidden', 'false');
+    syncAll();
+    if (window.cpVideo && window.cpVideo.isActive && window.cpVideo.isActive()) {
+      setTimeout(function(){ if (window.cpVideo && window.cpVideo.enterExpanded) window.cpVideo.enterExpanded(); }, 80);
+    } else {
+      var audio = window.cpAudio;
+      if (audio && !audio.paused) {
+        _initVisualizer();
+        var t = (window._cpTracks || [])[window._cpCurrent || 0];
+        _startVisualizer(t ? genreColors(t.genre || t.artist || '') : null);
+      }
+    }
+    try { sessionStorage.setItem('cp_exp_open','1'); } catch(e){}
+  }
+
+  function close() {
+    if (!isOpen) return;
+    isOpen = false;
+    _stopVisualizer();
+    if (window.cpVideo && window.cpVideo.exitExpanded) window.cpVideo.exitExpanded();
+    if (panel.classList.contains('cp-exp-fs')) {
+      panel.classList.remove('cp-exp-fs');
+      document.body.style.overflow = '';
+      if (document.fullscreenElement) document.exitFullscreen().catch(function(){});
+    }
+    panel.classList.remove('open');
+    panel.setAttribute('aria-hidden', 'true');
+    _playerSize = 'mini';
+    _updateSizeBtns();
+    try { sessionStorage.removeItem('cp_exp_open'); } catch(e){}
+  }
+
+  document.addEventListener('fullscreenchange', function(){
+    if (!document.fullscreenElement && panel.classList.contains('cp-exp-fs')) {
+      panel.classList.remove('cp-exp-fs');
+      document.body.style.overflow = '';
+      _playerSize = 'expanded';
+      _updateSizeBtns();
+    }
   });
+
+  function updateArt(artUrl, genre, artist) {
+    var colors = genreColors(genre || artist || '');
+    if (artGrad) artGrad.style.background = 'linear-gradient(135deg,'+colors[0]+' 0%,'+colors[1]+' 100%)';
+    if (artInit) artInit.textContent = (artist || '?').charAt(0).toUpperCase();
+    if (artUrl && artImg) {
+      artImg.onload  = function(){ artImg.style.display = 'block'; if (artGrad) artGrad.style.display = 'none'; };
+      artImg.onerror = function(){ artImg.style.display = 'none'; if (artGrad) artGrad.style.display = 'flex'; };
+      artImg.src = artUrl;
+    } else {
+      if (artImg) { artImg.src = ''; artImg.style.display = 'none'; }
+      if (artGrad) artGrad.style.display = 'flex';
+    }
+  }
+
+  function updateTrackDisplay(title, artist, genre, artUrl) {
+    if (titleEl)  titleEl.textContent  = title  || '—';
+    if (artistEl) artistEl.textContent = artist || '';
+    if (metaEl)   metaEl.textContent   = genre  ? genre.toUpperCase() : '';
+    updateArt(artUrl || '', genre, artist);
+  }
+
+  function updateProgress(cur, dur) {
+    var pct = (dur && !isNaN(dur) && dur > 0) ? (cur / dur * 100) : 0;
+    if (expFill) expFill.style.width = pct + '%';
+    if (curEl)   curEl.textContent   = fmtTime(cur);
+    if (durEl)   durEl.textContent   = (dur && !isNaN(dur) && dur > 0) ? fmtTime(dur) : '—';
+  }
+
+  function updatePlayBtn(playing) {
+    if (playBtn) playBtn.textContent = playing ? '⏸' : '▶';
+  }
+
+  function buildQueue() {
+    if (!qList) return;
+
+    // Video mode: show upcoming video queue with YouTube thumbnails
+    if (_videoIsInExpanded() && window.cpVideo && window.cpVideo.getQueue) {
+      var vq  = window.cpVideo.getQueue();
+      var vi  = window.cpVideo.getCurrentIdx ? window.cpVideo.getCurrentIdx() : 0;
+      if (vq && vq.length) {
+        var total = vq.length;
+        var rem = total - 1;
+        if (qCount) qCount.textContent = rem > 0 ? rem + (rem === 1 ? ' video' : ' videos') : '';
+        qList.innerHTML = '';
+        var shown = Math.min(10, total - 1);
+        for (var i = 1; i <= shown; i++) {
+          var idx = (vi + i) % total;
+          var v   = vq[idx];
+          var row = document.createElement('div');
+          row.className = 'cp-exp-q-item';
+          var artEl = document.createElement('div');
+          artEl.className = 'cp-exp-q-art';
+          artEl.style.background = '#000';
+          if (v.video_id) {
+            var img = document.createElement('img');
+            img.src = 'https://img.youtube.com/vi/' + v.video_id + '/default.jpg';
+            img.alt = ''; img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+            artEl.appendChild(img);
+          } else {
+            artEl.textContent = '📺';
+          }
+          var info = document.createElement('div');
+          info.className = 'cp-exp-q-info';
+          info.innerHTML = '<div class="cp-exp-q-title">'+_esc(v.title||'—')+'</div>'
+                         + '<div class="cp-exp-q-artist">'+_esc(v.artist||'')+'</div>';
+          row.appendChild(artEl); row.appendChild(info);
+          row.addEventListener('click', (function(i){ return function(){ if (window.cpVideo && window.cpVideo.playAt) window.cpVideo.playAt(i); }; })(idx));
+          qList.appendChild(row);
+        }
+        return;
+      }
+    }
+
+    // Audio mode: show upcoming audio tracks
+    var allTracks = window._cpTracks || [];
+    var cur       = window._cpCurrent || 0;
+    if (!allTracks.length) {
+      qList.innerHTML = '<div class="cp-exp-q-empty">No tracks loaded</div>';
+      if (qCount) qCount.textContent = '';
+      return;
+    }
+    var total = allTracks.length;
+    if (qCount) { var rem = total - 1; qCount.textContent = rem > 0 ? rem + (rem === 1 ? ' track' : ' tracks') : ''; }
+    qList.innerHTML = '';
+    var shown = Math.min(10, total - 1);
+    for (var i = 1; i <= shown; i++) {
+      var idx  = (cur + i) % total;
+      var t    = allTracks[idx];
+      var row  = document.createElement('div');
+      row.className = 'cp-exp-q-item';
+      var artEl = document.createElement('div');
+      artEl.className = 'cp-exp-q-art';
+      if (t.art_url) {
+        var img = document.createElement('img'); img.src = t.art_url; img.alt = ''; artEl.appendChild(img);
+      } else {
+        artEl.textContent = (t.artist || t.title || '?').charAt(0).toUpperCase();
+      }
+      var info = document.createElement('div');
+      info.className = 'cp-exp-q-info';
+      info.innerHTML = '<div class="cp-exp-q-title">'+_esc(t.title||'—')+'</div>'
+                     + '<div class="cp-exp-q-artist">'+_esc(t.artist||'')+'</div>';
+      row.appendChild(artEl);
+      row.appendChild(info);
+      row.addEventListener('click', (function(i){ return function(){ if (window.cpPlayIdx) window.cpPlayIdx(i); }; })(idx));
+      qList.appendChild(row);
+    }
+  }
+
+  function buildChannelStrip() {
+    if (!chStrip) return;
+    var src = document.getElementById('cp-channels');
+    if (!src) return;
+    chStrip.innerHTML = '';
+    Array.from(src.querySelectorAll('.cp-ch')).forEach(function(btn){
+      var b = document.createElement('button');
+      b.className   = btn.className;
+      b.textContent = btn.textContent;
+      if (btn.dataset.cpVideoBtn) b.dataset.cpVideoBtn = '1';
+      b.addEventListener('click', function(){
+        btn.click();
+        setTimeout(buildChannelStrip, 60);
+      });
+      chStrip.appendChild(b);
+    });
+  }
+
+  function syncAll() {
+    var t = (window._cpTracks || [])[window._cpCurrent || 0];
+    if (t) {
+      updateTrackDisplay(t.title, t.artist, t.genre, t.art_url || '');
+    } else {
+      var miniT = document.getElementById('cp-title');
+      var miniA = document.getElementById('cp-artist');
+      updateTrackDisplay(miniT ? miniT.textContent : '—', miniA ? miniA.textContent : '', null, '');
+    }
+    var audio = window.cpAudio;
+    if (audio) {
+      updateProgress(audio.currentTime, audio.duration || 0);
+      updatePlayBtn(!audio.paused);
+      if (volSlide) volSlide.value = Math.round(audio.volume * 100);
+    }
+    if (shuffleBtn) shuffleBtn.classList.toggle('active', !!window._cpShuffleMode);
+    syncRepeatBtn();
+    buildQueue();
+    buildChannelStrip();
+  }
+
+  function syncRepeatBtn() {
+    if (!repeatBtn) return;
+    var rm = window._cpRepeatMode || 0;
+    repeatBtn.classList.toggle('active', rm > 0);
+    repeatBtn.textContent = rm === 1 ? '⟳' : '↻';
+    repeatBtn.title = ['Repeat: off','Repeat: one','Repeat: all'][rm] || 'Repeat';
+  }
+
+  // ── Seek bar ──
+  if (expSeek) {
+    expSeek.addEventListener('click', function(e){
+      var rect = expSeek.getBoundingClientRect();
+      var pct  = (e.clientX - rect.left) / rect.width;
+      if (_videoIsInExpanded() && window.cpVideo && window.cpVideo.seekTo) {
+        window.cpVideo.seekTo(pct); return;
+      }
+      var audio = window.cpAudio;
+      if (!audio || !audio.duration || isNaN(audio.duration)) return;
+      audio.currentTime = pct * audio.duration;
+      updateProgress(audio.currentTime, audio.duration);
+    });
+  }
+
+  // ── Logo button → launches standalone app from widget corner ──
+  var logoBtn = document.getElementById('cp-exp-logo-btn');
+  if (logoBtn) logoBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    var w = 960, h = 680;
+    var left = Math.max(0, screen.width  - w - 16);
+    var top  = Math.max(0, screen.height - h - 60);
+    window.open('/player/?from=widget', 'cp-player',
+      'width='+w+',height='+h+',top='+top+',left='+left+
+      ',resizable=yes,toolbar=no,menubar=no,scrollbars=no,location=no,status=no');
+  });
+
+  // ── FAB — fixed bottom-right, cycles all sizes ──
+  var fab = document.getElementById('cp-fab');
+  if (fab) fab.addEventListener('click', function(e){ e.stopPropagation(); cyclePlayerSize(); });
+
+  if (playBtn) playBtn.addEventListener('click', function(){
+    if (_videoIsInExpanded() && window.cpVideo && window.cpVideo.togglePlay) {
+      window.cpVideo.togglePlay(); return;
+    }
+    var audio = window.cpAudio;
+    if (!audio) return;
+    if (audio.paused) audio.play().catch(function(){});
+    else audio.pause();
+    updatePlayBtn(!audio.paused);
+    var mp = document.getElementById('cp-play');
+    if (mp) mp.textContent = audio.paused ? '▶' : '⏸';
+  });
+
+  if (prevBtn) prevBtn.addEventListener('click', function(){
+    if (_videoIsInExpanded() && window.cpVideo) { window.cpVideo.prev(); return; }
+    if (window.cpGetPrevIdx !== undefined && window.cpPlayIdx) window.cpPlayIdx(window.cpGetPrevIdx());
+  });
+  if (nextBtn) nextBtn.addEventListener('click', function(){
+    if (_videoIsInExpanded() && window.cpVideo) { window.cpVideo.next(); return; }
+    if (window.cpGetNextIdx !== undefined && window.cpPlayIdx) window.cpPlayIdx(window.cpGetNextIdx());
+  });
+
+  if (shuffleBtn) shuffleBtn.addEventListener('click', function(){
+    var on = !window._cpShuffleMode;
+    if (window.cpSetShuffle) window.cpSetShuffle(on);
+    shuffleBtn.classList.toggle('active', on);
+    shuffleBtn.title = on ? 'Shuffle: on' : 'Shuffle: off';
+  });
+
+  if (repeatBtn) repeatBtn.addEventListener('click', function(){
+    var rm = ((window._cpRepeatMode || 0) + 1) % 3;
+    if (window.cpSetRepeat) window.cpSetRepeat(rm);
+    syncRepeatBtn();
+  });
+
+  if (volSlide) volSlide.addEventListener('input', function(){
+    var audio = window.cpAudio;
+    if (audio) audio.volume = parseInt(this.value) / 100;
+    var mv = document.getElementById('cp-vol');
+    if (mv) mv.value = this.value;
+  });
+
+  if (muteBtn) muteBtn.addEventListener('click', function(){
+    var audio = window.cpAudio;
+    if (!audio) return;
+    audio.muted = !audio.muted;
+    muteBtn.textContent = audio.muted ? '🔇' : '🔈';
+    var mm = document.getElementById('cp-mute');
+    if (mm) { mm.textContent = audio.muted ? '🔇' : '🔈'; mm.classList.toggle('muted', audio.muted); }
+  });
+
+  if (videoBtn) videoBtn.addEventListener('click', function(){
+    if (!window.cpVideo) return;
+    if (_videoIsInExpanded()) { window.cpVideo.leave(); }
+    else              { window.cpVideo.enter(); }
+  });
+
+  // Pop-out button (now in expanded secondary controls)
+  var popoutBtn = document.getElementById('cp-popout-btn');
+  if (popoutBtn) popoutBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var w = 960, h = 680;
+    var left = Math.max(0, Math.round((screen.width  - w) / 2));
+    var top  = Math.max(0, Math.round((screen.height - h) / 4));
+    window.open('/player/', 'cp-player',
+      'width='+w+',height='+h+',top='+top+',left='+left+
+      ',resizable=yes,toolbar=no,menubar=no,scrollbars=no,location=no,status=no');
+  });
+
+  // Escape closes
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && isOpen) close(); });
+
+  // Channel strip rebuilds when popup updates
+  var chanEl = document.getElementById('cp-channels');
+  if (chanEl) new MutationObserver(function(){ if (isOpen) setTimeout(buildChannelStrip, 30); }).observe(chanEl, {childList:true});
+
+  // ── Callbacks from mini player ──
+  window.cpExp = {
+    open:  open,
+    close: close,
+    isOpen:    function(){ return isOpen; },
+    cycleSize: cyclePlayerSize,
+
+    onTrackLoad: function(track, idx) {
+      if (!isOpen) return;
+      updateTrackDisplay(track.title, track.artist, track.genre, track.art_url || '');
+      buildQueue();
+      // Restart visualizer with new genre colors (only when no video pinned)
+      if (!_videoIsInExpanded()) {
+        _stopVisualizer();
+        _initVisualizer();
+        var audio = window.cpAudio;
+        if (audio && !audio.paused) {
+          _startVisualizer(genreColors(track.genre || track.artist || ''));
+        }
+      }
+    },
+    onTitleUpdate: function(title, artist) {
+      if (!isOpen) return;
+      var t = (window._cpTracks || [])[window._cpCurrent || 0];
+      updateTrackDisplay(title, artist, t ? t.genre : null, t ? (t.art_url || '') : '');
+    },
+    onProgress: function(cur, dur) {
+      if (!isOpen) return;
+      updateProgress(cur, dur);
+    },
+    onPlayState: function(playing) {
+      if (!isOpen) return;
+      updatePlayBtn(playing);
+      if (!_videoIsInExpanded()) {
+        if (playing) {
+          _initVisualizer();
+          var t = (window._cpTracks || [])[window._cpCurrent || 0];
+          _startVisualizer(t ? genreColors(t.genre || t.artist || '') : null);
+        } else {
+          _stopVisualizer();
+        }
+      }
+    },
+    onChannelsBuilt: function() {
+      if (isOpen) setTimeout(buildChannelStrip, 30);
+    },
+    onVideoPlay: function(title, artist, isLive) {
+      if (titleEl)  titleEl.textContent  = title  || '—';
+      if (artistEl) artistEl.textContent = artist || '';
+      if (metaEl)   metaEl.textContent   = isLive ? '🔴 LIVE' : '📺 VIDEO';
+      if (_videoIsInExpanded()) {
+        if (artGrad) artGrad.style.display = 'none';
+        if (artImg)  artImg.style.display  = 'none';
+        buildQueue(); // refresh to show updated video queue
+      }
+    },
+    onVideoExit: function() {
+      if (!isOpen) return;
+      var t = (window._cpTracks || [])[window._cpCurrent || 0];
+      updateArt(t ? (t.art_url || '') : '', t ? t.genre : null, t ? t.artist : null);
+      if (t) {
+        if (titleEl)  titleEl.textContent  = t.title  || '—';
+        if (artistEl) artistEl.textContent = t.artist || '';
+        if (metaEl)   metaEl.textContent   = t.genre  ? t.genre.toUpperCase() : '';
+      }
+      buildQueue();
+      var audio = window.cpAudio;
+      if (audio && !audio.paused) {
+        _initVisualizer();
+        _startVisualizer(t ? genreColors(t.genre || t.artist || '') : null);
+      }
+    },
+  };
+
+  // Restore open state across Turbo navigations
+  try {
+    if (sessionStorage.getItem('cp_exp_open') === '1') setTimeout(open, 150);
+  } catch(e){}
 })();
 </script>

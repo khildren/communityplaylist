@@ -2,6 +2,13 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # Video room (theater)
+    path('video-room/', views.video_room, name='video_room'),
+    path('api/video-room/messages/', views.video_room_messages, name='video_room_messages'),
+    # Standalone player
+    path('player/', views.player_page, name='player_page'),
+    path('player/manifest.json', views.player_manifest, name='player_manifest'),
+
     # Music player API
     path('api/genres/filter/', views.api_genre_filter, name='api_genre_filter'),
     path('api/tracks/', views.playlist_tracks_json, name='playlist_tracks_json'),
