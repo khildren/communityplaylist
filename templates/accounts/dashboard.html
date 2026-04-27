@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}Dashboard — Community Playlist{% endblock %}
+{% block head_extra %}<meta name="turbo-cache-control" content="no-cache">{% endblock %}
 {% block styles %}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -36,7 +37,7 @@ body{background:#111;color:#eee;font-family:sans-serif}
 .msg.error{background:#2a1010;color:#ff8888;border:1px solid #5a2020}
 
 /* ── Stats strip ── */
-.stats-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:20px}
+.stats-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin-bottom:20px}
 .stat-card{background:#161616;border:1px solid #1e1e1e;border-radius:8px;padding:12px 10px;text-align:center}
 .stat-num{font-size:1.5em;font-weight:700;color:#ff6b35;line-height:1}
 .stat-label{font-size:.68em;color:#555;margin-top:5px;line-height:1.3;text-transform:uppercase;letter-spacing:.04em}
@@ -247,13 +248,13 @@ details[open] .sum-chevron{transform:rotate(180deg)}
     <div class="stat-label">Crew views</div>
   </div>
   {% endif %}
-  {% if venue_views and claimed_venues %}
+  {% if claimed_venues or profile.wants_venue %}
   <div class="stat-card amber">
     <div class="stat-num">{{ venue_views }}</div>
     <div class="stat-label">Venue views</div>
   </div>
   {% endif %}
-  {% if space_views and claimed_spaces %}
+  {% if claimed_spaces %}
   <div class="stat-card green">
     <div class="stat-num">{{ space_views }}</div>
     <div class="stat-label">Space views</div>
@@ -364,15 +365,21 @@ details[open] .sum-chevron{transform:rotate(180deg)}
       </div>
       {% endif %}
 
-      {# Venue #}
-      {% if profile.wants_venue %}
-      <div class="ptype-card has-profile">
+      {# Venue & Space — combined card #}
+      <div class="ptype-card {% if claimed_venues or claimed_spaces %}has-profile{% endif %}">
+        {% if profile.wants_venue %}
         <form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="action" value="toggle_profile_type"><input type="hidden" name="field" value="wants_venue"><button class="ptype-toggle" title="Deactivate venue type">✕</button></form>
-        <div class="ptype-icon">🏛</div>
-        <div class="ptype-name">Venue</div>
+        {% endif %}
+        <div class="ptype-icon">🏛 <span style="font-size:.7em;vertical-align:middle">🌱</span></div>
+        <div class="ptype-name">Venue &amp; Space</div>
+
+        {# — Venues — #}
         {% if claimed_venues %}
           {% for v in claimed_venues %}
-          <div class="ptype-meta" style="margin-top:8px">{{ v.name }}<br><span style="color:#ff6b35">{{ v.view_count }} views</span></div>
+          <div class="ptype-meta" style="margin-top:8px">
+            <span style="font-size:.7em;color:#555;text-transform:uppercase;letter-spacing:.06em">Venue</span><br>
+            {{ v.name }}<br><span style="color:#ff6b35">{{ v.view_count }} views</span>
+          </div>
           <div class="ptype-actions">
             <a href="/venues/{{ v.slug }}/" class="btn-sm">View</a>
             <a href="/venues/{{ v.slug }}/edit/" class="btn-sm">Edit</a>
@@ -388,34 +395,31 @@ details[open] .sum-chevron{transform:rotate(180deg)}
               <input type="checkbox" data-model="venue" data-pk="{{ v.pk }}" data-field="allow_comments" {% if v.allow_comments %}checked{% endif %} onchange="cpToggleComments(this)">
               <span class="toggle-slider"></span>
             </label>
-            <span class="toggle-label">Public comments {% if v.allow_comments %}<span style="color:#4caf50">on</span>{% else %}off{% endif %}</span>
+            <span class="toggle-label">Comments {% if v.allow_comments %}<span style="color:#4caf50">on</span>{% else %}off{% endif %}</span>
           </div>
           {% endfor %}
+        {% elif profile.wants_venue %}
+          <div class="ptype-meta" style="margin-top:6px;font-size:.72em;color:#555">No venue claimed</div>
+          <div class="ptype-actions" style="margin-top:4px">
+            <a href="/venues/register/" class="btn-sm btn-orange" style="font-size:.74em">+ Register venue</a>
+          </div>
         {% else %}
-          <div class="ptype-meta">No venue claimed yet</div>
-          <div class="ptype-actions">
-            <a href="/venues/register/" class="btn-sm btn-orange">Register venue</a>
+          <div class="ptype-meta" style="margin-top:6px">
+            <div class="inactive-note">Venue not activated</div>
+            <form method="post" style="margin-top:4px">{% csrf_token %}<input type="hidden" name="action" value="toggle_profile_type"><input type="hidden" name="field" value="wants_venue"><button class="btn-sm" type="submit" style="font-size:.74em">+ Activate venue</button></form>
           </div>
         {% endif %}
-      </div>
-      {% else %}
-      <div class="ptype-card" style="opacity:.5">
-        <div class="ptype-icon">🏛</div>
-        <div class="ptype-name">Venue</div>
-        <div class="inactive-note">Not activated</div>
-        <div class="ptype-actions" style="margin-top:8px">
-          <form method="post">{% csrf_token %}<input type="hidden" name="action" value="toggle_profile_type"><input type="hidden" name="field" value="wants_venue"><button class="btn-sm" type="submit">+ Activate</button></form>
-        </div>
-      </div>
-      {% endif %}
 
-      {# Community Space — in the same grid as other profile types #}
-      <div class="ptype-card {% if claimed_spaces %}has-profile{% endif %}">
-        <div class="ptype-icon">🌱</div>
-        <div class="ptype-name">Community Space</div>
+        {# — divider — #}
+        {% if claimed_venues or profile.wants_venue %}<hr style="border:none;border-top:1px solid #1e1e1e;margin:10px 0">{% endif %}
+
+        {# — Spaces — #}
         {% if claimed_spaces %}
           {% for s in claimed_spaces %}
-          <div class="ptype-meta" style="margin-top:8px">{{ s.name }}<br><span style="color:#4caf50">{{ s.view_count }} views</span></div>
+          <div class="ptype-meta" style="margin-top:6px">
+            <span style="font-size:.7em;color:#555;text-transform:uppercase;letter-spacing:.06em">Space</span><br>
+            {{ s.name }}<br><span style="color:#4caf50">{{ s.view_count }} views</span>
+          </div>
           <div class="ptype-actions">
             <a href="/spaces/{{ s.slug }}/" class="btn-sm">View</a>
             <a href="/spaces/{{ s.slug }}/edit/" class="btn-sm">Edit</a>
@@ -431,13 +435,13 @@ details[open] .sum-chevron{transform:rotate(180deg)}
               <input type="checkbox" data-model="space" data-pk="{{ s.pk }}" data-field="allow_comments" {% if s.allow_comments %}checked{% endif %} onchange="cpToggleComments(this)">
               <span class="toggle-slider"></span>
             </label>
-            <span class="toggle-label">Public comments {% if s.allow_comments %}<span style="color:#4caf50">on</span>{% else %}off{% endif %}</span>
+            <span class="toggle-label">Comments {% if s.allow_comments %}<span style="color:#4caf50">on</span>{% else %}off{% endif %}</span>
           </div>
           {% endfor %}
         {% else %}
-          <div class="ptype-meta">No space claimed yet</div>
-          <div class="ptype-actions">
-            <a href="mailto:hello@communityplaylist.com?subject=Request%20a%20Space%20Profile&body=Space%20name%3A%0AType%20(garden%2C%20makerspace%2C%20third%20space%2C%20etc.)%3A%0AAddress%3A" class="btn-sm btn-orange">Request a space</a>
+          <div class="ptype-meta" style="font-size:.72em;color:#555">No space claimed</div>
+          <div class="ptype-actions" style="margin-top:4px">
+            <a href="mailto:hello@communityplaylist.com?subject=Request%20a%20Space%20Profile&body=Space%20name%3A%0AType%3A%0AAddress%3A" class="btn-sm" style="font-size:.74em">+ Request space</a>
           </div>
         {% endif %}
       </div>
