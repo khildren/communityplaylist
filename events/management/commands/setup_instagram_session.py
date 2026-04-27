@@ -25,7 +25,11 @@ import getpass
 import instaloader
 from django.core.management.base import BaseCommand
 
-SESSION_DIR  = os.environ.get('IG_SESSION_DIR', '/app/media/.ig_session')
+def _session_dir():
+    from django.conf import settings
+    return os.environ.get('IG_SESSION_DIR', os.path.join(str(settings.MEDIA_ROOT), '.ig_session'))
+
+SESSION_DIR  = _session_dir()
 SESSION_FILE = os.path.join(SESSION_DIR, 'session')
 
 

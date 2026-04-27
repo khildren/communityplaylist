@@ -21,9 +21,16 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.db.models import Q
 
-# Where the instaloader session file lives inside the container.
-# Mount a persistent volume here so it survives image rebuilds.
-SESSION_DIR  = os.environ.get('IG_SESSION_DIR', '/app/media/.ig_session')
+# Session dir defaults to MEDIA_ROOT/.ig_session — works on both Docker and Plesk.
+# Override with IG_SESSION_DIR env var if needed.
+def _session_dir():
+    default = os.path.join(os.environ.get('MEDIA_ROOT', ''), '.ig_session')
+    if not default.startswith('/'):
+        from django.conf import settings
+        default = os.path.join(str(settings.MEDIA_ROOT), '.ig_session')
+    return os.environ.get('IG_SESSION_DIR', default)
+
+SESSION_DIR  = _session_dir()
 SESSION_FILE = os.path.join(SESSION_DIR, 'session')
 
 
@@ -44,6 +51,103 @@ def _get_loader():
         except Exception:
             pass  # session stale — continue anonymously, warn below
     return L
+
+
+def _fetch_profile_private_api(L, handle: str) -> dict | None:
+    """
+    Fetch profile metadata via Instagram's private web API.
+    Avoids the graphql endpoint that gets throttled quickly.
+    Returns dict with keys: userid, full_name, biography, followers, is_private
+    or None if not found / blocked.
+    """
+    session = L.context._session
+    session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
+        'X-IG-App-ID': '936619743392459',
+    })
+    r = session.get(
+        'https://i.instagram.com/api/v1/users/web_profile_info/',
+        params={'username': handle},
+        timeout=15,
+    )
+    if not r.ok:
+        return None
+    user = r.json().get('data', {}).get('user')
+    if not user:
+        return None
+    return {
+        'userid':    str(user.get('id', '')),
+        'full_name': user.get('full_name', ''),
+        'biography': user.get('biography', ''),
+        'followers': user.get('edge_followed_by', {}).get('count') or 0,
+        'is_private': user.get('is_private', False),
+    }
+
+
+def _fetch_posts_private_api(L, user_id: str, max_posts: int) -> list[dict]:
+    """
+    Fetch recent posts via Instagram's private mobile API.
+    Instaloader's get_posts() uses a graphql endpoint that Instagram deprecated;
+    this endpoint (used by the mobile app) still works with a valid session.
+    Returns a list of dicts: {ig_post_id, shortcode, caption, image_url, is_video, posted_at}
+    """
+    import datetime
+    session = L.context._session
+    session.headers.update({
+        'User-Agent': 'Instagram 275.0.0.27.98 Android',
+        'X-IG-App-ID': '936619743392459',
+    })
+    results = []
+    max_id  = None
+    while len(results) < max_posts:
+        params = {'count': min(12, max_posts - len(results))}
+        if max_id:
+            params['max_id'] = max_id
+        r = session.get(
+            f'https://i.instagram.com/api/v1/feed/user/{user_id}/',
+            params=params,
+            timeout=20,
+        )
+        if not r.ok:
+            break
+        data  = r.json()
+        items = data.get('items', [])
+        if not items:
+            break
+        for item in items:
+            shortcode = item.get('code', '')
+            ig_post_id = str(item.get('pk', '') or item.get('id', ''))
+            is_video   = item.get('media_type') == 2
+            ts         = item.get('taken_at')
+            posted_at  = datetime.datetime.utcfromtimestamp(ts).replace(
+                tzinfo=datetime.timezone.utc) if ts else None
+            caption = ''
+            cap_obj = item.get('caption')
+            if isinstance(cap_obj, dict):
+                caption = cap_obj.get('text', '')
+            # Best image: first candidate of image_versions2 (highest res)
+            image_url = ''
+            candidates = item.get('image_versions2', {}).get('candidates', [])
+            if candidates:
+                image_url = candidates[0].get('url', '')
+            # Carousel: use first child's image
+            if not image_url and item.get('carousel_media'):
+                child = item['carousel_media'][0]
+                cands = child.get('image_versions2', {}).get('candidates', [])
+                if cands:
+                    image_url = cands[0].get('url', '')
+            results.append({
+                'ig_post_id': ig_post_id,
+                'shortcode':  shortcode,
+                'caption':    caption,
+                'image_url':  image_url,
+                'is_video':   is_video,
+                'posted_at':  posted_at,
+            })
+        if not data.get('more_available'):
+            break
+        max_id = data.get('next_max_id')
+    return results[:max_posts]
 
 
 class Command(BaseCommand):
@@ -103,80 +207,62 @@ class Command(BaseCommand):
 
             self.stdout.write(f'  @{account.handle}')
 
-            try:
-                profile = instaloader.Profile.from_username(L.context, account.handle)
-            except instaloader.exceptions.ProfileNotExistsException:
-                self.stdout.write('    — profile not found or private')
+            profile = _fetch_profile_private_api(L, account.handle)
+            if not profile:
+                self.stdout.write('    — profile not found, private, or rate-limited')
                 continue
-            except instaloader.exceptions.TooManyRequestsException:
-                self.stderr.write('    rate-limited — stopping early, try again later')
-                break
-            except Exception as e:
-                self.stderr.write(f'    ERROR: {e}')
+            if profile['is_private']:
+                self.stdout.write('    — private account, skipping')
                 continue
 
-            # Update account metadata from profile
+            # Update account metadata
             if not dry_run:
-                account.ig_user_id     = str(profile.userid)
-                account.display_name   = profile.full_name or account.display_name
-                account.bio            = profile.biography or account.bio
-                account.follower_count = profile.followers
+                account.ig_user_id     = profile['userid']
+                account.display_name   = profile['full_name'] or account.display_name
+                account.bio            = profile['biography'] or account.bio
+                account.follower_count = profile['followers']
                 account.last_fetched   = timezone.now()
                 account.save(update_fields=[
                     'ig_user_id', 'display_name', 'bio', 'follower_count', 'last_fetched'
                 ])
 
             self.stdout.write(
-                f'    {profile.full_name} | {profile.followers:,} followers'
+                f"    {profile['full_name']} | {profile['followers']:,} followers"
             )
 
             new_count = 0
-            fetched   = 0
             try:
-                for post in profile.get_posts():
-                    if fetched >= max_posts:
-                        break
-                    fetched += 1
-
-                    posted_at = timezone.make_aware(
-                        post.date_local.replace(tzinfo=None),
-                        timezone.utc
-                    ) if post.date_utc else None
-
-                    if not posted_at:
-                        continue
-
-                    if dry_run:
-                        self.stdout.write(
-                            f'    [dry] {post.shortcode} | '
-                            f'{post.date_utc.strftime("%Y-%m-%d")} | '
-                            f'{(post.caption or "")[:80]}'
-                        )
-                        continue
-
-                    _, created = InstagramPost.objects.get_or_create(
-                        ig_post_id=str(post.mediaid),
-                        defaults={
-                            'account':   account,
-                            'shortcode': post.shortcode,
-                            'caption':   post.caption or '',
-                            'image_url': post.url or '',
-                            'is_video':  post.is_video,
-                            'posted_at': post.date_utc,
-                        }
-                    )
-                    if created:
-                        new_count += 1
-
-            except instaloader.exceptions.TooManyRequestsException:
-                self.stderr.write('    rate-limited mid-fetch — stopping early')
-                break
+                posts = _fetch_posts_private_api(L, profile['userid'], max_posts)
             except Exception as e:
                 self.stderr.write(f'    fetch error: {e}')
                 continue
 
+            for p in posts:
+                if not p['posted_at']:
+                    continue
+                if dry_run:
+                    self.stdout.write(
+                        f"    [dry] {p['shortcode']} | "
+                        f"{p['posted_at'].strftime('%Y-%m-%d')} | "
+                        f"{p['caption'][:80]}"
+                    )
+                    continue
+                _, created = InstagramPost.objects.get_or_create(
+                    ig_post_id=p['ig_post_id'],
+                    defaults={
+                        'account':   account,
+                        'shortcode': p['shortcode'],
+                        'caption':   p['caption'],
+                        'image_url': p['image_url'],
+                        'is_video':  p['is_video'],
+                        'posted_at': p['posted_at'],
+                    }
+                )
+                if created:
+                    new_count += 1
+
             if not dry_run:
-                self.stdout.write(f'    ✓ {new_count} new / {fetched} checked')
+                self.stdout.write(f'    ✓ {new_count} new / {len(posts)} checked')
                 total_new += new_count
 
         self.stdout.write(f'\nDone. {total_new} new posts total.')
