@@ -1330,6 +1330,10 @@ class InstagramAccount(models.Model):
     last_fetched    = models.DateTimeField(null=True, blank=True)
     is_active       = models.BooleanField(default=True)
     notes           = models.TextField(blank=True, help_text='Internal notes about this account')
+    harvest_for_events = models.BooleanField(
+        default=False,
+        help_text='Run moondream flyer scan on new posts — creates pending Events from detected flyers'
+    )
 
     class Meta:
         ordering = ['handle']
@@ -1351,6 +1355,11 @@ class InstagramPost(models.Model):
     is_video    = models.BooleanField(default=False)
     posted_at   = models.DateTimeField()
     fetched_at  = models.DateTimeField(auto_now_add=True)
+    flyer_scanned   = models.BooleanField(default=False)
+    flyer_result    = models.JSONField(null=True, blank=True, help_text='Raw moondream output — dict of extracted event fields')
+    sourced_event   = models.ForeignKey('Event', null=True, blank=True,
+                                        on_delete=models.SET_NULL, related_name='instagram_sources',
+                                        help_text='Event created from this post by flyer scan')
 
     class Meta:
         ordering = ['-posted_at']

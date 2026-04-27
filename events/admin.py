@@ -1403,6 +1403,12 @@ CRON_JOBS = [
         'log':      'logs/cp_enrich_flyers.log',
         'schedule': 'Daily  5:00 AM',
     },
+    {
+        'name':     'Harvest Instagram flyers → create pending Events (tokyo7 moondream)',
+        'command':  'harvest_instagram_flyers',
+        'log':      'logs/cp_harvest_ig_flyers.log',
+        'schedule': 'Daily  5:30 AM  (after harvest_instagram)',
+    },
 ]
 
 
@@ -1907,15 +1913,15 @@ class InstagramPostInline(admin.TabularInline):
 
 @admin.register(InstagramAccount)
 class InstagramAccountAdmin(admin.ModelAdmin):
-    list_display   = ['handle', 'display_name', 'status_badge', 'follower_count', 'post_count', 'last_fetched']
-    list_filter    = ['status']
+    list_display   = ['handle', 'display_name', 'status_badge', 'follower_count', 'post_count', 'harvest_for_events', 'last_fetched']
+    list_filter    = ['status', 'harvest_for_events']
     search_fields  = ['handle', 'display_name', 'bio', 'notes']
     readonly_fields = ['ig_user_id', 'display_name', 'bio', 'follower_count', 'last_fetched']
-    list_editable  = ['status'] if False else []  # avoid accidental bulk edits; use actions
+    list_editable  = ['harvest_for_events']
     inlines        = [InstagramPostInline]
-    actions        = ['approve_selected', 'reject_selected', 'harvest_selected']
+    actions        = ['approve_selected', 'reject_selected', 'harvest_selected', 'enable_flyer_scan', 'disable_flyer_scan']
     fieldsets = [
-        (None, {'fields': ['handle', 'status', 'notes']}),
+        (None, {'fields': ['handle', 'status', 'harvest_for_events', 'notes']}),
         ('Fetched data', {'fields': ['ig_user_id', 'display_name', 'bio', 'follower_count', 'last_fetched'],
                           'classes': ['collapse']}),
     ]
@@ -1957,14 +1963,62 @@ class InstagramAccountAdmin(admin.ModelAdmin):
         self.message_user(request, f'Harvested {harvested} active account(s).')
     harvest_selected.short_description = '📥 Harvest posts now'
 
+    def enable_flyer_scan(self, request, queryset):
+        n = queryset.update(harvest_for_events=True)
+        self.message_user(request, f'{n} account(s) enabled for moondream flyer scan.')
+    enable_flyer_scan.short_description = '🎨 Enable moondream flyer scan'
+
+    def disable_flyer_scan(self, request, queryset):
+        n = queryset.update(harvest_for_events=False)
+        self.message_user(request, f'{n} account(s) disabled from flyer scan.')
+    disable_flyer_scan.short_description = '⏸ Disable moondream flyer scan'
+
+
+def _scan_instagram_posts(modeladmin, request, queryset):
+    """Run moondream flyer scan on selected InstagramPost records."""
+    from events.utils.flyer_scan import scan_flyer
+    created = skipped = failed = 0
+    for post in queryset.filter(is_video=False):
+        result = scan_flyer(post.image_url or post.permalink)
+        if not result:
+            post.flyer_scanned = True
+            post.flyer_result = {}
+            post.save(update_fields=['flyer_scanned', 'flyer_result'])
+            failed += 1
+            continue
+        post.flyer_scanned = True
+        post.flyer_result  = result
+        save_fields = ['flyer_scanned', 'flyer_result']
+        if not post.sourced_event_id and result.get('title') and result.get('date'):
+            from events.management.commands.harvest_instagram_flyers import _build_event
+            ev = _build_event(result, post)
+            if ev:
+                ev.save()
+                post.sourced_event = ev
+                save_fields.append('sourced_event')
+                created += 1
+            else:
+                skipped += 1
+        else:
+            skipped += 1
+        post.save(update_fields=save_fields)
+    modeladmin.message_user(
+        request,
+        f'{created} events created · {skipped} no event · {failed} scan failed',
+        messages.SUCCESS if created else messages.WARNING,
+    )
+_scan_instagram_posts.short_description = '🎨 Scan selected posts with moondream → create pending Events'
+
 
 @admin.register(InstagramPost)
 class InstagramPostAdmin(admin.ModelAdmin):
-    list_display  = ['shortcode', 'account', 'caption_preview', 'is_video', 'posted_at']
-    list_filter   = ['account', 'is_video']
+    list_display  = ['shortcode', 'account', 'caption_preview', 'is_video', 'posted_at', 'flyer_badge']
+    list_filter   = ['account', 'is_video', 'flyer_scanned']
     search_fields = ['caption', 'shortcode', 'account__handle']
-    readonly_fields = ['ig_post_id', 'shortcode', 'account', 'is_video', 'posted_at', 'fetched_at', 'permalink_link']
+    readonly_fields = ['ig_post_id', 'shortcode', 'account', 'is_video', 'posted_at', 'fetched_at',
+                       'permalink_link', 'flyer_result', 'sourced_event']
     ordering      = ['-posted_at']
+    actions       = [_scan_instagram_posts]
 
     def caption_preview(self, obj):
         return obj.caption[:100] + '…' if len(obj.caption) > 100 else obj.caption
@@ -1973,3 +2027,14 @@ class InstagramPostAdmin(admin.ModelAdmin):
     def permalink_link(self, obj):
         return format_html('<a href="{}" target="_blank">instagram.com/p/{}</a>', obj.permalink, obj.shortcode)
     permalink_link.short_description = 'Permalink'
+
+    def flyer_badge(self, obj):
+        if obj.sourced_event_id:
+            return format_html(
+                '<a href="/admin/events/event/{}/change/" style="color:#4caf50;font-size:.8em">✓ event #{}</a>',
+                obj.sourced_event_id, obj.sourced_event_id
+            )
+        if obj.flyer_scanned:
+            return format_html('<span style="color:#555;font-size:.8em">scanned / no event</span>')
+        return format_html('<span style="color:#888;font-size:.8em">—</span>')
+    flyer_badge.short_description = 'Event'
