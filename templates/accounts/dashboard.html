@@ -57,6 +57,11 @@ summary::-webkit-details-marker{display:none}
 .sum-badge.green{background:#0f2a18;color:#4caf50}
 .sum-badge.purple{background:#1a0f2e;color:#9945ff}
 .sum-badge.amber{background:#2a2008;color:#ddaa33}
+.sum-nudge{font-size:.7em;color:#444;font-style:italic;flex-shrink:0}
+.nudge-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#111;border:1px dashed #222;border-radius:8px;margin-top:4px;font-size:.8em;color:#555}
+.nudge-row a{color:#ff6b35;text-decoration:none}
+.nudge-row a:hover{text-decoration:underline}
+.nudge-icon{font-size:1.1em;flex-shrink:0}
 .sum-chevron{color:#333;font-size:.65em;transition:transform .2s;flex-shrink:0}
 details[open] .sum-chevron{transform:rotate(180deg)}
 .section-body{padding:0 16px 16px}
@@ -222,6 +227,8 @@ details[open] .sum-chevron{transform:rotate(180deg)}
     <span class="sum-icon">🎭</span>
     <span class="sum-title">My Profiles</span>
     <span class="sum-badge orange">{{ active_profiles }} active</span>
+    {% for a in claimed_artists %}{% if not a.bio %}<span class="sum-nudge">· incomplete</span>{% endif %}{% endfor %}
+    {% for p in claimed_promoters %}{% if not p.bio %}<span class="sum-nudge">· incomplete</span>{% endif %}{% endfor %}
     <span class="sum-chevron">▼</span>
   </summary>
   <div class="section-body">
@@ -368,6 +375,12 @@ details[open] .sum-chevron{transform:rotate(180deg)}
       </div>
 
     </div>{# /profile-type-grid #}
+    {% for a in claimed_artists %}{% if not a.bio %}
+    <div class="nudge-row" style="margin-top:10px"><span class="nudge-icon">✏️</span> <b style="color:#ccc">{{ a.name }}</b> has no bio — <a href="/artists/{{ a.slug }}/edit/">add one</a> so people know who you are.</div>
+    {% endif %}{% endfor %}
+    {% for p in claimed_promoters %}{% if not p.bio %}
+    <div class="nudge-row" style="margin-top:10px"><span class="nudge-icon">✏️</span> <b style="color:#ccc">{{ p.name }}</b> has no bio — <a href="/promoters/{{ p.slug }}/edit/">add one</a>.</div>
+    {% endif %}{% endfor %}
   </div>
 </details>
 
@@ -458,6 +471,7 @@ details[open] .sum-chevron{transform:rotate(180deg)}
     <span class="sum-title">My Events</span>
     {% if events_pending %}<span class="sum-badge amber">{{ events_pending }} pending</span>{% endif %}
     <span class="sum-badge green">{{ events_approved }} live</span>
+    {% if not events %}<span class="sum-nudge">· nothing submitted</span>{% endif %}
     <span class="sum-chevron">▼</span>
   </summary>
   <div class="section-body">
@@ -479,44 +493,50 @@ details[open] .sum-chevron{transform:rotate(180deg)}
       </div>
       {% endfor %}
     {% else %}
-      <p class="empty-note">No events yet. <a href="/submit/" style="color:#ff6b35;text-decoration:none">Submit one →</a></p>
+      <div class="nudge-row"><span class="nudge-icon">📅</span> Got an upcoming show or event? <a href="/submit/">Submit it →</a></div>
     {% endif %}
   </div>
 </details>
 
 {# ── Following ── #}
-{% if follow_data %}
 <details>
   <summary>
     <span class="sum-icon">⭐</span>
     <span class="sum-title">Following</span>
-    <span class="sum-badge">{{ follow_data|length }}</span>
+    {% if follow_data %}<span class="sum-badge">{{ follow_data|length }}</span>
+    {% else %}<span class="sum-nudge">· follow some artists</span>{% endif %}
     <span class="sum-chevron">▼</span>
   </summary>
   <div class="section-body">
+    {% if follow_data %}
     <div class="follow-chips">
       {% for item in follow_data %}
-      <a href="{% if item.follow.target_type == 'artist' %}/artists/{{ item.target.slug }}/{% elif item.follow.target_type == 'venue' %}/venues/{{ item.target.slug }}/{% elif item.follow.target_type == 'promoter' %}/promoters/{{ item.target.slug }}/{% else %}/neighborhoods/{{ item.target.slug }}/{% endif %}"
+      <a href="{% if item.follow.target_type == 'artist' %}/artists/{{ item.target.slug }}/{% elif item.follow.target_type == 'venue' %}/venues/{{ item.target.slug }}/{% elif item.follow.target_type == 'promoter' %}/promoters/{{ item.target.slug }}/{% elif item.follow.target_type == 'space' %}/spaces/{{ item.target.slug }}/{% else %}/neighborhoods/{{ item.target.slug }}/{% endif %}"
          class="follow-chip">
-        {% if item.follow.target_type == 'artist' %}🎤{% elif item.follow.target_type == 'venue' %}🏛{% elif item.follow.target_type == 'promoter' %}📣{% else %}📍{% endif %}
+        {% if item.follow.target_type == 'artist' %}🎤{% elif item.follow.target_type == 'venue' %}🏛{% elif item.follow.target_type == 'promoter' %}📣{% elif item.follow.target_type == 'space' %}🌱{% else %}📍{% endif %}
         {{ item.target.name }}
       </a>
       {% endfor %}
     </div>
+    {% else %}
+    <div class="nudge-row"><span class="nudge-icon">⭐</span> You're not following anyone yet — browse <a href="/artists/">artists</a>, <a href="/venues/">venues</a>, or <a href="/promoters/">crews</a> to follow.</div>
+    {% endif %}
   </div>
 </details>
-{% endif %}
 
 {# ── Saved Tracks ── #}
-{% if saved_tracks %}
 <details>
   <summary>
     <span class="sum-icon">♥</span>
     <span class="sum-title">Saved Tracks</span>
-    <span class="sum-badge">{{ saved_tracks|length }}</span>
+    {% if saved_tracks %}<span class="sum-badge">{{ saved_tracks|length }}</span>
+    {% else %}<span class="sum-nudge">· save some music</span>{% endif %}
     <span class="sum-chevron">▼</span>
   </summary>
   <div class="section-body">
+    {% if not saved_tracks %}
+    <div class="nudge-row"><span class="nudge-icon">♥</span> No saved tracks yet — hit the heart on any track in the <a href="/">player</a> to save it here.</div>
+    {% endif %}
     {% for st in saved_tracks %}
     {% with t=st.track %}
     <div class="track-row">
@@ -538,18 +558,19 @@ details[open] .sum-chevron{transform:rotate(180deg)}
     {% endfor %}
   </div>
 </details>
-{% endif %}
 
 {# ── Calendar Feeds ── #}
 <details>
   <summary>
     <span class="sum-icon">🗓</span>
     <span class="sum-title">Calendar Feeds</span>
-    {% if feeds %}<span class="sum-badge">{{ feeds|length }}</span>{% endif %}
+    {% if feeds %}<span class="sum-badge">{{ feeds|length }}</span>
+    {% else %}<span class="sum-nudge">· no feeds connected</span>{% endif %}
     <span class="sum-chevron">▼</span>
   </summary>
   <div class="section-body">
-    <p style="font-size:.78em;color:#555;margin-bottom:12px">Paste iCal feed URLs from Google Calendar, Eventbrite, or any .ics source. Events import twice a week for review.</p>
+    {% if not feeds %}<div class="nudge-row"><span class="nudge-icon">🗓</span> Connect a calendar feed to auto-import your events for review — Google Calendar, Eventbrite, or any .ics URL.</div>{% endif %}
+    <p style="font-size:.78em;color:#555;margin-bottom:12px;margin-top:{% if not feeds %}10px{% else %}0{% endif %}">Paste iCal feed URLs from Google Calendar, Eventbrite, or any .ics source. Events import twice a week for review.</p>
     {% for feed in feeds %}
     <div class="feed-row">
       <div class="feed-info">
@@ -585,11 +606,16 @@ details[open] .sum-chevron{transform:rotate(180deg)}
   <summary>
     <span class="sum-icon">🔗</span>
     <span class="sum-title">Contact &amp; Web3</span>
-    {% if profile.messenger_telegram or profile.messenger_discord or profile.messenger_signal or profile.sol_wallet %}<span class="sum-badge green">linked</span>{% endif %}
+    {% if profile.messenger_telegram or profile.messenger_discord or profile.messenger_signal or profile.sol_wallet %}<span class="sum-badge green">linked</span>
+    {% else %}<span class="sum-nudge">· add contact info</span>{% endif %}
     <span class="sum-chevron">▼</span>
   </summary>
   <div class="section-body">
+    {% if not profile.messenger_telegram and not profile.messenger_discord and not profile.messenger_signal and not profile.sol_wallet %}
+    <div class="nudge-row" style="margin-bottom:14px"><span class="nudge-icon">🔗</span> Let buyers and collaborators reach you directly — add a Telegram, Discord, or Signal handle below.</div>
+    {% else %}
     <p style="font-size:.78em;color:#555;margin-bottom:16px">Let buyers and collaborators reach you directly. Just your handle or ID — no URLs needed.</p>
+    {% endif %}
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="save_contact">
