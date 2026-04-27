@@ -1,0 +1,331 @@
+{% extends 'base.html' %}
+{% block title %}Edit — {{ space.name }} — Community Playlist{% endblock %}
+{% block styles %}
+<style>
+:root{--accent:{{ space.brand_color|default:"#4caf50" }}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#eee;font-family:sans-serif;padding:24px 16px}
+.wrap{max-width:640px;margin:0 auto}
+.back{color:var(--accent);text-decoration:none;font-size:.82em;display:inline-block;margin-bottom:20px}
+h1{color:var(--accent);font-size:1.2em;margin-bottom:22px}
+.card{background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:22px;margin-bottom:16px}
+.card-title{color:var(--accent);font-size:.8em;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;font-weight:600}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:.8em;color:#888;margin-bottom:5px}
+.fg input,.fg textarea,.fg select{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:8px 11px;color:#eee;font-size:.88em;font-family:inherit}
+.fg input:focus,.fg textarea:focus,.fg select:focus{outline:none;border-color:var(--accent)}
+.fg textarea{resize:vertical;min-height:80px}
+.hint{font-size:.74em;color:#444;margin-top:4px}
+.btn{background:var(--accent);color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:.88em}
+.btn:hover{opacity:.88}
+.photo-current{width:64px;height:64px;border-radius:50%;object-fit:cover;margin-bottom:8px;display:block;border:2px solid var(--accent)}
+.link-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:start;margin-bottom:8px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:10px}
+.link-row input{background:#222}
+.remove-link{background:transparent;border:none;color:#444;cursor:pointer;font-size:1.1em;padding:4px;align-self:center;transition:color .15s}
+.remove-link:hover{color:#ff4444}
+@media(max-width:500px){.link-row{grid-template-columns:1fr auto}}
+</style>
+{% endblock %}
+{% block body %}
+<div class="wrap">
+<a href="{% url 'community_space_profile' space.slug %}" class="back">← {{ space.name }}</a>
+<h1>Edit {{ space.name }}</h1>
+
+{% if messages %}
+  {% for msg in messages %}
+  <div style="background:#1a2a1a;border:1px solid #2a4a2a;border-radius:7px;padding:10px 16px;margin-bottom:16px;color:#4caf50;font-size:.85em">
+    ✓ {{ msg }}
+  </div>
+  {% endfor %}
+{% endif %}
+
+<form method="post" enctype="multipart/form-data">
+{% csrf_token %}
+
+<div class="card">
+  <div class="card-title">Identity</div>
+  <div class="fg">
+    <label>Name</label>
+    <input type="text" name="name" value="{{ space.name }}" required>
+  </div>
+  <div class="fg">
+    <label>Type</label>
+    <select name="space_type">
+      {% for val, label in space.TYPE_CHOICES %}
+      <option value="{{ val }}" {% if space.space_type == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="fg">
+    <label>Bio / Description</label>
+    <textarea name="bio">{{ space.bio }}</textarea>
+  </div>
+  <div class="fg">
+    <label>Photo / Logo</label>
+    {% if space.photo %}<img src="{{ space.photo.url }}" alt="" class="photo-current">{% endif %}
+    <input type="file" name="photo" accept="image/*">
+  </div>
+  <div class="fg">
+    <label>Website</label>
+    <input type="url" name="website" value="{{ space.website }}" placeholder="https://...">
+  </div>
+  <div class="fg">
+    <label>Public contact email</label>
+    <input type="email" name="contact_email" value="{{ space.contact_email }}" placeholder="info@example.com">
+    <div class="hint">Shown on your profile — use a contact address, not personal email</div>
+  </div>
+  <div class="fg" style="display:flex;align-items:center;gap:14px">
+    <div>
+      <label style="display:block;margin-bottom:5px">Accent color</label>
+      <input type="color" name="brand_color" id="brand-color-pick"
+             value="{{ space.brand_color|default:'#4caf50' }}"
+             style="width:44px;height:36px;padding:2px;border:1px solid #333;border-radius:6px;background:#1a1a1a;cursor:pointer">
+    </div>
+    <div style="flex:1">
+      <div class="hint" style="margin-top:0">Profile accent color — default is green for gardens</div>
+      <button type="button" onclick="document.getElementById('brand-color-pick').value='#4caf50'"
+              style="margin-top:8px;background:transparent;border:1px solid #333;color:#555;font-size:.75em;padding:3px 10px;border-radius:4px;cursor:pointer">Reset to green</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">📍 Location</div>
+  <div class="fg">
+    <label>Address</label>
+    <input type="text" name="address" value="{{ space.address }}" placeholder="1600 NE Broadway, Portland, OR">
+  </div>
+  <div class="fg">
+    <label>Neighborhood</label>
+    <input type="text" name="neighborhood" value="{{ space.neighborhood }}" placeholder="Alberta Arts District">
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">🌿 Social Links (Fedi First)</div>
+  <div class="fg">
+    <label>Instagram handle</label>
+    <input type="text" name="instagram" value="{{ space.instagram }}" placeholder="no @">
+  </div>
+  <div class="fg">
+    <label>Bluesky handle</label>
+    <input type="text" name="bluesky" value="{{ space.bluesky }}" placeholder="you.bsky.social">
+  </div>
+  <div class="fg">
+    <label>Mastodon URL</label>
+    <input type="url" name="mastodon" value="{{ space.mastodon }}" placeholder="https://pdx.social/@you">
+  </div>
+  <div class="fg">
+    <label>TikTok handle</label>
+    <input type="text" name="tiktok" value="{{ space.tiktok }}" placeholder="no @">
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">♥ Support &amp; Funding</div>
+  <p style="font-size:.78em;color:#555;margin-bottom:14px;line-height:1.6">We support decentralized and open funding only — Ko-fi, Open Collective, Helium, or Phantom/Solana.</p>
+  <div class="fg">
+    <label>Donation / Support URL</label>
+    <input type="url" name="donation_url" value="{{ space.donation_url }}" placeholder="https://ko-fi.com/you  or  https://opencollective.com/you">
+    <div class="hint">Ko-fi, Open Collective, or Helium link — shows a ♥ Donate button</div>
+  </div>
+  <div class="fg">
+    <label>Solana wallet (Phantom)</label>
+    <input type="text" name="sol_wallet" value="{{ space.sol_wallet }}" placeholder="Your Solana wallet address" style="font-family:monospace">
+    <div class="hint">Shown alongside the donation link — visitors can copy and send directly via Phantom</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">📁 Resource Library</div>
+  <div class="fg">
+    <label>Google Drive folder URL</label>
+    <input type="url" name="drive_folder_url" value="{{ space.drive_folder_url }}" placeholder="https://drive.google.com/drive/folders/...">
+    <div class="hint">Public folder — shows as a "Resource Library" button on your profile. Share settings: Anyone with link → Viewer.</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">🔗 Custom Link Buttons</div>
+  <p style="font-size:.78em;color:#555;margin-bottom:14px;line-height:1.6">Add up to 8 custom buttons — Code of Conduct, Wishlist, Meeting notes, etc. The thumbnail URL is optional; paste an image URL to show a small preview icon.</p>
+
+  <div id="link-list">
+    {% for link in space.custom_links %}
+    <div class="link-row">
+      <div>
+        <label style="font-size:.75em;color:#666">Label</label>
+        <input type="text" name="link_label" value="{{ link.label }}" placeholder="Code of Conduct">
+      </div>
+      <div>
+        <label style="font-size:.75em;color:#666">URL</label>
+        <input type="url" name="link_url" value="{{ link.url }}" placeholder="https://docs.google.com/...">
+        <label style="font-size:.7em;color:#444;margin-top:4px;display:block">Thumbnail URL (optional)</label>
+        <input type="url" name="link_thumbnail" value="{{ link.thumbnail_url }}" placeholder="https://...image.png">
+      </div>
+      <button type="button" class="remove-link" onclick="this.closest('.link-row').remove()" title="Remove">✕</button>
+    </div>
+    {% endfor %}
+    {# Pad remaining empty rows up to 8 total #}
+    {% for i in "12345678" %}{% if forloop.counter > space.custom_links|length %}
+    <div class="link-row" {% if forloop.counter > space.custom_links|length|add:1 %}style="display:none"{% endif %}>
+      <div>
+        <label style="font-size:.75em;color:#666">Label</label>
+        <input type="text" name="link_label" value="" placeholder="Code of Conduct">
+      </div>
+      <div>
+        <label style="font-size:.75em;color:#666">URL</label>
+        <input type="url" name="link_url" value="" placeholder="https://...">
+        <label style="font-size:.7em;color:#444;margin-top:4px;display:block">Thumbnail URL (optional)</label>
+        <input type="url" name="link_thumbnail" value="" placeholder="https://...image.png">
+      </div>
+      <button type="button" class="remove-link" onclick="this.closest('.link-row').remove()" title="Remove">✕</button>
+    </div>
+    {% endif %}{% endfor %}
+  </div>
+  <button type="button" id="add-link-btn"
+          style="margin-top:8px;background:transparent;border:1px solid #333;color:#666;font-size:.8em;padding:6px 14px;border-radius:6px;cursor:pointer">
+    + Add link
+  </button>
+</div>
+
+<button type="submit" class="btn">Save changes</button>
+</form>
+
+{# ── Community Asks ── separate form so it doesn't interfere with file upload #}
+<div class="card" style="margin-top:24px">
+  <div class="card-title">Community Asks</div>
+  <p style="font-size:.8em;color:#666;margin-bottom:16px;line-height:1.5">Post specific needs — equipment, volunteers, funding, skills. Visible on your public profile with a clear CTA button for visitors.</p>
+  <form method="post" action="">
+  {% csrf_token %}
+  <input type="hidden" name="_asks_only" value="1">
+  <div id="ask-list">
+    {% for ask in asks %}
+    <div class="ask-row" style="border:1px solid #252525;border-radius:8px;padding:14px;margin-bottom:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px;position:relative">
+      <button type="button" onclick="this.closest('.ask-row').remove()"
+              style="position:absolute;top:8px;right:10px;background:none;border:none;color:#555;cursor:pointer;font-size:1em;line-height:1">✕</button>
+      <div>
+        <label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Type</label>
+        <select name="ask_type" style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.83em;font-family:inherit">
+          <option value="fund"{% if ask.ask_type == 'fund' %} selected{% endif %}>💰 Funding / Donation</option>
+          <option value="item"{% if ask.ask_type == 'item' %} selected{% endif %}>📦 Item / Equipment</option>
+          <option value="volunteer"{% if ask.ask_type == 'volunteer' %} selected{% endif %}>🤝 Volunteer Time</option>
+          <option value="skill"{% if ask.ask_type == 'skill' %} selected{% endif %}>🔧 Skill / Service</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Status</label>
+        <select name="ask_status" style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.83em;font-family:inherit">
+          <option value="open"{% if ask.status == 'open' %} selected{% endif %}>Open</option>
+          <option value="in_progress"{% if ask.status == 'in_progress' %} selected{% endif %}>In Progress</option>
+          <option value="fulfilled"{% if ask.status == 'fulfilled' %} selected{% endif %}>Fulfilled ✓</option>
+        </select>
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Title *</label>
+        <input type="text" name="ask_title" value="{{ ask.title }}" placeholder="e.g. Need a PA system, Looking for an electrician…"
+               style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.83em;font-family:inherit">
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Description (optional)</label>
+        <textarea name="ask_description" placeholder="More detail for visitors…"
+                  style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.83em;font-family:inherit;resize:vertical;min-height:52px">{{ ask.description }}</textarea>
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Item link (Amazon, etc.) — for specific wishlist items</label>
+        <input type="url" name="ask_product_url" value="{{ ask.product_url }}" placeholder="https://amazon.com/dp/…"
+               style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.83em;font-family:inherit">
+      </div>
+      <div>
+        <label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Thumbnail image URL (optional)</label>
+        <input type="url" name="ask_product_image_url" value="{{ ask.product_image_url }}" placeholder="https://…image.jpg"
+               style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.83em;font-family:inherit">
+      </div>
+      <div>
+        <label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Est. price $</label>
+        <input type="number" step="0.01" name="ask_product_price" value="{{ ask.product_price|default:'' }}" placeholder="19.99"
+               style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.83em;font-family:inherit">
+      </div>
+      <div>
+        <label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Funding goal $ (for fund asks)</label>
+        <input type="number" name="ask_target" value="{{ ask.target_amount|default:'' }}" placeholder="500"
+               style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.83em;font-family:inherit">
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Donate link (for fund asks — overrides profile)</label>
+        <input type="url" name="ask_donation_url" value="{{ ask.donation_url }}" placeholder="https://ko-fi.com/…"
+               style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.83em;font-family:inherit">
+      </div>
+      {% if not ask.board_offering_id %}
+      <div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:8px;background:#111;border-radius:6px;border:1px solid #252525">
+        <input type="checkbox" name="ask_post_to_board" value="{{ forloop.counter0 }}" id="ask_board_{{ forloop.counter0 }}"
+               style="accent-color:var(--accent);width:16px;height:16px">
+        <label for="ask_board_{{ forloop.counter0 }}" style="font-size:.78em;color:#888;cursor:pointer">
+          📋 Post as "In Search Of" on the Buy Nothing board (item asks only — creates a living post)
+        </label>
+      </div>
+      {% else %}
+      <div style="grid-column:1/-1;font-size:.75em;color:#4caf50;padding:4px 0">
+        ✓ Live on community board — <a href="{{ ask.board_url }}" target="_blank" style="color:#4caf50">view post ↗</a>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <button type="button" id="add-ask-btn"
+          style="background:transparent;border:1px dashed #333;color:#666;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:.8em;margin-bottom:16px">
+    + Add ask
+  </button>
+  <br>
+  <button type="submit" class="btn">Save asks</button>
+  </form>
+</div>
+</div>
+
+<script>
+// asks template
+var _S = 'width:100%;background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.83em;font-family:inherit';
+var _L = 'font-size:.75em;color:#777;display:block;margin-bottom:4px';
+function _f(label,name,type,ph){return '<div><label style="'+_L+'">'+label+'</label><input type="'+type+'" name="'+name+'" placeholder="'+ph+'" style="'+_S+'"></div>';}
+function _fgc(label,name,type,ph){return '<div style="grid-column:1/-1"><label style="'+_L+'">'+label+'</label><input type="'+type+'" name="'+name+'" placeholder="'+ph+'" style="'+_S+'"></div>';}
+var ASK_ROW_IDX = document.getElementById('ask-list').querySelectorAll('.ask-row').length;
+function buildAskRow(){
+  var idx = ASK_ROW_IDX++;
+  return '<div class="ask-row" style="border:1px solid #252525;border-radius:8px;padding:14px;margin-bottom:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px;position:relative">' +
+  '<button type="button" onclick="this.closest(\'.ask-row\').remove()" style="position:absolute;top:8px;right:10px;background:none;border:none;color:#555;cursor:pointer;font-size:1em;line-height:1">✕</button>' +
+  '<div><label style="'+_L+'">Type</label><select name="ask_type" style="'+_S+'">' +
+  '<option value="fund">💰 Funding / Donation</option><option value="item" selected>📦 Item / Equipment</option>' +
+  '<option value="volunteer">🤝 Volunteer Time</option><option value="skill">🔧 Skill / Service</option></select></div>' +
+  '<div><label style="'+_L+'">Status</label><select name="ask_status" style="'+_S+'">' +
+  '<option value="open" selected>Open</option><option value="in_progress">In Progress</option><option value="fulfilled">Fulfilled ✓</option></select></div>' +
+  _fgc('Title *','ask_title','text','e.g. Need a wheelbarrow…') +
+  '<div style="grid-column:1/-1"><label style="'+_L+'">Description (optional)</label><textarea name="ask_description" placeholder="More detail…" style="'+_S+';resize:vertical;min-height:52px"></textarea></div>' +
+  _fgc('Item link (Amazon, etc.)','ask_product_url','url','https://amazon.com/dp/…') +
+  _f('Thumbnail URL (optional)','ask_product_image_url','url','https://…image.jpg') +
+  _f('Est. price $','ask_product_price','number','19.99') +
+  _f('Funding goal $','ask_target','number','500') +
+  '<div style="grid-column:1/-1"><label style="'+_L+'">Donate link (fund asks)</label><input type="url" name="ask_donation_url" placeholder="https://ko-fi.com/…" style="'+_S+'"></div>' +
+  '<div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:8px;background:#111;border-radius:6px;border:1px solid #252525">' +
+  '<input type="checkbox" name="ask_post_to_board" value="'+idx+'" id="ask_board_'+idx+'" style="accent-color:#4caf50;width:16px;height:16px">' +
+  '<label for="ask_board_'+idx+'" style="font-size:.78em;color:#888;cursor:pointer">📋 Post as "In Search Of" on the Buy Nothing board (item asks)</label></div>' +
+  '</div>';
+}
+document.getElementById('add-ask-btn').addEventListener('click', function(){
+  document.getElementById('ask-list').insertAdjacentHTML('beforeend', buildAskRow());
+});
+</script>
+<script>
+// Add link row
+document.getElementById('add-link-btn').addEventListener('click', function() {
+  var list = document.getElementById('link-list');
+  if (list.querySelectorAll('.link-row').length >= 8) return;
+  var row = document.createElement('div');
+  row.className = 'link-row';
+  row.innerHTML = '<div><label style="font-size:.75em;color:#666">Label</label><input type="text" name="link_label" value="" placeholder="Code of Conduct"></div>' +
+    '<div><label style="font-size:.75em;color:#666">URL</label><input type="url" name="link_url" value="" placeholder="https://...">' +
+    '<label style="font-size:.7em;color:#444;margin-top:4px;display:block">Thumbnail URL (optional)</label>' +
+    '<input type="url" name="link_thumbnail" value="" placeholder="https://...image.png"></div>' +
+    '<button type="button" class="remove-link" onclick="this.closest(\'.link-row\').remove()" title="Remove">✕</button>';
+  list.appendChild(row);
+});
+</script>
+{% endblock %}

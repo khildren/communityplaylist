@@ -45,17 +45,19 @@
 
 {% block styles %}
 <style>
+:root{--accent:{{ promoter.brand_color|default:"#ff6b35" }};--accent-dark:color-mix(in srgb,var(--accent) 80%,#000);--accent-bg:color-mix(in srgb,var(--accent) 6%,#111)}
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111;color:#eee;font-family:sans-serif}
-.page{max-width:860px;margin:0 auto;padding:24px 16px}
-.epk-footer{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;padding:10px;background:linear-gradient(transparent,#111 60%);pointer-events:none}
-.epk-footer a{pointer-events:auto;color:#333;font-size:.72em;text-decoration:none;letter-spacing:.04em;transition:color .15s}
-.epk-footer a:hover{color:#ff6b35}
+.page{max-width:860px;margin:0 auto;padding:24px 16px 80px}
+.epk-footer{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:10px;padding:10px 16px;background:linear-gradient(transparent,#111 60%);pointer-events:none;flex-wrap:wrap}
+.epk-footer a,.epk-footer button{pointer-events:auto;color:#333;font-size:.68em;text-decoration:none;letter-spacing:.04em;transition:color .15s;background:none;border:none;cursor:pointer;font-family:inherit;padding:0}
+.epk-footer a:hover,.epk-footer button:hover{color:var(--accent)}
+.epk-footer-sep{color:#222;font-size:.68em;pointer-events:none}
 .hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;margin-bottom:28px}
 .hero-photo{width:160px;height:160px;border-radius:14px;object-fit:contain;background:#1a1a1a;flex-shrink:0;padding:6px}
 .hero-placeholder{width:160px;height:160px;border-radius:14px;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:3.5em;color:#333;flex-shrink:0}
 .hero-info{min-width:0;width:100%}
-h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
+h1{color:var(--accent);font-size:1.5em;margin-bottom:4px}
 .verified-badge{display:inline-block;background:#1a3a1a;color:#4caf50;font-size:.7em;padding:2px 7px;border-radius:3px;border:1px solid #2a5a2a;vertical-align:middle;margin-left:6px;letter-spacing:.05em}
 .live-badge{display:inline-flex;align-items:center;gap:5px;background:#1a0000;color:#ff3333;font-size:.72em;font-weight:700;padding:3px 9px;border-radius:4px;border:1px solid #550000;vertical-align:middle;margin-left:8px;letter-spacing:.06em;text-transform:uppercase;animation:livepulse 2s ease-in-out infinite}
 @keyframes livepulse{0%,100%{border-color:#550000;color:#ff3333}50%{border-color:#ff3333;color:#ff6666}}
@@ -63,25 +65,28 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
 .bio{color:#bbb;line-height:1.6;font-size:.9em;max-height:16em;overflow:hidden;transition:max-height .4s ease;text-align:center}
 .bio p{margin:0 0 .8em}
 .bio-fade{position:absolute;bottom:28px;left:0;right:0;height:44px;background:linear-gradient(transparent,#111);pointer-events:none;transition:opacity .4s}
-.bio-toggle{background:none;border:none;color:#ff6b35;font-size:.8em;cursor:pointer;padding:4px 0;display:block;width:100%;text-align:center}
+.bio-toggle{background:none;border:none;color:var(--accent);font-size:.8em;cursor:pointer;padding:4px 0;display:block;width:100%;text-align:center}
 .genres{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;justify-content:center}
 .genre-tag{background:#1e1228;color:#cc88ff;font-size:.75em;padding:3px 9px;border-radius:3px;font-weight:600;letter-spacing:.04em}
 .socials{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;justify-content:center}
 .social-pill{display:inline-flex;align-items:center;gap:5px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:4px 10px;text-decoration:none;color:#888;font-size:.78em;transition:all .15s}
-.social-pill:hover{border-color:#ff6b35;color:#ff6b35}
+.social-pill:hover{border-color:var(--accent);color:var(--accent)}
 .action-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;justify-content:center}
 .follow-btn{background:transparent;border:1px solid #333;color:#aaa;padding:5px 14px;border-radius:6px;cursor:pointer;font-size:.8em;transition:all .15s}
-.follow-btn:hover{border-color:#ff6b35;color:#ff6b35}
+.follow-btn:hover{border-color:var(--accent);color:var(--accent)}
 .follow-btn.active{background:#1a1a10;border-color:#ddaa33;color:#ddaa33}
+.follow-btn-cta{border-color:var(--accent) !important;color:var(--accent) !important;animation:ctapulse 2.5s ease-in-out infinite}
+@keyframes ctapulse{0%,100%{opacity:1;box-shadow:0 0 0 0 var(--accent-bg)}60%{opacity:.85;box-shadow:0 0 0 4px var(--accent-bg)}}
 .edit-link{display:inline-block;background:transparent;border:1px solid #333;color:#666;padding:5px 14px;border-radius:6px;text-decoration:none;font-size:.8em}
-.edit-link:hover{border-color:#ff6b35;color:#ff6b35}
+.edit-link:hover{border-color:var(--accent);color:var(--accent)}
+.share-btn:hover{border-color:var(--accent) !important;color:var(--accent) !important}
 .section-title{color:#666;font-size:.75em;text-transform:uppercase;letter-spacing:.09em;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid #1a1a1a}
 .track-list{display:flex;flex-direction:column;gap:3px}
 .track-row{display:flex;align-items:center;gap:12px;background:#161616;border:1px solid #222;border-radius:8px;padding:10px 14px;cursor:pointer;transition:border-color .15s}
-.track-row:hover{border-color:#ff6b35}
-.track-row.playing{border-color:#ff6b35;background:#1a1208}
-.track-play{width:28px;height:28px;border-radius:50%;background:#ff6b35;border:none;color:#fff;font-size:.75em;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
-.track-play:hover{background:#e55a25}
+.track-row:hover{border-color:var(--accent)}
+.track-row.playing{border-color:var(--accent);background:#1a1208}
+.track-play{width:28px;height:28px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:.75em;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.track-play:hover{background:var(--accent-dark)}
 .track-info{flex:1;min-width:0}
 .track-title{color:#ddd;font-size:.88em;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .track-meta{color:#555;font-size:.75em;margin-top:3px;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
@@ -110,21 +115,21 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
 .demo-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9998;align-items:center;justify-content:center}
 .demo-modal.open{display:flex}
 .demo-box{width:min(480px,94vw);background:#161616;border:1px solid #2a2a2a;border-radius:12px;padding:24px}
-.demo-box h3{color:#ff6b35;font-size:.95em;margin-bottom:16px}
+.demo-box h3{color:var(--accent);font-size:.95em;margin-bottom:16px}
 .demo-field{margin-bottom:12px}
 .demo-field label{display:block;font-size:.78em;color:#888;margin-bottom:4px}
 .demo-field input[type=text],.demo-field textarea{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.86em;font-family:inherit}
 .demo-field input[type=file]{color:#888;font-size:.82em}
 .demo-hint{font-size:.72em;color:#444;margin-top:3px}
 .demo-actions{display:flex;gap:8px;margin-top:16px;align-items:center}
-.demo-submit-btn{background:#ff6b35;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:.84em}
+.demo-submit-btn{background:var(--accent);color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:.84em}
 .demo-submit-btn:disabled{opacity:.5;cursor:default}
 .demo-cancel-btn{background:none;border:1px solid #333;color:#888;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:.84em}
 .demo-status{font-size:.8em;color:#888;flex:1;text-align:right}
 .share-row{display:flex;align-items:center;gap:12px;background:#161616;border:1px solid #222;border-radius:8px;padding:10px 14px;transition:border-color .15s}
-.share-row:hover{border-color:#ff6b35}
-.share-play{width:28px;height:28px;border-radius:50%;background:#ff6b35;border:none;color:#fff;font-size:.75em;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
-.share-play:hover{background:#e55a25}
+.share-row:hover{border-color:var(--accent)}
+.share-play{width:28px;height:28px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:.75em;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.share-play:hover{background:var(--accent-dark)}
 .share-info{flex:1;min-width:0}
 .share-title{color:#ddd;font-size:.88em;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .share-by{color:#555;font-size:.75em;margin-top:2px}
@@ -134,7 +139,7 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
 .drive-sync-btn{background:transparent;border:1px solid #1a4a2a;color:#4caf50;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.78em;transition:all .15s}
 .drive-sync-btn:hover{border-color:#4caf50;background:#0f2a18}
 .sync-ok{color:#4caf50;font-size:.82em;margin-top:6px}
-.sync-ok a{color:#ff6b35}
+.sync-ok a{color:var(--accent)}
 .sync-error{color:#ff6b6b;font-size:.82em;margin-top:6px}
 .save-btn{background:transparent;border:none;color:#333;font-size:1em;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;transition:color .15s}
 .save-btn:hover{color:#cc4466}
@@ -191,6 +196,7 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
       {% if promoter.twitch %}<a href="https://twitch.tv/{{ promoter.twitch }}" class="social-pill" target="_blank" rel="noopener" style="border-color:#6441a5;color:#9f7fd4">📺 Twitch</a>{% endif %}
       {% if promoter.spotify %}<a href="{{ promoter.spotify }}" class="social-pill" target="_blank" rel="noopener">🎵 Spotify</a>{% endif %}
       {% if promoter.discord %}<a href="{{ promoter.discord }}" class="social-pill" target="_blank" rel="noopener">💬 Discord</a>{% endif %}
+      {% if promoter.kofi %}<a href="https://ko-fi.com/{{ promoter.kofi }}" class="social-pill" target="_blank" rel="noopener" style="border-color:#ff5e5b;color:#ff8a80">☕ Ko-fi</a>{% endif %}
       {% if promoter.mastodon %}<a href="{{ promoter.mastodon }}" class="social-pill" target="_blank" rel="noopener">🐘 Mastodon</a>{% endif %}
       {% if promoter.bluesky %}<a href="https://bsky.app/profile/{{ promoter.bluesky }}" class="social-pill" target="_blank" rel="noopener">🦋 Bluesky</a>{% endif %}
     </div>
@@ -201,10 +207,14 @@ h1{color:#ff6b35;font-size:1.5em;margin-bottom:4px}
         data-type="promoter" data-id="{{ promoter.pk }}">
         {% if is_following %}★ Following{% else %}☆ Follow{% endif %}
       </button>
+      {% else %}
+      <button class="follow-btn follow-btn-cta" id="follow-btn-cta">♡ Follow</button>
       {% endif %}
       {% if can_edit %}
       <a href="{% url 'promoter_edit' promoter.slug %}" class="edit-link">✏ Edit profile</a>
       {% endif %}
+      <button class="share-btn" id="share-profile-btn" title="Share this profile"
+              style="background:transparent;border:1px solid #333;color:#666;padding:5px 14px;border-radius:6px;cursor:pointer;font-size:.8em;transition:all .15s;font-family:inherit">⬆ Share</button>
       {% if promoter.view_count %}<span style="color:#444;font-size:.78em">👁 {{ promoter.view_count }}</span>{% endif %}
     </div>
   </div>
@@ -301,7 +311,7 @@ window.cpEmbedLinks = [
 <div style="display:flex;align-items:center;justify-content:space-between;margin:28px 0 10px">
   <p class="section-title" style="margin:0;border:none;padding:0">Direct Shares</p>
   {% if promoter.accept_demos and request.user.is_authenticated %}
-  <button onclick="document.getElementById('demo-modal').classList.add('open')" style="background:transparent;border:1px solid #ff6b35;color:#ff6b35;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:.76em">+ Submit Demo</button>
+  <button onclick="document.getElementById('demo-modal').classList.add('open')" style="background:transparent;border:1px solid var(--accent);color:var(--accent);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:.76em">+ Submit Demo</button>
   {% endif %}
 </div>
 {% if shared_tracks %}
@@ -355,7 +365,7 @@ window.cpEmbedLinks = [
 <p class="section-title">Artists &amp; Members</p>
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
   {% for artist in members %}
-  <a href="{{ artist.get_absolute_url }}" style="display:inline-flex;align-items:center;gap:7px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:5px 12px;text-decoration:none;color:#aaa;font-size:.8em;transition:all .15s" onmouseover="this.style.borderColor='#ff6b35';this.style.color='#ff6b35'" onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#aaa'">
+  <a href="{{ artist.get_absolute_url }}" class="social-pill" style="font-size:.8em">
     {% if artist.photo %}<img src="{{ artist.photo.url }}" style="width:22px;height:22px;border-radius:50%;object-fit:cover">{% else %}<span>🎤</span>{% endif %}
     {{ artist.name }}
   </a>
@@ -368,7 +378,7 @@ window.cpEmbedLinks = [
 <p class="section-title">Upcoming Events</p>
 <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:24px">
   {% for e in upcoming_events %}
-  <a href="/events/{{ e.slug }}/" style="display:flex;align-items:center;gap:12px;padding:9px 12px;background:#161616;border:1px solid #222;border-radius:7px;text-decoration:none;color:inherit;transition:border-color .15s" onmouseover="this.style.borderColor='#ff6b35'" onmouseout="this.style.borderColor='#222'">
+  <a href="/events/{{ e.slug }}/" style="display:flex;align-items:center;gap:12px;padding:9px 12px;background:#161616;border:1px solid #222;border-radius:7px;text-decoration:none;color:inherit;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='#222'">
     <span style="color:#555;font-size:.77em;white-space:nowrap;min-width:90px">{{ e.start_date|date:"D, M j" }}</span>
     <span style="color:#ccc;font-size:.88em;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.title }}</span>
     {% if e.is_free %}<span style="background:#1a3a1a;color:#4caf50;font-size:.65em;padding:1px 5px;border-radius:3px;flex-shrink:0">FREE</span>{% endif %}
@@ -410,7 +420,7 @@ window.cpEmbedLinks = [
   }
   </script>
   {% else %}
-  <p style="color:#555;font-size:.82em">Add a Google Drive folder URL in your <a href="{% url 'promoter_edit' promoter.slug %}" style="color:#ff6b35">profile settings</a> to enable track sync.</p>
+  <p style="color:#555;font-size:.82em">Add a Google Drive folder URL in your <a href="{% url 'promoter_edit' promoter.slug %}" style="color:var(--accent)">profile settings</a> to enable track sync.</p>
   {% endif %}
   <div id="drive-sync-result"></div>
 </div>
@@ -422,7 +432,43 @@ window.cpEmbedLinks = [
 
 <div class="epk-footer">
   <a href="/" title="Community Playlist · Portland">community playlist · pdx</a>
+  <span class="epk-footer-sep">·</span>
+  <button id="cookie-btn" onclick="cpCookieModal()">Cookie Preferences</button>
+  <span class="epk-footer-sep">·</span>
+  <a href="/report/">Report</a>
+  <span class="epk-footer-sep">·</span>
+  <a href="/privacy/">Privacy</a>
 </div>
+
+<div id="cookie-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9000;align-items:flex-end;justify-content:center">
+  <div style="width:100%;max-width:500px;background:#1a1a1a;border-top:1px solid #333;border-radius:14px 14px 0 0;padding:28px 24px 32px;font-family:-apple-system,sans-serif">
+    <h2 style="color:#eee;font-size:1em;margin-bottom:10px">Cookie Preferences</h2>
+    <p style="color:#888;font-size:.82em;line-height:1.6;margin-bottom:20px">We use essential cookies only — session authentication and CSRF protection. No ad tracking or third-party analytics.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button onclick="cpCookieAccept()" style="background:var(--accent);color:#fff;border:none;padding:9px 20px;border-radius:8px;cursor:pointer;font-size:.85em;font-family:inherit">Accept &amp; Close</button>
+      <button onclick="cpCookieModal()" style="background:transparent;border:1px solid #333;color:#888;padding:9px 20px;border-radius:8px;cursor:pointer;font-size:.85em;font-family:inherit">Close</button>
+      <a href="/privacy/" style="display:inline-flex;align-items:center;color:#555;font-size:.8em;text-decoration:none;padding:9px 4px">Privacy Policy →</a>
+    </div>
+  </div>
+</div>
+
+{% if not request.user.is_authenticated %}
+<div id="join-popup" style="display:none;position:fixed;bottom:44px;left:50%;transform:translateX(-50%);width:min(480px,94vw);background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:20px 22px;z-index:8000;box-shadow:0 8px 40px rgba(0,0,0,.6);font-family:-apple-system,sans-serif">
+  <button onclick="document.getElementById('join-popup').style.display='none';sessionStorage.setItem('cpJoinDismissed','1')" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#444;font-size:1.2em;cursor:pointer;line-height:1">✕</button>
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+    <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0">🎵</div>
+    <div>
+      <div style="color:#eee;font-size:.92em;font-weight:600">Join Community Playlist</div>
+      <div style="color:#666;font-size:.75em">Your local PDX music network</div>
+    </div>
+  </div>
+  <p style="color:#888;font-size:.8em;line-height:1.55;margin-bottom:16px">Follow artists, save tracks, and get notified about local events. Free, no spam.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a href="/register/" style="background:var(--accent);color:#fff;text-decoration:none;padding:8px 18px;border-radius:8px;font-size:.84em;font-weight:600">Create account</a>
+    <a href="/login/" style="background:transparent;border:1px solid #333;color:#888;text-decoration:none;padding:8px 16px;border-radius:8px;font-size:.84em">Log in</a>
+  </div>
+</div>
+{% endif %}
 
 <script>
 // ── Bio collapse ──
@@ -589,6 +635,55 @@ function cpPlay(btn) {
   btn.textContent = '⏸';
   if (window.cpLoad) window.cpLoad(url, title, artist, window.location.pathname);
 }
+
+// ── Logged-out follow CTA → triggers Join popup ──
+(function(){
+  var cta = document.getElementById('follow-btn-cta');
+  if (!cta) return;
+  cta.addEventListener('click', function() {
+    var p = document.getElementById('join-popup');
+    if (p) { p.style.display = 'block'; sessionStorage.removeItem('cpJoinDismissed'); }
+  });
+})();
+
+// ── Share button ──
+document.getElementById('share-profile-btn').addEventListener('click', function() {
+  var title = '{{ promoter.name|escapejs }} — Community Playlist';
+  var url   = location.href;
+  if (navigator.share) {
+    navigator.share({title: title, url: url}).catch(function(){});
+  } else {
+    navigator.clipboard.writeText(url).then(function() {
+      var btn = document.getElementById('share-profile-btn');
+      var orig = btn.textContent;
+      btn.textContent = '✓ Copied';
+      setTimeout(function(){ btn.textContent = orig; }, 2000);
+    });
+  }
+});
+
+// ── Cookie modal ──
+function cpCookieModal() {
+  var m = document.getElementById('cookie-modal');
+  m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
+}
+function cpCookieAccept() {
+  localStorage.setItem('cpCookieOk', '1');
+  document.getElementById('cookie-modal').style.display = 'none';
+}
+document.getElementById('cookie-modal').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+
+{% if not request.user.is_authenticated %}
+(function() {
+  if (sessionStorage.getItem('cpJoinDismissed')) return;
+  setTimeout(function() {
+    var p = document.getElementById('join-popup');
+    if (p) p.style.display = 'block';
+  }, 4000);
+})();
+{% endif %}
 </script>
 
 {% endblock %}

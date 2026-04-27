@@ -171,5 +171,91 @@ input[type=file]{display:none}
 
   <button type="submit" class="submit-btn">{% if editing %}Save changes{% else %}Submit venue{% endif %}</button>
 </form>
+
+{% if editing %}
+<style>
+.ask-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#161616;border:1px solid #2a2a2a;border-radius:8px;padding:14px;margin-bottom:10px;position:relative}
+.ask-row select,.ask-row input,.ask-row textarea{width:100%;background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#eee;font-size:.83em;font-family:inherit}
+.ask-row textarea{resize:vertical;min-height:52px;grid-column:1/-1}
+.ask-row .remove-ask{position:absolute;top:8px;right:10px;background:none;border:none;color:#555;cursor:pointer;font-size:1em}
+.ask-row .remove-ask:hover{color:#f55}
+.add-ask-btn{background:transparent;border:1px dashed #444;color:#888;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:.82em;margin-top:4px}
+.add-ask-btn:hover{border-color:#ff6b35;color:#ff6b35}
+</style>
+<form method="post" action="" id="asks-form">
+{% csrf_token %}
+<input type="hidden" name="_asks_only" value="1">
+<div class="page-wrap" style="padding-top:0">
+  <div class="section-label" style="margin-top:28px">Community Asks</div>
+  <p style="font-size:.8em;color:#666;margin-bottom:14px;line-height:1.5">Post specific needs — equipment, volunteers, funding, skills. Visitors see a clear CTA to help.</p>
+  <div id="ask-list">
+    {% for ask in asks %}
+    <div class="ask-row">
+      <button type="button" class="remove-ask" onclick="this.closest('.ask-row').remove()">✕</button>
+      <div>
+        <label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Type</label>
+        <select name="ask_type">
+          <option value="fund"{% if ask.ask_type == 'fund' %} selected{% endif %}>💰 Funding / Donation</option>
+          <option value="item"{% if ask.ask_type == 'item' %} selected{% endif %}>📦 Item / Equipment</option>
+          <option value="volunteer"{% if ask.ask_type == 'volunteer' %} selected{% endif %}>🤝 Volunteer Time</option>
+          <option value="skill"{% if ask.ask_type == 'skill' %} selected{% endif %}>🔧 Skill / Service</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Status</label>
+        <select name="ask_status">
+          <option value="open"{% if ask.status == 'open' %} selected{% endif %}>Open</option>
+          <option value="in_progress"{% if ask.status == 'in_progress' %} selected{% endif %}>In Progress</option>
+          <option value="fulfilled"{% if ask.status == 'fulfilled' %} selected{% endif %}>Fulfilled ✓</option>
+        </select>
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Title</label>
+        <input type="text" name="ask_title" value="{{ ask.title }}" placeholder="e.g. Need a PA system, Looking for an electrician…">
+      </div>
+      <textarea name="ask_description" placeholder="More detail (optional)">{{ ask.description }}</textarea>
+      <div>
+        <label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Funding goal $ (optional)</label>
+        <input type="number" name="ask_target" value="{{ ask.target_amount|default:'' }}" placeholder="500">
+      </div>
+      <div>
+        <label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Donate link (overrides profile)</label>
+        <input type="url" name="ask_donation_url" value="{{ ask.donation_url }}" placeholder="https://ko-fi.com/…">
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <button type="button" class="add-ask-btn" id="add-ask-btn">+ Add ask</button>
+  <br><br>
+  <button type="submit" class="submit-btn">Save asks</button>
+</div>
+</form>
+<script>
+(function(){
+  var tmpl = `<div class="ask-row">
+    <button type="button" class="remove-ask" onclick="this.closest('.ask-row').remove()">✕</button>
+    <div><label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Type</label>
+    <select name="ask_type">
+      <option value="fund">💰 Funding / Donation</option>
+      <option value="item" selected>📦 Item / Equipment</option>
+      <option value="volunteer">🤝 Volunteer Time</option>
+      <option value="skill">🔧 Skill / Service</option>
+    </select></div>
+    <div><label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Status</label>
+    <select name="ask_status"><option value="open" selected>Open</option><option value="in_progress">In Progress</option><option value="fulfilled">Fulfilled ✓</option></select></div>
+    <div style="grid-column:1/-1"><label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Title</label>
+    <input type="text" name="ask_title" placeholder="e.g. Need a PA system…"></div>
+    <textarea name="ask_description" placeholder="More detail (optional)"></textarea>
+    <div><label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Funding goal $ (optional)</label>
+    <input type="number" name="ask_target" placeholder="500"></div>
+    <div><label style="font-size:.75em;color:#777;display:block;margin-bottom:4px">Donate link (overrides profile)</label>
+    <input type="url" name="ask_donation_url" placeholder="https://ko-fi.com/…"></div>
+  </div>`;
+  document.getElementById('add-ask-btn').addEventListener('click', function(){
+    document.getElementById('ask-list').insertAdjacentHTML('beforeend', tmpl);
+  });
+})();
+</script>
+{% endif %}
 </div>
 {% endblock %}

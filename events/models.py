@@ -150,6 +150,7 @@ class Artist(models.Model):
     spotify    = models.URLField(blank=True, help_text='Artist page URL')
     mastodon   = models.URLField(blank=True, help_text='Full profile URL e.g. https://pdx.social/@you')
     bluesky    = models.CharField(max_length=100, blank=True, help_text='Handle e.g. yourname.bsky.social')
+    kofi       = models.CharField(max_length=100, blank=True, help_text='Ko-fi username e.g. yourname from ko-fi.com/yourname')
     tiktok     = models.CharField(max_length=100, blank=True, help_text='Handle without @')
     twitch     = models.CharField(max_length=100, blank=True, help_text='Channel name without @')
     beatport   = models.URLField(blank=True, help_text='Beatport artist page URL')
@@ -165,6 +166,11 @@ class Artist(models.Model):
         max_length=20, blank=True, default='newest',
         choices=HOUSE_MIXES_SORT_CHOICES,
         help_text='Sort order for house-mixes.com track list',
+    )
+
+    brand_color = models.CharField(
+        max_length=7, blank=True, default='',
+        help_text='Profile accent hex color e.g. #ff6b35 — leave blank for default orange',
     )
 
     # Music folder
@@ -269,10 +275,16 @@ class PromoterProfile(models.Model):
     spotify    = models.URLField(blank=True)
     mastodon   = models.URLField(blank=True, help_text='Full profile URL')
     bluesky    = models.CharField(max_length=100, blank=True)
+    kofi       = models.CharField(max_length=100, blank=True, help_text='Ko-fi username e.g. yourname from ko-fi.com/yourname')
     tiktok     = models.CharField(max_length=100, blank=True)
     twitch     = models.CharField(max_length=100, blank=True, help_text='Channel name without @')
     discord    = models.URLField(blank=True, help_text='Invite link')
     telegram   = models.CharField(max_length=100, blank=True, help_text='Username without @')
+
+    brand_color = models.CharField(
+        max_length=7, blank=True, default='',
+        help_text='Profile accent hex color e.g. #ff6b35 — leave blank for default orange',
+    )
 
     genres  = models.ManyToManyField('Genre', blank=True, related_name='promoters')
     members = models.ManyToManyField('Artist', blank=True, related_name='crews',
@@ -378,6 +390,178 @@ class PromoterProfile(models.Model):
         return reverse('promoter_detail', kwargs={'slug': self.slug})
 
 
+class CommunitySpace(models.Model):
+    """A community garden, third space, makerspace, or free public gathering place."""
+
+    TYPE_GARDEN      = 'garden'
+    TYPE_THIRD_SPACE = 'third_space'
+    TYPE_MAKERSPACE  = 'makerspace'
+    TYPE_LIBRARY     = 'library'
+    TYPE_PARK        = 'park'
+    TYPE_CHOICES = [
+        (TYPE_GARDEN,      'Community Garden'),
+        (TYPE_THIRD_SPACE, 'Third Space'),
+        (TYPE_MAKERSPACE,  'Makerspace / Hackerspace'),
+        (TYPE_LIBRARY,     'Free Library'),
+        (TYPE_PARK,        'Park / Outdoor Space'),
+    ]
+
+    name       = models.CharField(max_length=200)
+    slug       = models.SlugField(max_length=220, unique=True, blank=True)
+    space_type = models.CharField(max_length=30, choices=TYPE_CHOICES, default=TYPE_GARDEN)
+    bio        = models.TextField(blank=True)
+    photo      = models.ImageField(upload_to='community_spaces/', blank=True, null=True)
+    brand_color = models.CharField(
+        max_length=7, blank=True, default='',
+        help_text='Profile accent hex color e.g. #4caf50 — leave blank for default green',
+    )
+
+    # Physical location
+    address      = models.CharField(max_length=300, blank=True)
+    neighborhood = models.CharField(max_length=100, blank=True)
+    latitude     = models.FloatField(null=True, blank=True)
+    longitude    = models.FloatField(null=True, blank=True)
+
+    # Contact (public-facing)
+    contact_email = models.EmailField(blank=True, help_text='Displayed on profile — use a public contact address')
+    website       = models.URLField(blank=True)
+
+    # Social — fedi/indie first
+    instagram = models.CharField(max_length=100, blank=True, help_text='Handle without @')
+    bluesky   = models.CharField(max_length=100, blank=True, help_text='Handle e.g. you.bsky.social')
+    mastodon  = models.URLField(blank=True, help_text='Full profile URL e.g. https://pdx.social/@you')
+    tiktok    = models.CharField(max_length=100, blank=True, help_text='Handle without @')
+
+    # Resources
+    drive_folder_url = models.URLField(
+        blank=True, help_text='Public Google Drive folder — shows as "Resource Library" button',
+    )
+
+    # Funding — fedi/crypto only (no PayPal/Stripe)
+    sol_wallet   = models.CharField(
+        max_length=120, blank=True,
+        help_text='Solana wallet address (Phantom) — shows a ♥ Donate button',
+    )
+    donation_url = models.URLField(
+        blank=True,
+        help_text='Ko-fi, Open Collective, or Helium link — shown alongside SOL wallet',
+    )
+
+    # Custom link buttons (Linktree-style)
+    custom_links = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Up to 8 custom buttons: [{"label": "Code of Conduct", "url": "https://...", "thumbnail_url": ""}]',
+    )
+
+    claimed_by  = models.ForeignKey(
+        'auth.User', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='claimed_spaces',
+    )
+    is_verified = models.BooleanField(default=False)
+    is_public   = models.BooleanField(default=True)
+    view_count  = models.PositiveIntegerField(default=0)
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Community Space'
+        verbose_name_plural = 'Community Spaces'
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.name)
+            slug, n = base, 1
+            while CommunitySpace.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f'{base}-{n}'; n += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('community_space_profile', kwargs={'slug': self.slug})
+
+
+class CommunityAsk(models.Model):
+    """A specific need or request posted by a Venue or CommunitySpace."""
+
+    TYPE_FUND      = 'fund'
+    TYPE_ITEM      = 'item'
+    TYPE_VOLUNTEER = 'volunteer'
+    TYPE_SKILL     = 'skill'
+    TYPE_CHOICES = [
+        (TYPE_FUND,      'Funding / Donation'),
+        (TYPE_ITEM,      'Item / Equipment'),
+        (TYPE_VOLUNTEER, 'Volunteer Time'),
+        (TYPE_SKILL,     'Skill / Service'),
+    ]
+
+    STATUS_OPEN        = 'open'
+    STATUS_IN_PROGRESS = 'in_progress'
+    STATUS_FULFILLED   = 'fulfilled'
+    STATUS_CHOICES = [
+        (STATUS_OPEN,        'Open'),
+        (STATUS_IN_PROGRESS, 'In Progress'),
+        (STATUS_FULFILLED,   'Fulfilled — thank you!'),
+    ]
+
+    community_space = models.ForeignKey(
+        'CommunitySpace', null=True, blank=True, on_delete=models.CASCADE,
+        related_name='asks',
+    )
+    venue = models.ForeignKey(
+        'Venue', null=True, blank=True, on_delete=models.CASCADE,
+        related_name='asks',
+    )
+
+    title         = models.CharField(max_length=200)
+    description   = models.TextField(blank=True)
+    ask_type      = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_ITEM)
+    target_amount = models.DecimalField(
+        max_digits=8, decimal_places=0, null=True, blank=True,
+        help_text='Funding goal in dollars (optional)',
+    )
+    donation_url  = models.URLField(
+        blank=True,
+        help_text='Specific donate link for this ask — overrides profile donation URL',
+    )
+
+    # Product wishlist fields (item asks)
+    product_url       = models.URLField(blank=True, help_text='Link to specific item on Amazon or elsewhere')
+    product_image_url = models.URLField(blank=True, help_text='Product thumbnail URL (auto-fetchable from page)')
+    product_price     = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text='Approximate cost in dollars',
+    )
+
+    # Board integration — linked ISO ("In Search Of") offering
+    board_offering = models.OneToOneField(
+        'board.Offering', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='community_ask',
+        help_text='Living Buy Nothing ISO post linked to this ask',
+    )
+
+    status     = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_OPEN)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'created_at']
+        verbose_name = 'Community Ask'
+        verbose_name_plural = 'Community Asks'
+
+    def __str__(self):
+        owner = self.community_space or self.venue or '?'
+        return f'{self.get_ask_type_display()} — {self.title} [{owner}]'
+
+    @property
+    def board_url(self):
+        if self.board_offering_id:
+            return self.board_offering.get_absolute_url()
+        return ''
 
 
 class RecordListing(models.Model):
@@ -783,6 +967,10 @@ class Venue(models.Model):
     threads      = models.CharField(max_length=100, blank=True, help_text='Handle without @')
     soundcloud   = models.CharField(max_length=100, blank=True, help_text='Username / profile slug')
     mixcloud     = models.CharField(max_length=100, blank=True, help_text='Username / profile slug')
+    brand_color  = models.CharField(
+        max_length=7, blank=True, default='',
+        help_text='Profile accent hex color e.g. #ff6b35 — leave blank for default orange',
+    )
     venue_feed   = models.OneToOneField(
         'VenueFeed', null=True, blank=True, on_delete=models.SET_NULL,
         related_name='venue_profile',
@@ -1067,11 +1255,13 @@ class Follow(models.Model):
     TYPE_VENUE        = 'venue'
     TYPE_NEIGHBORHOOD = 'neighborhood'
     TYPE_PROMOTER     = 'promoter'
+    TYPE_SPACE        = 'space'
     TYPE_CHOICES = [
         (TYPE_ARTIST,       'Artist'),
         (TYPE_VENUE,        'Venue'),
         (TYPE_NEIGHBORHOOD, 'Neighborhood'),
         (TYPE_PROMOTER,     'Promoter'),
+        (TYPE_SPACE,        'Community Space'),
     ]
     user        = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='follows')
     target_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
@@ -1095,6 +1285,8 @@ class Follow(models.Model):
             return Neighborhood.objects.filter(pk=self.target_id).first()
         if self.target_type == self.TYPE_PROMOTER:
             return PromoterProfile.objects.filter(pk=self.target_id).first()
+        if self.target_type == self.TYPE_SPACE:
+            return CommunitySpace.objects.filter(pk=self.target_id).first()
         return None
 
 

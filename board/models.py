@@ -121,6 +121,21 @@ class Offering(models.Model):
         from django.utils import timezone
         return timezone.now() > self.expires_at
 
+    def save(self, *args, **kwargs):
+        # Track whether is_claimed just flipped to True
+        just_claimed = False
+        if self.pk and self.is_claimed:
+            just_claimed = not Offering.objects.filter(pk=self.pk, is_claimed=True).exists()
+        super().save(*args, **kwargs)
+        if just_claimed:
+            try:
+                from events.models import CommunityAsk
+                CommunityAsk.objects.filter(board_offering=self).update(
+                    status=CommunityAsk.STATUS_FULFILLED,
+                )
+            except Exception:
+                pass
+
 
 class SocialQueue(models.Model):
     """Pending social media posts. Processed by flush_social_queue management command."""

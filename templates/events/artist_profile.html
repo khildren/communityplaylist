@@ -48,12 +48,14 @@
 
 {% block styles %}
 <style>
+:root{--accent:{{ artist.brand_color|default:"#ff6b35" }};--accent-dark:color-mix(in srgb,var(--accent) 80%,#000);--accent-bg:color-mix(in srgb,var(--accent) 6%,#0e0e0e)}
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0e0e0e;color:#eee;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
-.epk{max-width:580px;margin:0 auto;padding:24px 16px 60px;display:flex;flex-direction:column;gap:12px}
-.epk-footer{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;padding:10px;background:linear-gradient(transparent,#0e0e0e 60%);pointer-events:none}
-.epk-footer a{pointer-events:auto;color:#333;font-size:.72em;text-decoration:none;letter-spacing:.04em;transition:color .15s}
-.epk-footer a:hover{color:#ff6b35}
+.epk{max-width:580px;margin:0 auto;padding:24px 16px 80px;display:flex;flex-direction:column;gap:12px}
+.epk-footer{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:10px;padding:10px 16px;background:linear-gradient(transparent,#0e0e0e 60%);pointer-events:none;flex-wrap:wrap}
+.epk-footer a,.epk-footer button{pointer-events:auto;color:#333;font-size:.68em;text-decoration:none;letter-spacing:.04em;transition:color .15s;background:none;border:none;cursor:pointer;font-family:inherit;padding:0}
+.epk-footer a:hover,.epk-footer button:hover{color:var(--accent)}
+.epk-footer-sep{color:#222;font-size:.68em;pointer-events:none}
 .card{background:#161616;border:1px solid #222;border-radius:14px;overflow:hidden}
 .section-label{font-size:.7em;text-transform:uppercase;letter-spacing:.1em;color:#444;padding:12px 16px 8px;border-bottom:1px solid #1e1e1e}
 
@@ -62,7 +64,7 @@ body{background:#0e0e0e;color:#eee;font-family:-apple-system,BlinkMacSystemFont,
 .hero-photo{width:80px;height:80px;border-radius:50%;object-fit:cover;background:#1a1a1a;border:2px solid #2a2a2a}
 .hero-photo-placeholder{width:80px;height:80px;border-radius:50%;background:#1a1a1a;border:2px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:2em;color:#333}
 .hero-info{min-width:0;display:flex;flex-direction:column;gap:4px}
-h1{color:#ff6b35;font-size:1.25em;font-weight:700;line-height:1.2}
+h1{color:var(--accent);font-size:1.25em;font-weight:700;line-height:1.2}
 .verified-badge{display:inline-flex;align-items:center;gap:4px;background:#0d1f0d;color:#4caf50;font-size:.63em;padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.04em;align-self:flex-start}
 .live-badge{display:inline-flex;align-items:center;gap:5px;background:#1a0000;color:#ff3333;font-size:.65em;font-weight:700;padding:3px 9px;border-radius:4px;border:1px solid #550000;align-self:flex-start;letter-spacing:.06em;text-transform:uppercase;animation:livepulse 2s ease-in-out infinite}
 @keyframes livepulse{0%,100%{border-color:#550000;color:#ff3333}50%{border-color:#ff3333;color:#ff6666}}
@@ -71,15 +73,19 @@ h1{color:#ff6b35;font-size:1.25em;font-weight:700;line-height:1.2}
 /* Socials */
 .socials{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 .social-pill{display:inline-flex;align-items:center;gap:5px;background:#111;border:1px solid #252525;border-radius:20px;padding:4px 11px;text-decoration:none;color:#888;font-size:.78em;transition:all .15s;white-space:nowrap}
-.social-pill:hover{border-color:#ff6b35;color:#ff6b35;background:#140a06}
+.social-pill:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
 
-/* Follow / Edit row */
+/* Follow / Edit / Share row */
 .action-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
 .follow-btn{background:transparent;border:1px solid #2a2a2a;color:#888;padding:5px 12px;border-radius:20px;cursor:pointer;font-size:.78em;font-family:inherit;transition:all .15s}
-.follow-btn:hover{border-color:#ff6b35;color:#ff6b35}
+.follow-btn:hover{border-color:var(--accent);color:var(--accent)}
 .follow-btn.active{background:#1a1a10;border-color:#ddaa33;color:#ddaa33}
+.follow-btn-cta{border-color:var(--accent) !important;color:var(--accent) !important;animation:ctapulse 2.5s ease-in-out infinite}
+@keyframes ctapulse{0%,100%{opacity:1;box-shadow:0 0 0 0 var(--accent-bg)}60%{opacity:.85;box-shadow:0 0 0 4px var(--accent-bg)}}
 .edit-link{display:inline-flex;align-items:center;background:transparent;border:1px solid #2a2a2a;color:#666;padding:5px 12px;border-radius:20px;text-decoration:none;font-size:.78em;transition:all .15s}
-.edit-link:hover{border-color:#ff6b35;color:#ff6b35}
+.edit-link:hover{border-color:var(--accent);color:var(--accent)}
+.share-btn{background:transparent;border:1px solid #2a2a2a;color:#666;padding:5px 12px;border-radius:20px;cursor:pointer;font-size:.78em;font-family:inherit;transition:all .15s;display:inline-flex;align-items:center;gap:4px}
+.share-btn:hover{border-color:var(--accent);color:var(--accent)}
 
 /* Crew affiliations inside hero card */
 .crew-row{display:flex;flex-wrap:wrap;gap:7px;padding:12px 20px 16px;border-top:1px solid #1e1e1e}
@@ -89,8 +95,8 @@ h1{color:#ff6b35;font-size:1.25em;font-weight:700;line-height:1.2}
 .track-row:last-child{border-bottom:none}
 .track-row:hover{background:#1c1c1c}
 .track-row.playing{background:#1a1208}
-.track-play{width:28px;height:28px;border-radius:50%;background:#ff6b35;border:none;color:#fff;font-size:.75em;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:background .15s}
-.track-play:hover{background:#e55a25}
+.track-play{width:28px;height:28px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:.75em;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:background .15s}
+.track-play:hover{background:var(--accent-dark)}
 .track-info{flex:1;min-width:0}
 .track-title{color:#ddd;font-size:.88em;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .track-meta{color:#555;font-size:.75em;margin-top:3px;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
@@ -112,20 +118,20 @@ h1{color:#ff6b35;font-size:1.25em;font-weight:700;line-height:1.2}
 .drive-sync-btn{background:transparent;border:1px solid #1a4a2a;color:#4caf50;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.78em;transition:all .15s}
 .drive-sync-btn:hover{border-color:#4caf50;background:#0f2a18}
 .sync-ok{color:#4caf50;font-size:.82em;margin-top:6px}
-.sync-ok a{color:#ff6b35}
+.sync-ok a{color:var(--accent)}
 .sync-error{color:#ff6b6b;font-size:.82em;margin-top:6px}
 
 /* Events */
 .event-row{display:block;padding:12px 16px;border-bottom:1px solid #1a1a1a;text-decoration:none;transition:background .1s}
 .event-row:last-child{border-bottom:none}
 .event-row:hover{background:#1c1c1c}
-.event-row .et{color:#ff6b35;font-weight:600;font-size:.9em;margin-bottom:3px}
-.event-row:hover .et{color:#ff8c5a}
+.event-row .et{color:var(--accent);font-weight:600;font-size:.9em;margin-bottom:3px}
+.event-row:hover .et{color:var(--accent)}
 .event-row .em{color:#888;font-size:.8em}
 .event-row.past{opacity:.6}
 .rec-row{padding:12px 16px;border-bottom:1px solid #1a1a1a}
 .rec-row:last-child{border-bottom:none}
-.rec-row strong{color:#ff6b35}
+.rec-row strong{color:var(--accent)}
 .rec-meta{color:#888;font-size:.82em;margin-left:6px}
 
 /* Twitch clips grid */
@@ -183,6 +189,7 @@ h1{color:#ff6b35;font-size:1.25em;font-weight:700;line-height:1.2}
         {% if artist.house_mixes %}<a href="https://www.house-mixes.com/{{ artist.house_mixes }}" class="social-pill" target="_blank" rel="noopener" style="border-color:#ff6600;color:#ff8833">🎛 House-Mixes</a>{% endif %}
         {% if artist.mastodon %}<a href="{{ artist.mastodon }}" class="social-pill" target="_blank" rel="noopener">🐘 Mastodon</a>{% endif %}
         {% if artist.bluesky %}<a href="https://bsky.app/profile/{{ artist.bluesky }}" class="social-pill" target="_blank" rel="noopener">🦋 Bluesky</a>{% endif %}
+        {% if artist.kofi %}<a href="https://ko-fi.com/{{ artist.kofi }}" class="social-pill" target="_blank" rel="noopener" style="border-color:#ff5e5b;color:#ff8a80">☕ Ko-fi</a>{% endif %}
         {% if artist.tiktok %}<a href="https://tiktok.com/@{{ artist.tiktok }}" class="social-pill" target="_blank" rel="noopener">🎵 TikTok</a>{% endif %}
         {% if artist.mb_id %}<a href="https://musicbrainz.org/artist/{{ artist.mb_id }}" class="social-pill" target="_blank" rel="noopener">🎼 MusicBrainz</a>{% endif %}
       </div>
@@ -193,10 +200,13 @@ h1{color:#ff6b35;font-size:1.25em;font-weight:700;line-height:1.2}
           data-type="artist" data-id="{{ artist.pk }}">
           {% if is_following %}★ Following{% else %}☆ Follow{% endif %}
         </button>
+        {% else %}
+        <button class="follow-btn follow-btn-cta" id="follow-btn-cta">♡ Follow</button>
         {% endif %}
         {% if can_edit %}
         <a href="{% url 'artist_edit' slug=artist.slug %}" class="edit-link">✏ Edit profile</a>
         {% endif %}
+        <button class="share-btn" id="share-profile-btn" title="Share this profile">⬆ Share</button>
         {% if artist.view_count %}<span style="color:#444;font-size:.78em">👁 {{ artist.view_count }}</span>{% endif %}
       </div>
     </div>
@@ -261,7 +271,7 @@ h1{color:#ff6b35;font-size:1.25em;font-weight:700;line-height:1.2}
 {# ── House-Mixes.com mixes ── #}
 {% if house_mixes_tracks %}
 <div class="card">
-  <div class="section-label">🎛 Mixes &mdash; <a href="https://www.house-mixes.com/{{ artist.house_mixes }}" target="_blank" rel="noopener" style="color:#ff6b35">house-mixes.com/{{ artist.house_mixes }}</a></div>
+  <div class="section-label">🎛 Mixes &mdash; <a href="https://www.house-mixes.com/{{ artist.house_mixes }}" target="_blank" rel="noopener" style="color:var(--accent)">house-mixes.com/{{ artist.house_mixes }}</a></div>
   {% for mix in house_mixes_tracks %}
   <div class="track-row" data-stream="{{ mix.stream_url }}" data-title="{{ mix.title }}" data-artist="{{ artist.name }}" style="align-items:flex-start">
     <button class="track-play" onclick="cpPlay(this)" title="Play">▶</button>
@@ -425,7 +435,45 @@ window.cpEmbedLinks = [
 
 <div class="epk-footer">
   <a href="/" title="Community Playlist · Portland">community playlist · pdx</a>
+  <span class="epk-footer-sep">·</span>
+  <button id="cookie-btn" onclick="cpCookieModal()">Cookie Preferences</button>
+  <span class="epk-footer-sep">·</span>
+  <a href="/report/">Report</a>
+  <span class="epk-footer-sep">·</span>
+  <a href="/privacy/">Privacy</a>
 </div>
+
+{# ── Cookie preferences modal ── #}
+<div id="cookie-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9000;align-items:flex-end;justify-content:center">
+  <div style="width:100%;max-width:500px;background:#1a1a1a;border-top:1px solid #333;border-radius:14px 14px 0 0;padding:28px 24px 32px;font-family:-apple-system,sans-serif">
+    <h2 style="color:#eee;font-size:1em;margin-bottom:10px">Cookie Preferences</h2>
+    <p style="color:#888;font-size:.82em;line-height:1.6;margin-bottom:20px">We use essential cookies only — session authentication and CSRF protection. No ad tracking or third-party analytics.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button onclick="cpCookieAccept()" style="background:var(--accent);color:#fff;border:none;padding:9px 20px;border-radius:8px;cursor:pointer;font-size:.85em;font-family:inherit">Accept &amp; Close</button>
+      <button onclick="cpCookieModal()" style="background:transparent;border:1px solid #333;color:#888;padding:9px 20px;border-radius:8px;cursor:pointer;font-size:.85em;font-family:inherit">Close</button>
+      <a href="/privacy/" style="display:inline-flex;align-items:center;color:#555;font-size:.8em;text-decoration:none;padding:9px 4px">Privacy Policy →</a>
+    </div>
+  </div>
+</div>
+
+{% if not request.user.is_authenticated %}
+{# ── Join CP slide-up popup (logged-out visitors, one-time per session) ── #}
+<div id="join-popup" style="display:none;position:fixed;bottom:44px;left:50%;transform:translateX(-50%);width:min(480px,94vw);background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:20px 22px;z-index:8000;box-shadow:0 8px 40px rgba(0,0,0,.6);font-family:-apple-system,sans-serif">
+  <button onclick="document.getElementById('join-popup').style.display='none';sessionStorage.setItem('cpJoinDismissed','1')" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#444;font-size:1.2em;cursor:pointer;line-height:1">✕</button>
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+    <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0">🎵</div>
+    <div>
+      <div style="color:#eee;font-size:.92em;font-weight:600">Join Community Playlist</div>
+      <div style="color:#666;font-size:.75em">Your local PDX music network</div>
+    </div>
+  </div>
+  <p style="color:#888;font-size:.8em;line-height:1.55;margin-bottom:16px">Follow artists, save tracks, and get notified about local events. Free, no spam.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a href="/register/" style="background:var(--accent);color:#fff;text-decoration:none;padding:8px 18px;border-radius:8px;font-size:.84em;font-weight:600">Create account</a>
+    <a href="/login/" style="background:transparent;border:1px solid #333;color:#888;text-decoration:none;padding:8px 16px;border-radius:8px;font-size:.84em">Log in</a>
+  </div>
+</div>
+{% endif %}
 
 <script>
 // ── Follow toggle ──
@@ -519,6 +567,56 @@ function closeClip(e) {
   document.body.style.overflow = '';
 }
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeClip({target: document.getElementById('clip-modal')}); });
+
+// ── Logged-out follow CTA → triggers Join popup ──
+(function(){
+  var cta = document.getElementById('follow-btn-cta');
+  if (!cta) return;
+  cta.addEventListener('click', function() {
+    var p = document.getElementById('join-popup');
+    if (p) { p.style.display = 'block'; sessionStorage.removeItem('cpJoinDismissed'); }
+  });
+})();
+
+// ── Share button ──
+document.getElementById('share-profile-btn').addEventListener('click', function() {
+  var title = '{{ artist.name|escapejs }} — Community Playlist';
+  var url   = location.href;
+  if (navigator.share) {
+    navigator.share({title: title, url: url}).catch(function(){});
+  } else {
+    navigator.clipboard.writeText(url).then(function() {
+      var btn = document.getElementById('share-profile-btn');
+      var orig = btn.textContent;
+      btn.textContent = '✓ Copied';
+      setTimeout(function(){ btn.textContent = orig; }, 2000);
+    });
+  }
+});
+
+// ── Cookie modal ──
+function cpCookieModal() {
+  var m = document.getElementById('cookie-modal');
+  m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
+}
+function cpCookieAccept() {
+  localStorage.setItem('cpCookieOk', '1');
+  document.getElementById('cookie-modal').style.display = 'none';
+}
+document.getElementById('cookie-modal').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+
+{% if not request.user.is_authenticated %}
+// ── Join CP popup — show once per session after 4s ──
+(function() {
+  if (sessionStorage.getItem('cpJoinDismissed')) return;
+  setTimeout(function() {
+    var p = document.getElementById('join-popup');
+    if (p) p.style.display = 'block';
+  }, 4000);
+})();
+{% endif %}
 </script>
 
 {% endblock %}

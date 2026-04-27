@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import admin, messages
 from django.template.response import TemplateResponse
-from .models import Event, EventPhoto, Genre, Artist, SiteStats, CalendarFeed, Venue, Neighborhood, UserProfile, Follow, EditSuggestion, PromoterProfile, PlaylistTrack, SavedTrack, RecordListing, RecordReservation, VideoTrack, Shelter, FlyerBackground, VideoRoomMessage
+from .models import Event, EventPhoto, Genre, Artist, SiteStats, CalendarFeed, Venue, Neighborhood, UserProfile, Follow, EditSuggestion, PromoterProfile, PlaylistTrack, SavedTrack, RecordListing, RecordReservation, VideoTrack, Shelter, FlyerBackground, VideoRoomMessage, CommunitySpace, CommunityAsk
 from .forms import EventSubmitForm, EventPhotoForm, RegisterForm, StyledAuthForm, VenueForm
 from .geocode import geocode_location
 from urllib.parse import quote
@@ -1364,6 +1364,7 @@ def venue_detail(request, slug):
         request.user.is_authenticated and
         Follow.objects.filter(user=request.user, target_type=Follow.TYPE_VENUE, target_id=venue.pk).exists()
     )
+    asks = list(venue.asks.exclude(status='fulfilled'))
     return render(request, 'events/venue_detail.html', {
         'venue': venue,
         'upcoming': upcoming,
@@ -1371,6 +1372,7 @@ def venue_detail(request, slug):
         'now': now,
         'is_following': is_following,
         'venue_edit_fields': EditSuggestion.FIELDS['venue'],
+        'asks': asks,
     })
 
 
@@ -1491,6 +1493,13 @@ def venue_register(request):
 @login_required(login_url='/login/')
 def venue_edit(request, slug):
     venue = get_object_or_404(Venue, slug=slug, claimed_by=request.user)
+
+    if request.method == 'POST' and request.POST.get('_asks_only') == '1':
+        # Asks-only form submitted — rebuild asks without touching VenueForm
+        _save_asks_for_venue(venue, request.POST, user=request.user)
+        messages.success(request, 'Community Asks saved.')
+        return redirect('venue_edit', slug=venue.slug)
+
     form = VenueForm(request.POST or None, request.FILES or None, instance=venue)
     if request.method == 'POST' and form.is_valid():
         v = form.save(commit=False)
@@ -1501,7 +1510,106 @@ def venue_edit(request, slug):
         v.save()
         messages.success(request, 'Venue updated.')
         return redirect('venue_detail', slug=venue.slug)
-    return render(request, 'events/venue_register.html', {'form': form, 'venue': venue, 'editing': True})
+    asks = list(venue.asks.all())
+    return render(request, 'events/venue_register.html', {'form': form, 'venue': venue, 'editing': True, 'asks': asks})
+
+
+def _parse_asks_from_post(post):
+    """Return list of dicts from parallel ask arrays in POST data."""
+    titles        = post.getlist('ask_title')
+    types         = post.getlist('ask_type')
+    descriptions  = post.getlist('ask_description')
+    amounts       = post.getlist('ask_target')
+    don_urls      = post.getlist('ask_donation_url')
+    statuses      = post.getlist('ask_status')
+    product_urls  = post.getlist('ask_product_url')
+    product_imgs  = post.getlist('ask_product_image_url')
+    product_prices = post.getlist('ask_product_price')
+    post_to_board = post.getlist('ask_post_to_board')  # value = index str when checked
+    valid_types   = [k for k, _ in CommunityAsk.TYPE_CHOICES]
+    valid_status  = [k for k, _ in CommunityAsk.STATUS_CHOICES]
+    result = []
+    for i, title in enumerate(titles):
+        title = title.strip()
+        if not title:
+            continue
+        ask_type  = types[i] if i < len(types) and types[i] in valid_types else CommunityAsk.TYPE_ITEM
+        status    = statuses[i] if i < len(statuses) and statuses[i] in valid_status else CommunityAsk.STATUS_OPEN
+        amount_raw = amounts[i].strip() if i < len(amounts) else ''
+        price_raw  = product_prices[i].strip() if i < len(product_prices) else ''
+        try:
+            amount = int(amount_raw) if amount_raw else None
+        except ValueError:
+            amount = None
+        try:
+            price = float(price_raw) if price_raw else None
+        except ValueError:
+            price = None
+        result.append({
+            'title':             title,
+            'ask_type':          ask_type,
+            'description':       descriptions[i].strip() if i < len(descriptions) else '',
+            'target_amount':     amount,
+            'donation_url':      don_urls[i].strip() if i < len(don_urls) else '',
+            'product_url':       product_urls[i].strip() if i < len(product_urls) else '',
+            'product_image_url': product_imgs[i].strip() if i < len(product_imgs) else '',
+            'product_price':     price,
+            'status':            status,
+            'post_to_board':     str(i) in post_to_board,
+            'sort_order':        i,
+        })
+    return result
+
+
+def _create_iso_offering(ask_data, owner_name, neighborhood_name, user, profile_url=''):
+    """Create a Buy Nothing ISO Offering for an item ask. Returns the Offering or None."""
+    from board.models import Offering
+    from django.utils import timezone as _tz
+    hood = Neighborhood.objects.filter(name__iexact=neighborhood_name).first() if neighborhood_name else None
+    body_parts = []
+    if ask_data['description']:
+        body_parts.append(ask_data['description'])
+    if ask_data['product_url']:
+        body_parts.append(f"Product link: {ask_data['product_url']}")
+    if profile_url:
+        body_parts.append(f"Posted by {owner_name} — {profile_url}")
+    offering = Offering.objects.create(
+        title=ask_data['title'],
+        body='\n'.join(body_parts),
+        category=Offering.CATEGORY_ISO,
+        neighborhood=hood,
+        author_name=owner_name,
+        poster_user=user,
+        expires_at=_tz.now() + _tz.timedelta(days=180),
+        active=True,
+    )
+    return offering
+
+
+def _save_asks_for_venue(venue, post, user=None):
+    parsed = _parse_asks_from_post(post)
+    new_asks = []
+    for d in parsed:
+        offering = None
+        if d['post_to_board'] and d['ask_type'] == CommunityAsk.TYPE_ITEM and user:
+            profile_url = f'https://communityplaylist.com/venues/{venue.slug}/'
+            offering = _create_iso_offering(d, venue.name, venue.neighborhood, user, profile_url)
+        new_asks.append(CommunityAsk(
+            venue=venue,
+            title=d['title'],
+            description=d['description'],
+            ask_type=d['ask_type'],
+            target_amount=d['target_amount'],
+            donation_url=d['donation_url'],
+            product_url=d['product_url'],
+            product_image_url=d['product_image_url'],
+            product_price=d['product_price'],
+            board_offering=offering,
+            status=d['status'],
+            sort_order=d['sort_order'],
+        ))
+    CommunityAsk.objects.filter(venue=venue).delete()
+    CommunityAsk.objects.bulk_create(new_asks)
 
 
 # ── Neighborhood pages ────────────────────────────────────────────────────────
@@ -2128,7 +2236,7 @@ def toggle_follow(request):
         return JsonResponse({'error': 'invalid JSON'}, status=400)
     target_type = body.get('type')
     target_id   = body.get('id')
-    valid_types = {Follow.TYPE_ARTIST, Follow.TYPE_VENUE, Follow.TYPE_NEIGHBORHOOD, Follow.TYPE_PROMOTER}
+    valid_types = {Follow.TYPE_ARTIST, Follow.TYPE_VENUE, Follow.TYPE_NEIGHBORHOOD, Follow.TYPE_PROMOTER, Follow.TYPE_SPACE}
     if target_type not in valid_types or not target_id:
         return JsonResponse({'error': 'invalid params'}, status=400)
     try:
@@ -2440,7 +2548,7 @@ def artist_edit(request, slug):
         return redirect('artist_profile', slug=artist.slug)
 
     SOCIAL_FIELDS = ['instagram', 'soundcloud', 'bandcamp', 'mixcloud', 'youtube',
-                     'spotify', 'mastodon', 'bluesky', 'tiktok', 'twitch',
+                     'spotify', 'mastodon', 'bluesky', 'kofi', 'tiktok', 'twitch',
                      'house_mixes']
 
     if request.method == 'GET':
@@ -2448,6 +2556,12 @@ def artist_edit(request, slug):
 
     import re as _re
     old_drive = artist.drive_folder_url or ''
+    # brand_color — validate hex before saving
+    bc = request.POST.get('brand_color', '').strip()
+    if _re.fullmatch(r'#[0-9a-fA-F]{6}', bc):
+        artist.brand_color = bc.lower()
+    elif not bc:
+        artist.brand_color = ''
     for field in ['bio', 'website', 'drive_folder_url'] + SOCIAL_FIELDS:
         val = request.POST.get(field, '').strip()
         setattr(artist, field, val)
@@ -3605,7 +3719,7 @@ def promoter_edit(request, slug):
         return redirect('promoter_detail', slug=slug)
 
     SOCIAL_FIELDS = ['instagram', 'soundcloud', 'bandcamp', 'mixcloud', 'youtube',
-                     'spotify', 'mastodon', 'bluesky', 'tiktok', 'discord', 'telegram', 'twitch']
+                     'spotify', 'mastodon', 'bluesky', 'kofi', 'tiktok', 'discord', 'telegram', 'twitch']
 
     all_artists = Artist.objects.order_by('name')
     type_choices = PromoterProfile.TYPE_CHOICES
@@ -3624,6 +3738,12 @@ def promoter_edit(request, slug):
     promoter.shop_open_to_trade = 'shop_open_to_trade' in request.POST
     promoter.accept_demos       = 'accept_demos' in request.POST
     old_drive_p = promoter.drive_folder_url or ''
+    import re as _re2
+    bc_p = request.POST.get('brand_color', '').strip()
+    if _re2.fullmatch(r'#[0-9a-fA-F]{6}', bc_p):
+        promoter.brand_color = bc_p.lower()
+    elif not bc_p:
+        promoter.brand_color = ''
     for field in ['name', 'bio', 'website', 'drive_folder_url',
                   'shop_sheet_url', 'sol_wallet'] + SOCIAL_FIELDS:
         val = request.POST.get(field, '').strip()
@@ -4327,3 +4447,135 @@ def video_room_messages(request):
          'created_at': m.created_at.strftime('%H:%M')}
         for m in reversed(list(msgs))
     ]})
+
+
+def privacy_page(request):
+    return render(request, 'events/privacy.html')
+
+
+def report_page(request):
+    submitted = False
+    if request.method == 'POST':
+        import json
+        url    = request.POST.get('url', '').strip()[:500]
+        reason = request.POST.get('reason', '').strip()[:2000]
+        if url or reason:
+            from events.utils.discord import discord_send
+            from django.conf import settings
+            wh = getattr(settings, 'DISCORD_WEBHOOK_OPS', '')
+            if wh:
+                discord_send(wh, {'content': f'**Report**\nURL: {url}\nReason: {reason}'})
+        submitted = True
+    return render(request, 'events/report.html', {'submitted': submitted})
+
+
+# ── Community Space ────────────────────────────────────────────────────────────
+
+def community_space_profile(request, slug):
+    from django.db.models import F as _F
+    space = get_object_or_404(CommunitySpace, slug=slug, is_public=True)
+    CommunitySpace.objects.filter(pk=space.pk).update(view_count=_F('view_count') + 1)
+    space.refresh_from_db(fields=['view_count'])
+
+    can_edit = request.user.is_authenticated and (
+        request.user.is_staff or space.claimed_by == request.user
+    )
+    is_following = (
+        request.user.is_authenticated and
+        Follow.objects.filter(
+            user=request.user,
+            target_type=Follow.TYPE_SPACE,
+            target_id=space.pk,
+        ).exists()
+    )
+    asks = list(space.asks.exclude(status='fulfilled'))
+    return render(request, 'events/community_space_profile.html', {
+        'space':        space,
+        'can_edit':     can_edit,
+        'is_following': is_following,
+        'asks':         asks,
+    })
+
+
+@login_required(login_url='/login/')
+def community_space_edit(request, slug):
+    space = get_object_or_404(CommunitySpace, slug=slug)
+    if not (request.user.is_staff or space.claimed_by == request.user):
+        return redirect('community_space_profile', slug=slug)
+
+    if request.method == 'GET':
+        asks = list(space.asks.all())
+        return render(request, 'events/community_space_edit.html', {'space': space, 'asks': asks})
+
+    if request.POST.get('_asks_only') == '1':
+        # Asks-only form — rebuild asks without touching space fields
+        parsed = _parse_asks_from_post(request.POST)
+        profile_url = f'https://communityplaylist.com/spaces/{space.slug}/'
+        new_asks = []
+        for d in parsed:
+            offering = None
+            if d['post_to_board'] and d['ask_type'] == CommunityAsk.TYPE_ITEM:
+                offering = _create_iso_offering(d, space.name, space.neighborhood, request.user, profile_url)
+            new_asks.append(CommunityAsk(
+                community_space=space,
+                title=d['title'],
+                description=d['description'],
+                ask_type=d['ask_type'],
+                target_amount=d['target_amount'],
+                donation_url=d['donation_url'],
+                product_url=d['product_url'],
+                product_image_url=d['product_image_url'],
+                product_price=d['product_price'],
+                board_offering=offering,
+                status=d['status'],
+                sort_order=d['sort_order'],
+            ))
+        CommunityAsk.objects.filter(community_space=space).delete()
+        CommunityAsk.objects.bulk_create(new_asks)
+        messages.success(request, 'Community Asks saved.')
+        return redirect('community_space_edit', slug=space.slug)
+
+    import re as _re3, json as _json3
+    # Validate brand_color
+    bc = request.POST.get('brand_color', '').strip()
+    if _re3.fullmatch(r'#[0-9a-fA-F]{6}', bc):
+        space.brand_color = bc.lower()
+    elif not bc:
+        space.brand_color = ''
+
+    for field in ['name', 'bio', 'address', 'neighborhood', 'website',
+                  'contact_email', 'instagram', 'bluesky', 'mastodon', 'tiktok',
+                  'drive_folder_url', 'sol_wallet', 'donation_url']:
+        space.__setattr__(field, request.POST.get(field, '').strip())
+
+    st = request.POST.get('space_type', '')
+    valid_types = [k for k, _ in CommunitySpace.TYPE_CHOICES]
+    if st in valid_types:
+        space.space_type = st
+
+    if request.FILES.get('photo'):
+        space.photo = request.FILES['photo']
+
+    # Custom links — sent as parallel arrays: labels[], urls[], thumbnails[]
+    labels     = request.POST.getlist('link_label')
+    urls       = request.POST.getlist('link_url')
+    thumbnails = request.POST.getlist('link_thumbnail')
+    links = []
+    for label, url, thumb in zip(labels, urls, thumbnails):
+        label = label.strip(); url = url.strip(); thumb = thumb.strip()
+        if label and url:
+            links.append({'label': label, 'url': url, 'thumbnail_url': thumb})
+    space.custom_links = links[:8]
+
+    space.save()
+
+    # Rebuild asks
+    messages.success(request, 'Space updated.')
+    return redirect('community_space_edit', slug=space.slug)
+
+
+# ── Ko-fi webhook ─────────────────────────────────────────────────────────────
+
+def kofi_webhook_view(request):
+    from events.kofi import kofi_webhook
+    return kofi_webhook(request)

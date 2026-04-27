@@ -88,4 +88,10 @@ urlpatterns = [
     path('u/@<str:handle>/feed/', views.profile_feed, name='profile_feed'),
     path('follow/', views.toggle_follow, name='toggle_follow'),
     path('suggest-edit/', views.suggest_edit, name='suggest_edit'),
+    path('privacy/', views.privacy_page, name='privacy'),
+    path('report/', views.report_page, name='report'),
+    path('spaces/<slug:slug>/', views.community_space_profile, name='community_space_profile'),
+    path('spaces/<slug:slug>/edit/', views.community_space_edit, name='community_space_edit'),
+    # Ko-fi webhook — configure this URL at ko-fi.com/manage/webhooks
+    path('webhooks/kofi/', views.kofi_webhook_view, name='kofi_webhook'),
 ]

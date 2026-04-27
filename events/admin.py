@@ -6,7 +6,7 @@ from django.urls import path
 from django.http import HttpResponseRedirect, StreamingHttpResponse
 from django.contrib import messages
 from django import forms
-from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile, PromoterProfile, PlaylistTrack, RecordListing, RecordReservation, VideoTrack, Shelter, InstagramAccount, InstagramPost, WorkerTask
+from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile, PromoterProfile, PlaylistTrack, RecordListing, RecordReservation, VideoTrack, Shelter, InstagramAccount, InstagramPost, WorkerTask, CommunitySpace, CommunityAsk
 import os
 import datetime
 import subprocess
@@ -620,6 +620,20 @@ def _scrape_venue_site(website):
     return result
 
 
+class CommunityAskInline(admin.TabularInline):
+    model  = CommunityAsk
+    extra  = 1
+    fields = ['ask_type', 'title', 'description', 'product_url', 'product_image_url', 'product_price', 'target_amount', 'donation_url', 'status', 'sort_order']
+
+
+@admin.register(CommunityAsk)
+class CommunityAskAdmin(admin.ModelAdmin):
+    list_display  = ['title', 'ask_type', 'status', 'community_space', 'venue', 'board_offering', 'created_at']
+    list_filter   = ['ask_type', 'status']
+    search_fields = ['title', 'description']
+    readonly_fields = ['board_offering', 'created_at']
+
+
 @admin.register(Venue)
 class VenueAdmin(admin.ModelAdmin):
     list_display  = ['name', 'neighborhood', 'verified', 'claimed_by', 'created_at']
@@ -627,6 +641,7 @@ class VenueAdmin(admin.ModelAdmin):
     search_fields = ['name', 'address', 'neighborhood']
     ordering      = ['name']
     readonly_fields = ['created_at']
+    inlines = [CommunityAskInline]
     actions = ['verify_venues', 'autofill_from_website', 'close_venue', 'queue_venue_geocoding']
 
     def verify_venues(self, request, queryset):
@@ -2120,3 +2135,21 @@ class InstagramPostAdmin(admin.ModelAdmin):
             return format_html('<span style="color:#555;font-size:.8em">scanned / no event</span>')
         return format_html('<span style="color:#888;font-size:.8em">—</span>')
     flyer_badge.short_description = 'Event'
+
+
+@admin.register(CommunitySpace)
+class CommunitySpaceAdmin(admin.ModelAdmin):
+    list_display  = ['name', 'space_type', 'neighborhood', 'is_verified', 'is_public', 'view_count', 'created_at']
+    list_filter   = ['space_type', 'is_verified', 'is_public']
+    search_fields = ['name', 'address', 'neighborhood', 'bio']
+    prepopulated_fields = {'slug': ('name',)}
+    readonly_fields = ['view_count', 'created_at']
+    inlines = [CommunityAskInline]
+    fieldsets = [
+        ('Identity', {'fields': ['name', 'slug', 'space_type', 'bio', 'photo', 'brand_color', 'is_verified', 'is_public', 'claimed_by']}),
+        ('Location', {'fields': ['address', 'neighborhood', 'latitude', 'longitude']}),
+        ('Contact & Social', {'fields': ['contact_email', 'website', 'instagram', 'bluesky', 'mastodon', 'tiktok']}),
+        ('Resources & Funding', {'fields': ['drive_folder_url', 'donation_url', 'sol_wallet']}),
+        ('Custom Links', {'fields': ['custom_links']}),
+        ('Stats', {'fields': ['view_count', 'created_at'], 'classes': ['collapse']}),
+    ]

@@ -80,6 +80,32 @@ body{background:#111;color:#eee;font-family:sans-serif}
 .event.past .event-title{color:#aaa}
 .free{background:#1a3a1a;color:#4caf50;padding:1px 6px;border-radius:3px;font-size:.75em;margin-left:6px}
 .empty{color:#555;font-size:.85em;padding:16px 0}
+
+/* Community Asks */
+.ask-card{border:1px solid #2a2a2a;border-radius:8px;padding:14px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.ask-card.in-progress{border-color:#2a3a1a}
+.ask-card.has-product{padding:10px 12px;gap:10px}
+.ask-product-img{width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0;background:#1a1a1a;border:1px solid #2a2a2a}
+.ask-product-placeholder{width:52px;height:52px;border-radius:8px;flex-shrink:0;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:1.3em}
+.ask-body{flex:1;min-width:0}
+.ask-badge{display:inline-block;font-size:.68em;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:3px;margin-bottom:6px}
+.ask-badge.fund{background:#1a2a3a;color:#5aabdd}
+.ask-badge.item{background:#2a1a3a;color:#bb88ff}
+.ask-badge.volunteer{background:#1a3a1a;color:#4caf50}
+.ask-badge.skill{background:#2a2a1a;color:#ddbb44}
+.ask-badge.in_progress{background:#1a2a1a;color:#88cc44}
+.ask-title{color:#eee;font-size:.92em;font-weight:600;margin-bottom:4px}
+.ask-price{color:#ff6b35;font-size:.8em;font-weight:600;margin-top:2px}
+.ask-desc{color:#888;font-size:.8em;line-height:1.5}
+.ask-target{color:#5aabdd;font-size:.78em;margin-top:4px}
+.ask-board-link{font-size:.72em;color:#444;text-decoration:none;display:block;margin-top:5px}
+.ask-board-link:hover{color:#ff6b35}
+.ask-cta{flex-shrink:0;display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+.ask-cta a{display:inline-block;padding:6px 14px;border-radius:6px;font-size:.78em;font-weight:600;text-decoration:none;transition:opacity .15s;white-space:nowrap}
+.ask-cta a:hover{opacity:.8}
+.ask-cta .btn-donate{background:#cc4466;color:#fff}
+.ask-cta .btn-contact{background:#1a1a2a;border:1px solid #3a3a5a;color:#aab}
+.ask-cta .btn-view-item{background:transparent;border:1px solid #2a2a2a;color:#666;font-size:.72em !important;padding:4px 10px !important}
 </style>
 {% endblock %}
 {% block body %}
@@ -171,6 +197,44 @@ body{background:#111;color:#eee;font-family:sans-serif}
 
 {% if venue.description %}
 <p class="venue-desc">{{ venue.description }}</p>
+{% endif %}
+
+{% if asks %}
+<div class="section">Community Asks</div>
+{% for ask in asks %}
+<div class="ask-card{% if ask.status == 'in_progress' %} in-progress{% endif %}{% if ask.product_url or ask.product_image_url %} has-product{% endif %}">
+  {% if ask.product_image_url %}
+    <img src="{{ ask.product_image_url }}" class="ask-product-img" alt="" loading="lazy">
+  {% elif ask.product_url %}
+    <div class="ask-product-placeholder">📦</div>
+  {% endif %}
+  <div class="ask-body">
+    <span class="ask-badge {{ ask.ask_type }}{% if ask.status == 'in_progress' %} in_progress{% endif %}">
+      {% if ask.ask_type == 'fund' %}💰{% elif ask.ask_type == 'item' %}📦{% elif ask.ask_type == 'volunteer' %}🤝{% else %}🔧{% endif %}
+      {{ ask.get_ask_type_display }}{% if ask.status == 'in_progress' %} · In Progress{% endif %}
+    </span>
+    <div class="ask-title">{{ ask.title }}</div>
+    {% if ask.product_price %}<div class="ask-price">~${{ ask.product_price }}</div>{% endif %}
+    {% if ask.description %}<div class="ask-desc">{{ ask.description }}</div>{% endif %}
+    {% if ask.target_amount %}<div class="ask-target">Goal: ${{ ask.target_amount }}</div>{% endif %}
+    {% if ask.board_url %}<a href="{{ ask.board_url }}" class="ask-board-link">📋 See on community board ↗</a>{% endif %}
+  </div>
+  <div class="ask-cta">
+    {% if ask.ask_type == 'fund' %}
+      {% with donate_url=ask.donation_url|default:venue.website %}
+      {% if donate_url %}<a href="{{ donate_url }}" target="_blank" rel="noopener" class="btn-donate">♥ Donate</a>{% endif %}
+      {% endwith %}
+    {% elif ask.ask_type == 'item' %}
+      {% if venue.discord %}<a href="{{ venue.discord }}" target="_blank" rel="noopener" class="btn-contact">🤝 I have this</a>
+      {% elif venue.website %}<a href="{{ venue.website }}" target="_blank" rel="noopener" class="btn-contact">🤝 I have this</a>{% endif %}
+      {% if ask.product_url %}<a href="{{ ask.product_url }}" target="_blank" rel="noopener" class="btn-view-item">View item ↗</a>{% endif %}
+    {% else %}
+      {% if venue.discord %}<a href="{{ venue.discord }}" target="_blank" rel="noopener" class="btn-contact">💬 Reach out</a>
+      {% elif venue.website %}<a href="{{ venue.website }}" target="_blank" rel="noopener" class="btn-contact">✉ Contact</a>{% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
 {% endif %}
 
 {% if upcoming %}

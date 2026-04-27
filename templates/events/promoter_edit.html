@@ -85,6 +85,19 @@ h1{color:#ff6b35;font-size:1.2em;margin-bottom:22px}
       <label>Website</label>
       <input type="url" name="website" value="{{ promoter.website }}" placeholder="https://...">
     </div>
+    <div class="fg" style="display:flex;align-items:center;gap:14px">
+      <div>
+        <label style="display:block;margin-bottom:5px">Profile accent color</label>
+        <input type="color" name="brand_color" id="brand-color-pick"
+               value="{{ promoter.brand_color|default:'#ff6b35' }}"
+               style="width:44px;height:36px;padding:2px;border:1px solid #333;border-radius:6px;background:#1a1a1a;cursor:pointer">
+      </div>
+      <div style="flex:1">
+        <div class="hint" style="margin-top:0">Your profile accent color — sets the heading, buttons, and highlight tones on your public page. Default is Community Playlist orange.</div>
+        <button type="button" onclick="document.getElementById('brand-color-pick').value='#ff6b35'"
+                style="margin-top:8px;background:transparent;border:1px solid #333;color:#555;font-size:.75em;padding:3px 10px;border-radius:4px;cursor:pointer">Reset to default</button>
+      </div>
+    </div>
     <div class="fg" style="border-top:1px solid #1e1e1e;padding-top:14px;margin-top:4px">
       <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;color:#aaa;font-size:.84em;margin-bottom:0">
         <input type="checkbox" name="accept_demos" {% if promoter.accept_demos %}checked{% endif %} style="width:auto;accent-color:#ff6b35">
@@ -141,6 +154,10 @@ h1{color:#ff6b35;font-size:1.2em;margin-bottom:22px}
       <div class="fg">
         <label>Bluesky handle</label>
         <input type="text" name="bluesky" value="{{ promoter.bluesky }}" placeholder="you.bsky.social">
+      </div>
+      <div class="fg">
+        <label>Ko-fi username ☕</label>
+        <input type="text" name="kofi" value="{{ promoter.kofi }}" placeholder="yourname (from ko-fi.com/yourname)">
       </div>
       <div class="fg">
         <label>TikTok handle</label>

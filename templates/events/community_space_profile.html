@@ -1,0 +1,361 @@
+{% extends 'base.html' %}
+{% block title %}{{ space.name }} — Community Playlist{% endblock %}
+
+{% block head_extra %}
+{% with desc=space.bio|default:"A community space in Portland — on Community Playlist." %}
+<meta property="og:type"        content="place">
+<meta property="og:title"       content="{{ space.name }} — Community Playlist">
+<meta property="og:description" content="{{ desc|truncatechars:200 }}">
+<meta property="og:url"         content="https://communityplaylist.com/spaces/{{ space.slug }}/">
+{% if space.photo %}<meta property="og:image" content="https://communityplaylist.com{{ space.photo.url }}">{% endif %}
+<meta property="og:site_name"   content="Community Playlist PDX">
+<meta name="twitter:card" content="summary{% if space.photo %}_large_image{% endif %}">
+<link rel="canonical" href="https://communityplaylist.com/spaces/{{ space.slug }}/">
+{% endwith %}
+{% endblock %}
+
+{% block site_header %}{% endblock %}
+{% block nav_strip %}{% endblock %}
+
+{% block styles %}
+<style>
+:root{--accent:{{ space.brand_color|default:"#4caf50" }};--accent-dark:color-mix(in srgb,var(--accent) 80%,#000);--accent-bg:color-mix(in srgb,var(--accent) 8%,#0e0e0e)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0e0e0e;color:#eee;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
+.epk{max-width:480px;margin:0 auto;padding:24px 16px 90px;display:flex;flex-direction:column;gap:10px}
+
+/* Footer */
+.epk-footer{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:10px;padding:10px 16px;background:linear-gradient(transparent,#0e0e0e 60%);pointer-events:none;flex-wrap:wrap}
+.epk-footer a,.epk-footer button{pointer-events:auto;color:#333;font-size:.68em;text-decoration:none;letter-spacing:.04em;transition:color .15s;background:none;border:none;cursor:pointer;font-family:inherit;padding:0}
+.epk-footer a:hover,.epk-footer button:hover{color:var(--accent)}
+.epk-footer-sep{color:#222;font-size:.68em;pointer-events:none}
+
+/* Hero */
+.hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:28px 20px 20px;background:#161616;border:1px solid #222;border-radius:14px}
+.hero-photo{width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid var(--accent)}
+.hero-placeholder{width:88px;height:88px;border-radius:50%;background:#1a1a1a;border:3px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:2.2em;color:var(--accent)}
+h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
+.type-badge{display:inline-flex;align-items:center;gap:5px;background:var(--accent-bg);border:1px solid var(--accent);color:var(--accent);font-size:.63em;padding:2px 9px;border-radius:4px;font-weight:700;letter-spacing:.05em}
+.verified-badge{display:inline-flex;align-items:center;gap:4px;background:#0d1f0d;color:#4caf50;font-size:.63em;padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.04em}
+.bio{color:#888;line-height:1.65;font-size:.84em;max-width:340px}
+.contact-email{color:#666;font-size:.8em;text-decoration:none;transition:color .15s;margin-top:2px}
+.contact-email:hover{color:var(--accent)}
+
+/* Socials */
+.socials{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:4px}
+.social-pill{display:inline-flex;align-items:center;gap:5px;background:#111;border:1px solid #252525;border-radius:20px;padding:4px 11px;text-decoration:none;color:#888;font-size:.78em;transition:all .15s;white-space:nowrap}
+.social-pill:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+
+/* Action row */
+.action-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.follow-btn{background:transparent;border:1px solid #2a2a2a;color:#888;padding:6px 16px;border-radius:20px;cursor:pointer;font-size:.82em;font-family:inherit;transition:all .15s}
+.follow-btn:hover{border-color:var(--accent);color:var(--accent)}
+.follow-btn.active{background:#0d1f0d;border-color:var(--accent);color:var(--accent)}
+.follow-btn-cta{border-color:var(--accent) !important;color:var(--accent) !important;animation:ctapulse 2.5s ease-in-out infinite}
+@keyframes ctapulse{0%,100%{opacity:1;box-shadow:0 0 0 0 var(--accent-bg)}60%{opacity:.85;box-shadow:0 0 0 4px var(--accent-bg)}}
+.edit-link,.share-btn{background:transparent;border:1px solid #2a2a2a;color:#666;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:.82em;font-family:inherit;transition:all .15s;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.edit-link:hover,.share-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Custom link buttons (Linktree-style) */
+.link-btn{display:flex;align-items:center;gap:12px;background:#161616;border:1px solid #222;border-radius:12px;padding:12px 16px;text-decoration:none;color:#eee;font-size:.88em;font-weight:500;transition:all .15s;width:100%}
+.link-btn:hover{border-color:var(--accent);background:var(--accent-bg);color:var(--accent)}
+.link-thumb{width:40px;height:40px;border-radius:7px;object-fit:cover;flex-shrink:0;background:#1a1a1a}
+.link-thumb-placeholder{width:40px;height:40px;border-radius:7px;flex-shrink:0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:1.1em}
+.link-label{flex:1;text-align:center}
+.link-arrow{color:#444;font-size:.8em;flex-shrink:0}
+
+/* Special buttons */
+.action-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:#161616;border:1px solid #222;border-radius:12px;padding:12px 16px;text-decoration:none;color:#eee;font-size:.88em;font-weight:500;transition:all .15s;width:100%}
+.action-btn:hover{border-color:var(--accent);background:var(--accent-bg);color:var(--accent)}
+.donate-btn{border-color:#cc4466 !important;color:#cc4466 !important}
+.donate-btn:hover{background:rgba(204,68,102,.08) !important;border-color:#cc4466 !important;color:#cc4466 !important}
+
+/* Section label */
+.section-label{font-size:.68em;text-transform:uppercase;letter-spacing:.1em;color:#444;margin:6px 0 4px;padding-left:4px}
+
+/* Community Asks */
+.ask-card{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;background:#161616;border:1px solid #222;border-radius:12px;padding:14px 16px;margin-bottom:8px}
+.ask-card.in-progress{border-color:#1a2a1a}
+.ask-card.has-product{padding:10px 12px;gap:10px}
+.ask-product-img{width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;background:#1a1a1a;border:1px solid #2a2a2a}
+.ask-product-placeholder{width:56px;height:56px;border-radius:8px;flex-shrink:0;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:1.4em}
+.ask-body{flex:1;min-width:0}
+.ask-badge{display:inline-block;font-size:.66em;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:3px;margin-bottom:6px}
+.ask-badge.fund{background:#1a2535;color:#5aabdd}
+.ask-badge.item{background:#221635;color:#bb88ff}
+.ask-badge.volunteer{background:#152515;color:var(--accent)}
+.ask-badge.skill{background:#252515;color:#ddbb44}
+.ask-title{color:#eee;font-size:.88em;font-weight:600;margin-bottom:3px}
+.ask-desc{color:#777;font-size:.78em;line-height:1.5}
+.ask-price{color:var(--accent);font-size:.8em;font-weight:600;margin-top:3px}
+.ask-target{color:#5aabdd;font-size:.74em;margin-top:4px}
+.ask-board-link{font-size:.72em;color:#555;text-decoration:none;display:block;margin-top:5px}
+.ask-board-link:hover{color:var(--accent)}
+.ask-cta{flex-shrink:0;align-self:center;display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+.ask-cta a{display:inline-block;padding:6px 14px;border-radius:8px;font-size:.77em;font-weight:600;text-decoration:none;transition:opacity .15s;white-space:nowrap}
+.ask-cta a:hover{opacity:.8}
+.btn-donate{background:#cc4466;color:#fff !important}
+.btn-contact{background:transparent;border:1px solid #333;color:#888 !important}
+.btn-view-item{background:transparent;border:1px solid #333;color:#aaa !important;font-size:.72em !important;padding:4px 10px !important}
+
+@media(max-width:480px){h1{font-size:1.15em}.hero-photo,.hero-placeholder{width:72px;height:72px;font-size:1.8em}}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="epk">
+
+{# ── Hero card ── #}
+<div class="hero">
+  {% if space.photo %}
+    <img src="{{ space.photo.url }}" alt="{{ space.name }}" class="hero-photo">
+  {% else %}
+    <div class="hero-placeholder">🌱</div>
+  {% endif %}
+
+  <div>
+    <h1>{{ space.name }}</h1>
+    <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:6px">
+      <span class="type-badge">{{ space.get_space_type_display }}</span>
+      {% if space.is_verified %}<span class="verified-badge">✓ Verified</span>{% endif %}
+    </div>
+  </div>
+
+  {% if space.bio %}<p class="bio">{{ space.bio }}</p>{% endif %}
+  {% if space.contact_email %}<a href="mailto:{{ space.contact_email }}" class="contact-email">✉ {{ space.contact_email }}</a>{% endif %}
+
+  <div class="socials">
+    {% if space.website %}<a href="{{ space.website }}" class="social-pill" target="_blank" rel="noopener">🌐 Website</a>{% endif %}
+    {% if space.instagram %}<a href="https://instagram.com/{{ space.instagram }}" class="social-pill" target="_blank" rel="noopener">📷 @{{ space.instagram }}</a>{% endif %}
+    {% if space.bluesky %}<a href="https://bsky.app/profile/{{ space.bluesky }}" class="social-pill" target="_blank" rel="noopener">🦋 Bluesky</a>{% endif %}
+    {% if space.mastodon %}<a href="{{ space.mastodon }}" class="social-pill" target="_blank" rel="noopener">🐘 Mastodon</a>{% endif %}
+    {% if space.tiktok %}<a href="https://tiktok.com/@{{ space.tiktok }}" class="social-pill" target="_blank" rel="noopener">🎵 TikTok</a>{% endif %}
+  </div>
+
+  <div class="action-row">
+    {% if request.user.is_authenticated %}
+      <button class="follow-btn {% if is_following %}active{% endif %}" id="follow-btn"
+        data-type="space" data-id="{{ space.pk }}">
+        {% if is_following %}★ Following{% else %}☆ Follow{% endif %}
+      </button>
+    {% else %}
+      <button class="follow-btn follow-btn-cta" id="follow-btn-cta">♡ Follow</button>
+    {% endif %}
+    {% if can_edit %}
+      <a href="{% url 'community_space_edit' slug=space.slug %}" class="edit-link">✏ Edit</a>
+    {% endif %}
+    <button class="share-btn" id="share-profile-btn">⬆ Share</button>
+    {% if space.view_count %}<span style="color:#444;font-size:.78em">👁 {{ space.view_count }}</span>{% endif %}
+  </div>
+</div>
+
+{# ── Custom link buttons ── #}
+{% if space.custom_links %}
+<div class="section-label">Links</div>
+{% for link in space.custom_links %}
+<a href="{{ link.url }}" class="link-btn" target="_blank" rel="noopener">
+  {% if link.thumbnail_url %}
+    <img src="{{ link.thumbnail_url }}" class="link-thumb" alt="" loading="lazy">
+  {% else %}
+    <div class="link-thumb-placeholder">📄</div>
+  {% endif %}
+  <span class="link-label">{{ link.label }}</span>
+  <span class="link-arrow">↗</span>
+</a>
+{% endfor %}
+{% endif %}
+
+{# ── Community Asks ── #}
+{% if asks %}
+<div class="section-label" style="margin-top:18px">Community Asks</div>
+{% for ask in asks %}
+<div class="ask-card{% if ask.status == 'in_progress' %} in-progress{% endif %}{% if ask.product_url or ask.product_image_url %} has-product{% endif %}">
+  {# Product thumbnail #}
+  {% if ask.product_image_url %}
+    <img src="{{ ask.product_image_url }}" class="ask-product-img" alt="" loading="lazy">
+  {% elif ask.product_url %}
+    <div class="ask-product-placeholder">📦</div>
+  {% endif %}
+  <div class="ask-body">
+    <span class="ask-badge {{ ask.ask_type }}">
+      {% if ask.ask_type == 'fund' %}💰{% elif ask.ask_type == 'item' %}📦{% elif ask.ask_type == 'volunteer' %}🤝{% else %}🔧{% endif %}
+      {{ ask.get_ask_type_display }}{% if ask.status == 'in_progress' %} · In Progress{% endif %}
+    </span>
+    <div class="ask-title">{{ ask.title }}</div>
+    {% if ask.product_price %}<div class="ask-price">~${{ ask.product_price }}</div>{% endif %}
+    {% if ask.description %}<div class="ask-desc">{{ ask.description }}</div>{% endif %}
+    {% if ask.target_amount %}<div class="ask-target">Goal: ${{ ask.target_amount }}</div>{% endif %}
+    {% if ask.board_url %}<a href="{{ ask.board_url }}" class="ask-board-link">📋 See on community board ↗</a>{% endif %}
+  </div>
+  <div class="ask-cta">
+    {% if ask.ask_type == 'fund' %}
+      {% with donate_url=ask.donation_url|default:space.donation_url %}
+      {% if donate_url %}<a href="{{ donate_url }}" target="_blank" rel="noopener" class="btn-donate">♥ Donate</a>{% endif %}
+      {% endwith %}
+    {% elif ask.ask_type == 'item' %}
+      {% if space.contact_email %}<a href="mailto:{{ space.contact_email }}" class="btn-contact">🤝 I have this</a>
+      {% elif space.website %}<a href="{{ space.website }}" target="_blank" rel="noopener" class="btn-contact">🤝 I have this</a>{% endif %}
+      {% if ask.product_url %}<a href="{{ ask.product_url }}" target="_blank" rel="noopener" class="btn-view-item">View item ↗</a>{% endif %}
+    {% else %}
+      {% if space.contact_email %}<a href="mailto:{{ space.contact_email }}" class="btn-contact">✉ Reach out</a>
+      {% elif space.website %}<a href="{{ space.website }}" target="_blank" rel="noopener" class="btn-contact">✉ Contact</a>{% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{# ── Donate / funding ── #}
+{% if space.sol_wallet or space.donation_url %}
+<div class="section-label">Support</div>
+{% if space.donation_url %}
+<a href="{{ space.donation_url }}" class="action-btn donate-btn" target="_blank" rel="noopener">
+  <span>♥</span> <span>Donate / Support</span>
+</a>
+{% endif %}
+{% if space.sol_wallet %}
+<div style="background:#161616;border:1px solid #222;border-radius:12px;padding:12px 16px;font-size:.8em;color:#666">
+  <div style="color:#888;margin-bottom:6px;font-size:.85em">⚡ Solana (Phantom)</div>
+  <div style="font-family:monospace;word-break:break-all;font-size:.85em;color:#aaa;user-select:all">{{ space.sol_wallet }}</div>
+  <button onclick="navigator.clipboard.writeText('{{ space.sol_wallet|escapejs }}').then(function(){var b=this;b.textContent='✓ Copied';setTimeout(function(){b.textContent='Copy address'},2000)}.bind(this))"
+          style="margin-top:8px;background:transparent;border:1px solid #333;color:#666;font-size:.78em;padding:4px 12px;border-radius:6px;cursor:pointer;font-family:inherit">
+    Copy address
+  </button>
+</div>
+{% endif %}
+{% endif %}
+
+{# ── Resource library (Google Drive) ── #}
+{% if space.drive_folder_url %}
+<div class="section-label">Resources</div>
+<a href="{{ space.drive_folder_url }}" class="action-btn" target="_blank" rel="noopener">
+  <span>📁</span> <span>Resource Library</span> <span style="margin-left:auto;color:#444;font-size:.8em">↗</span>
+</a>
+{% endif %}
+
+{# ── Find on maps ── #}
+{% if space.address %}
+<div class="section-label">Location</div>
+<a href="https://www.google.com/maps/search/?api=1&query={{ space.address|urlencode }}"
+   class="action-btn" target="_blank" rel="noopener">
+  <span>📍</span>
+  <span>
+    Find on Google Maps
+    <div style="font-size:.78em;color:#666;margin-top:2px">{{ space.address }}</div>
+  </span>
+  <span style="margin-left:auto;color:#444;font-size:.8em">↗</span>
+</a>
+{% endif %}
+
+</div>{# /epk #}
+
+<div class="epk-footer">
+  <a href="/" title="Community Playlist · Portland">community playlist · pdx</a>
+  <span class="epk-footer-sep">·</span>
+  <button id="cookie-btn" onclick="cpCookieModal()">Cookie Preferences</button>
+  <span class="epk-footer-sep">·</span>
+  <a href="/report/">Report</a>
+  <span class="epk-footer-sep">·</span>
+  <a href="/privacy/">Privacy</a>
+</div>
+
+{# Cookie modal #}
+<div id="cookie-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9000;align-items:flex-end;justify-content:center">
+  <div style="width:100%;max-width:500px;background:#1a1a1a;border-top:1px solid #333;border-radius:14px 14px 0 0;padding:28px 24px 32px;font-family:-apple-system,sans-serif">
+    <h2 style="color:#eee;font-size:1em;margin-bottom:10px">Cookie Preferences</h2>
+    <p style="color:#888;font-size:.82em;line-height:1.6;margin-bottom:20px">We use essential cookies only — session authentication and CSRF protection. No ad tracking or third-party analytics.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button onclick="cpCookieAccept()" style="background:var(--accent);color:#fff;border:none;padding:9px 20px;border-radius:8px;cursor:pointer;font-size:.85em;font-family:inherit">Accept &amp; Close</button>
+      <button onclick="cpCookieModal()" style="background:transparent;border:1px solid #333;color:#888;padding:9px 20px;border-radius:8px;cursor:pointer;font-size:.85em;font-family:inherit">Close</button>
+      <a href="/privacy/" style="display:inline-flex;align-items:center;color:#555;font-size:.8em;text-decoration:none;padding:9px 4px">Privacy Policy →</a>
+    </div>
+  </div>
+</div>
+
+{% if not request.user.is_authenticated %}
+{# Join CP popup #}
+<div id="join-popup" style="display:none;position:fixed;bottom:44px;left:50%;transform:translateX(-50%);width:min(480px,94vw);background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:20px 22px;z-index:8000;box-shadow:0 8px 40px rgba(0,0,0,.6);font-family:-apple-system,sans-serif">
+  <button onclick="document.getElementById('join-popup').style.display='none';sessionStorage.setItem('cpJoinDismissed','1')" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#444;font-size:1.2em;cursor:pointer;line-height:1">✕</button>
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+    <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0">🎵</div>
+    <div>
+      <div style="color:#eee;font-size:.92em;font-weight:600">Join Community Playlist</div>
+      <div style="color:#666;font-size:.75em">Follow spaces, artists &amp; get local event updates</div>
+    </div>
+  </div>
+  <p style="color:#888;font-size:.8em;line-height:1.55;margin-bottom:16px">Free, no spam. Follow {{ space.name }} and get notified about events and updates.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a href="/register/" style="background:var(--accent);color:#fff;text-decoration:none;padding:8px 18px;border-radius:8px;font-size:.84em;font-weight:600">Create account</a>
+    <a href="/login/" style="background:transparent;border:1px solid #333;color:#888;text-decoration:none;padding:8px 16px;border-radius:8px;font-size:.84em">Log in</a>
+  </div>
+</div>
+{% endif %}
+
+<script>
+// ── Follow toggle ──
+(function(){
+  var btn = document.getElementById('follow-btn');
+  if (!btn) return;
+  btn.addEventListener('click', function(){
+    fetch('/follow/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+      body:JSON.stringify({type:btn.dataset.type, id:parseInt(btn.dataset.id)})
+    }).then(r=>r.json()).then(d=>{
+      btn.textContent = d.following ? '★ Following' : '☆ Follow';
+      btn.classList.toggle('active', d.following);
+    });
+  });
+})();
+
+// ── Logged-out follow CTA → triggers Join popup ──
+(function(){
+  var cta = document.getElementById('follow-btn-cta');
+  if (!cta) return;
+  cta.addEventListener('click', function() {
+    var p = document.getElementById('join-popup');
+    if (p) { p.style.display = 'block'; sessionStorage.removeItem('cpJoinDismissed'); }
+  });
+})();
+
+// ── Share button ──
+document.getElementById('share-profile-btn').addEventListener('click', function() {
+  var title = '{{ space.name|escapejs }} — Community Playlist';
+  if (navigator.share) {
+    navigator.share({title: title, url: location.href}).catch(function(){});
+  } else {
+    navigator.clipboard.writeText(location.href).then(function() {
+      var btn = document.getElementById('share-profile-btn');
+      var orig = btn.textContent;
+      btn.textContent = '✓ Copied';
+      setTimeout(function(){ btn.textContent = orig; }, 2000);
+    });
+  }
+});
+
+// ── Cookie modal ──
+function cpCookieModal() {
+  var m = document.getElementById('cookie-modal');
+  m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
+}
+function cpCookieAccept() {
+  localStorage.setItem('cpCookieOk', '1');
+  document.getElementById('cookie-modal').style.display = 'none';
+}
+document.getElementById('cookie-modal').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+
+function getCookie(n){var v=document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');return v?v[2]:null}
+
+{% if not request.user.is_authenticated %}
+(function() {
+  if (sessionStorage.getItem('cpJoinDismissed')) return;
+  setTimeout(function() {
+    var p = document.getElementById('join-popup');
+    if (p) p.style.display = 'block';
+  }, 4000);
+})();
+{% endif %}
+</script>
+{% endblock %}

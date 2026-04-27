@@ -151,6 +151,10 @@ BLUESKY_APP_PASSWORD = config('BLUESKY_APP_PASSWORD', default='')
 OLLAMA_URL          = config('OLLAMA_URL', default='http://10.0.0.124:11434')
 OLLAMA_FLYER_MODEL  = config('OLLAMA_FLYER_MODEL', default='moondream')
 
+# Ko-fi — webhook verification + daily broadcast
+KOFI_VERIFICATION_TOKEN = config('KOFI_VERIFICATION_TOKEN', default='')  # KF_API_... key from ko-fi.com/manage/api
+KOFI_PAGE               = config('KOFI_PAGE', default='communityplaylist')  # ko-fi.com/<KOFI_PAGE>
+
 # Discord webhooks — configure in .env
 DISCORD_WEBHOOK_BOARD  = config('DISCORD_WEBHOOK_BOARD',  default='')  # board topics + Free & Trade
 DISCORD_WEBHOOK_EVENTS = config('DISCORD_WEBHOOK_EVENTS', default='')  # new approved events (text/forum)
