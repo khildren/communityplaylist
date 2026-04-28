@@ -3144,6 +3144,157 @@ def playlist_tracks_json(request):
     return JsonResponse({'tracks': tracks, 'genres': genres})
 
 
+def api_queue(request):
+    """
+    Unified playback queue: audio tracks + YouTube/Twitch VODs, interleaved.
+
+    ?genre=X  → audio tracks for that genre only (video stays in ALL)
+    no param  → all audio + non-live video, 1 video every 8 audio tracks
+    Live Twitch streams are excluded from the queue and returned in live_now[].
+    """
+    import random
+    from datetime import timedelta
+
+    genre_filter = request.GET.get('genre', '').strip().lower()
+    if genre_filter in ('all', ''):
+        genre_filter = ''
+
+    # ── Audio tracks ──────────────────────────────────────────────────────────
+    qs = PlaylistTrack.objects.select_related('genre', 'artist', 'promoter', 'venue')
+    if genre_filter:
+        qs = qs.filter(genre__name__iexact=genre_filter)
+
+    def _track_source_url(t):
+        if t.artist:   return f'/artists/{t.artist.slug}/'
+        if t.promoter: return f'/promoters/{t.promoter.slug}/'
+        if t.venue:    return f'/venues/{t.venue.slug}/'
+        return ''
+
+    audio_tracks = [
+        {
+            'type':       'audio',
+            'id':         t.pk,
+            'title':      t.title,
+            'artist':     t.artist_name or t.source_label,
+            'genre':      t.genre.name if t.genre else (t.genre_raw or ''),
+            'stream_url': t.stream_url,
+            'source_url': _track_source_url(t),
+            'art_url':    t.artist.photo.url if (t.artist and t.artist.photo) else '',
+        }
+        for t in qs.order_by('-pk')
+    ]
+
+    # Merge house-mixes (ALL only, no genre metadata)
+    if not genre_filter:
+        hm_artists = Artist.objects.filter(house_mixes__gt='', is_stub=False).values_list(
+            'name', 'house_mixes', 'house_mixes_sort', 'slug')
+        for a_name, hm_user, hm_sort, a_slug in hm_artists:
+            for hm in _get_house_mixes_tracks(hm_user, sort=hm_sort or 'newest'):
+                audio_tracks.append({
+                    'type':       'audio',
+                    'id':         None,
+                    'title':      hm['title'],
+                    'artist':     a_name,
+                    'genre':      '',
+                    'stream_url': hm['stream_url'],
+                    'source_url': f'/artists/{a_slug}/',
+                    'art_url':    hm.get('thumbnail', ''),
+                })
+
+    # ── Video tracks (ALL only) ───────────────────────────────────────────────
+    videos   = []
+    live_now = []
+
+    if not genre_filter:
+        now = timezone.now()
+        upcoming_cutoff = now + timedelta(days=30)
+
+        _upcoming = (
+            Event.objects.filter(
+                artists__isnull=False,
+                start_date__gte=now,
+                start_date__lte=upcoming_cutoff,
+                status='approved',
+            )
+            .order_by('start_date')
+            .values('artists', 'slug')
+        )
+        upcoming_ids, upcoming_slug = set(), {}
+        for row in _upcoming:
+            aid = row['artists']
+            upcoming_ids.add(aid)
+            if aid not in upcoming_slug:
+                upcoming_slug[aid] = row['slug']
+
+        all_vt = list(
+            VideoTrack.objects.filter(is_active=True)
+            .select_related('artist', 'promoter', 'venue')
+            .order_by('-published_at')[:500]
+        )
+
+        def _video_source_url(v):
+            if v.artist_id   and v.artist   and v.artist.slug:   return f'/artists/{v.artist.slug}/'
+            if v.promoter_id and v.promoter and v.promoter.slug: return f'/promoters/{v.promoter.slug}/'
+            if v.venue_id    and v.venue    and v.venue.slug:    return f'/venues/{v.venue.slug}/'
+            return ''
+
+        def _ser_video(v):
+            return {
+                'type':                  v.source_type,
+                'id':                    None,
+                'title':                 v.title,
+                'artist':                v.artist_name_display or v.channel_title,
+                'genre':                 '',
+                'video_id':              v.youtube_video_id or v.twitch_video_id or v.twitch_username,
+                'embed_url':             v.embed_url,
+                'art_url':               v.thumbnail_url,
+                'source_url':            _video_source_url(v),
+                'is_live':               v.is_live,
+                'viewer_count':          v.live_viewer_count,
+                'has_show_soon':         bool(v.artist_id and v.artist_id in upcoming_ids),
+                'show_soon_event_slug':  upcoming_slug.get(v.artist_id, '') if v.artist_id else '',
+            }
+
+        live_objs = [v for v in all_vt if v.is_live]
+        vod_objs  = [v for v in all_vt if not v.is_live]
+
+        # Weighted shuffle: artists with upcoming shows get 3× weight
+        pool = []
+        for v in vod_objs:
+            w = 3 if (v.artist_id and v.artist_id in upcoming_ids) else 1
+            pool.extend([v] * w)
+        random.shuffle(pool)
+        seen, shuffled = set(), []
+        for v in pool:
+            if v.pk not in seen:
+                seen.add(v.pk)
+                shuffled.append(v)
+
+        live_now = [_ser_video(v) for v in live_objs]
+        videos   = [_ser_video(v) for v in shuffled]
+
+    # ── Interleave: 1 video every 8 audio tracks ─────────────────────────────
+    if not genre_filter and videos:
+        tracks, vi = [], 0
+        for i, a in enumerate(audio_tracks):
+            tracks.append(a)
+            if (i + 1) % 8 == 0 and vi < len(videos):
+                tracks.append(videos[vi])
+                vi += 1
+        tracks.extend(videos[vi:])
+    else:
+        tracks = audio_tracks
+
+    genres = list(
+        Genre.objects.filter(tracks__isnull=False)
+        .values_list('name', flat=True)
+        .distinct()
+        .order_by('name')
+    )
+
+    return JsonResponse({'tracks': tracks, 'genres': genres, 'live_now': live_now})
+
+
 @login_required
 def toggle_save_track(request):
     """POST {id: <track_pk>} → toggles SavedTrack, returns {saved: bool}."""

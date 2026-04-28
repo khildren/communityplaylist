@@ -268,6 +268,20 @@ function _cpGenreColors(g) {
     if (!tracks.length) return;
     current = ((idx % tracks.length) + tracks.length) % tracks.length;
     var t   = tracks[current];
+    window._cpTracks  = tracks;
+    window._cpCurrent = current;
+
+    // Video-type items: hand off to the video engine, skip <audio>
+    if (t.type && t.type !== 'audio') {
+      if (barBlocks) barBlocks.textContent = '░'.repeat(NBLOCKS);
+      if (barCur)    barCur.textContent    = '0:00';
+      clearRowProgress();
+      setTrackDisplay(t.title, t.artist, '', t.art_url || '');
+      if (window.cpVideo) window.cpVideo.playItem(t);
+      saveState();
+      return;
+    }
+
     audio.src = t.stream_url;
     if (barBlocks) barBlocks.textContent = '░'.repeat(NBLOCKS);
     if (barCur)    barCur.textContent    = '0:00';
@@ -279,8 +293,6 @@ function _cpGenreColors(g) {
         audio.removeEventListener('loadedmetadata', seek);
       });
     }
-    window._cpTracks  = tracks;
-    window._cpCurrent = current;
     saveState();
   }
 
@@ -307,10 +319,9 @@ function _cpGenreColors(g) {
   setInterval(function(){ if (!audio.paused) saveState(); }, 5000);
 
   // ── Genre / channels ──
-  function buildChannels(genres) {
+  function buildChannels(genres, liveNow) {
     cachedGenres = genres;
-    // Panel genre strip
-    if (window.cpPanel && window.cpPanel.buildGenreStrip) window.cpPanel.buildGenreStrip(genres, genre);
+    if (window.cpPanel && window.cpPanel.buildGenreStrip) window.cpPanel.buildGenreStrip(genres, genre, liveNow || []);
   }
 
   function setChannel(g) {
@@ -322,10 +333,10 @@ function _cpGenreColors(g) {
   function fetchTracks(g, restoreIdx, seekTo) {
     var url = g === 'saved'
       ? '/api/saved-tracks/'
-      : '/api/tracks/' + (g && g !== 'all' ? '?genre=' + encodeURIComponent(g) : '');
+      : '/api/queue/' + (g && g !== 'all' ? '?genre=' + encodeURIComponent(g) : '');
     fetch(url).then(function(r){ return r.json(); }).then(function(data){
       tracks = data.tracks || [];
-      if (g !== 'saved') buildChannels(data.genres || []);
+      if (g !== 'saved') buildChannels(data.genres || [], data.live_now || []);
       if (!tracks.length) { show(); setTrackDisplay('No tracks', '', '', ''); return; }
       show();
       if (shuffleMode) buildShuffleOrder();
@@ -478,6 +489,7 @@ function _cpGenreColors(g) {
   var _vPanelOrigParent  = null;
   var _vPanelOrigNextSib = null;
   var _savedWrapPadding  = null;
+  var _unifiedMode    = false;  // true when playing a video from the unified queue
 
   // ── Move video panel into right panel art area ──
   function _enterPanelVideo() {
@@ -567,8 +579,16 @@ function _cpGenreColors(g) {
           _pendingStart = 0;
         },
         onStateChange: function(e) {
-          if (e.data === YT.PlayerState.ENDED) nextVideo();
-          var v = videoQueue[videoIdx] || {};
+          if (e.data === YT.PlayerState.ENDED) {
+            if (_unifiedMode) {
+              _unifiedMode = false;
+              // Advance the main unified queue
+              if (window.cpPlayIdx && window.cpGetNextIdx) window.cpPlayIdx(window.cpGetNextIdx());
+            } else {
+              nextVideo();
+            }
+          }
+          var v = _unifiedMode ? {} : (videoQueue[videoIdx] || {});
           if (window.cpPanel && window.cpPanel.onVideoPlay)
             window.cpPanel.onVideoPlay(v.title || '', v.artist || '', v.is_live || false);
         }
@@ -644,6 +664,33 @@ function _cpGenreColors(g) {
     if (isVideoMode) leaveVideoMode(); else enterVideoMode();
   });
 
+  // Play a single item from the unified queue (type: 'youtube' | 'twitch_vod')
+  function playItem(item) {
+    _unifiedMode = true;
+    isVideoMode  = true;
+    try { sessionStorage.removeItem('cp_video_off'); } catch(e){}
+    if (window.cpAudio) { try { window.cpAudio.pause(); } catch(e){} }
+    loadYTAPI();
+    _enterPanelVideo();
+    if (window.cpPanel && !window.cpPanel.isOpen()) window.cpPanel.open();
+    var ytId = item.video_id;
+    if (ytPlayer && ytPlayer.loadVideoById) {
+      ytPlayer.loadVideoById({videoId: ytId, startSeconds: 0});
+    } else {
+      createYTPlayer(ytId);
+    }
+    clearInterval(_vidProgInterval);
+    _vidProgInterval = setInterval(function() {
+      if (!isVideoMode || !ytPlayer) return;
+      var cur = 0, dur = 0;
+      try { cur = ytPlayer.getCurrentTime() || 0; } catch(e){}
+      try { dur = ytPlayer.getDuration()    || 0; } catch(e){}
+      if (window.cpPanel) window.cpPanel.onProgress(cur, dur);
+    }, 1000);
+    if (window.cpPanel && window.cpPanel.onVideoPlay)
+      window.cpPanel.onVideoPlay(item.title || '', item.artist || '', item.is_live || false);
+  }
+
   window.cpVideo = {
     enter:    enterVideoMode,
     leave:    leaveVideoMode,
@@ -658,6 +705,7 @@ function _cpGenreColors(g) {
     getQueue:       function(){ return videoQueue; },
     getCurrentIdx:  function(){ return videoIdx; },
     playAt:         function(idx){ playVideo(idx); },
+    playItem:       playItem,
     isVideoInPanel: function(){ return _videoInPanel; },
     enterPanel:     _enterPanelVideo,
     exitPanel:      _exitPanelVideo,
@@ -790,10 +838,21 @@ function _cpGenreColors(g) {
   }
 
   // ── Genre strip ──
-  function buildGenreStrip(genres, activeGenre) {
+  function buildGenreStrip(genres, activeGenre, liveNow) {
     _activeGenre = activeGenre || 'all';
     if (!chStrip) return;
     chStrip.innerHTML = '';
+
+    // Live-now chips (Twitch streams) — always first, orange-red
+    (liveNow || []).forEach(function(v){
+      var btn = document.createElement('button');
+      btn.className = 'cp-ch cp-ch-live';
+      btn.textContent = '● ' + (v.artist || 'LIVE').toUpperCase();
+      btn.title = v.title || '';
+      btn.onclick = function(){ if (window.cpVideo) window.cpVideo.playItem(v); };
+      chStrip.appendChild(btn);
+    });
+
     var all = document.createElement('button');
     all.className = 'cp-ch' + (_activeGenre === 'all' ? ' active' : '');
     all.textContent = 'ALL';

@@ -152,6 +152,9 @@ body.has-player .cp-bar{display:flex}
 .cp-ch.saved-ch{border-color:#3a1a2a;color:#aa4466}
 .cp-ch.saved-ch:hover{border-color:#cc4466;color:#cc4466}
 .cp-ch.saved-ch.active{background:#cc4466;border-color:#cc4466;color:#fff}
+.cp-ch.cp-ch-live{border-color:#e53;color:#e53;animation:cp-live-chip 2s ease-in-out infinite}
+.cp-ch.cp-ch-live:hover{background:#e53;color:#fff;border-color:#e53}
+@keyframes cp-live-chip{0%,100%{opacity:1}50%{opacity:.65}}
 
 /* Track row progress fill */
 .track-row{position:relative;overflow:hidden}
