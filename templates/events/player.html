@@ -42,12 +42,13 @@
       flex:0 0 auto;width:min(50vw,520px);
       display:flex;flex-direction:column;
       border-right:1px solid #1a1a1a;overflow:hidden;
+      min-height:0;
     }
 
-    /* Art area */
+    /* Art area — flex:1 so it fills remaining stage height, controls never clip */
     .pl-art{
       position:relative;width:100%;
-      aspect-ratio:1/1;flex-shrink:0;overflow:hidden;
+      flex:1;min-height:0;overflow:hidden;
       background:#0a0a0a;
     }
     /* Square art area works for both portrait and landscape video — YT letterboxes/pillarboxes within */
@@ -379,8 +380,10 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
       var bars = 52, bw = w / bars - 1;
       for (var i = 0; i < bars; i++) {
         var di = Math.floor(i * data.length / bars);
-        var bh = (data[di] / 255) * h * 0.85;
-        visCtx.fillStyle = 'rgba(255,255,255,0.18)';
+        var amp = data[di] / 255;
+        var bh = amp * h * 0.88;
+        var alpha = 0.15 + amp * 0.65;
+        visCtx.fillStyle = 'rgba(255,107,53,' + alpha + ')';
         visCtx.fillRect(i * (bw + 1), h - bh, bw, bh);
       }
     })();

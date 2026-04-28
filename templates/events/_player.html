@@ -808,12 +808,14 @@ function _cpGenreColors(g) {
     var data = new Uint8Array(_visAnalyser.frequencyBinCount);
     _visAnalyser.getByteFrequencyData(data);
     _visCtx.clearRect(0, 0, W, H);
-    var bw = W / data.length * 2.5;
-    for (var i = 0; i < data.length; i++) {
-      var bh = (data[i] / 255) * H * 0.7;
-      var alpha = 0.25 + (data[i] / 255) * 0.55;
+    var bars = 48, bw = W / bars - 1;
+    for (var i = 0; i < bars; i++) {
+      var di  = Math.floor(i * data.length / bars);
+      var amp = data[di] / 255;
+      var bh  = amp * H * 0.75;
+      var alpha = 0.18 + amp * 0.62;
       _visCtx.fillStyle = 'rgba(255,107,53,' + alpha + ')';
-      _visCtx.fillRect(i * bw, H - bh, Math.max(1, bw - 1), bh);
+      _visCtx.fillRect(i * (bw + 1), H - bh, Math.max(1, bw), bh);
     }
   }
 
@@ -1019,7 +1021,7 @@ function _cpGenreColors(g) {
   // Popout buttons
   function _openPopout(e) {
     if (e) e.stopPropagation();
-    var w = 960, h = 680;
+    var w = 960, h = 720;
     var left = Math.max(0, screen.width - w - 16);
     var top  = Math.max(0, screen.height - h - 60);
     window.open('/player/?from=widget','cp-player',
