@@ -100,7 +100,8 @@ def _handle_entity_event(kind, obj, data):
     """Persist an incoming webhook payload as a KofiPost for a specific entity."""
     from events.models import KofiPost
 
-    kofi_type  = data.get('type', 'Donation')
+    # Ko-fi sends 'Shop Order' (space) — normalise for storage
+    kofi_type  = data.get('type', 'Donation').replace(' ', '_')
     txn_id     = data.get('message_id') or data.get('kofi_transaction_id') or None
     from_name  = (data.get('from_name') or 'Anonymous').strip()
     message    = (data.get('message') or '').strip()
@@ -133,8 +134,8 @@ def _handle_entity_event(kind, obj, data):
     s = _settings()
     webhook = getattr(s, 'DISCORD_WEBHOOK_BOARD', '')
     if webhook and kofi_type != 'Blog_Post':
-        emoji = {'Subscription': '⭐', 'Shop_Order': '🛒'}.get(kofi_type, '☕')
-        label = {'Subscription': 'subscribed', 'Shop_Order': 'placed a shop order'}.get(kofi_type, 'supported')
+        emoji = {'Subscription': '⭐', 'Shop_Order': '🛒', 'Commission': '🎨'}.get(kofi_type, '☕')
+        label = {'Subscription': 'subscribed', 'Shop_Order': 'placed a shop order', 'Commission': 'commissioned'}.get(kofi_type, 'supported')
         name  = getattr(obj, 'name', str(obj))
         msg   = f'**{from_name}** just {label} **{name}** on Ko-fi! {emoji}'
         if message and is_public:

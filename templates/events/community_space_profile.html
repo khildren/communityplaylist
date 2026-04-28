@@ -393,7 +393,7 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
   {% for s in kofi_support %}
   {% if s.is_public %}
   <span class="supporter-pill">
-    <span class="sp-emoji">{% if s.kofi_type == 'Subscription' %}⭐{% else %}☕{% endif %}</span>
+    <span class="sp-emoji">{% if s.kofi_type == 'Subscription' %}⭐{% elif s.kofi_type == 'Shop_Order' %}🛒{% elif s.kofi_type == 'Commission' %}🎨{% else %}☕{% endif %}</span>
     {{ s.from_name }}{% if s.amount and s.amount != '0' %} · ${{ s.amount }}{% endif %}
   </span>
   {% endif %}

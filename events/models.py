@@ -535,11 +535,13 @@ class KofiPost(models.Model):
     TYPE_DONATION     = 'Donation'
     TYPE_SUBSCRIPTION = 'Subscription'
     TYPE_SHOP_ORDER   = 'Shop_Order'
+    TYPE_COMMISSION   = 'Commission'
     TYPE_BLOG_POST    = 'Blog_Post'
     TYPE_CHOICES = [
         ('Donation',     'Donation'),
         ('Subscription', 'Subscription'),
         ('Shop_Order',   'Shop Order'),
+        ('Commission',   'Commission'),
         ('Blog_Post',    'Blog Post'),
     ]
 
@@ -583,7 +585,7 @@ class KofiPost(models.Model):
 
     @property
     def is_support(self):
-        return self.kofi_type in (self.TYPE_DONATION, self.TYPE_SUBSCRIPTION)
+        return self.kofi_type in (self.TYPE_DONATION, self.TYPE_SUBSCRIPTION, self.TYPE_COMMISSION, self.TYPE_SHOP_ORDER)
 
 
 class CommunityAsk(models.Model):
