@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import admin, messages
 from django.template.response import TemplateResponse
-from .models import Event, EventPhoto, Genre, Artist, SiteStats, CalendarFeed, Venue, Neighborhood, UserProfile, Follow, EditSuggestion, PromoterProfile, PlaylistTrack, SavedTrack, TrackReaction, RecordListing, RecordReservation, VideoTrack, Shelter, FlyerBackground, VideoRoomMessage, CommunitySpace, CommunityAsk
+from .models import Event, EventPhoto, Genre, Artist, SiteStats, CalendarFeed, Venue, Neighborhood, UserProfile, Follow, EditSuggestion, PromoterProfile, PlaylistTrack, SavedTrack, TrackReaction, TrackComment, RecordListing, RecordReservation, VideoTrack, Shelter, FlyerBackground, VideoRoomMessage, CommunitySpace, CommunityAsk
 from .forms import EventSubmitForm, EventPhotoForm, RegisterForm, StyledAuthForm, VenueForm
 from .geocode import geocode_location
 from urllib.parse import quote
@@ -3353,6 +3353,72 @@ def react_track(request):
     ups   = TrackReaction.objects.filter(track=track, reaction='up').count()
     downs = TrackReaction.objects.filter(track=track, reaction='down').count()
     return JsonResponse({'reaction': new_reaction, 'ups': ups, 'downs': downs})
+
+
+def api_track_comments(request):
+    """GET ?id=<pk> → comment list.  POST {id, body, ts} → create comment."""
+    import json as _json
+
+    if request.method == 'GET':
+        try:
+            track_id = int(request.GET.get('id', 0))
+        except (ValueError, TypeError):
+            return JsonResponse({'error': 'bad request'}, status=400)
+        track = get_object_or_404(PlaylistTrack, pk=track_id)
+        comments = TrackComment.objects.filter(track=track).select_related('user__profile')
+        data = []
+        for c in comments:
+            try:
+                handle = c.user.profile.handle or c.user.username
+            except Exception:
+                handle = c.user.username
+            data.append({
+                'id': c.pk,
+                'user': handle,
+                'is_mine': request.user.is_authenticated and c.user_id == request.user.pk,
+                'ts': c.ts,
+                'body': c.body,
+                'date': c.created_at.strftime('%b %d'),
+            })
+        return JsonResponse({'comments': data, 'auth': request.user.is_authenticated})
+
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'login required'}, status=401)
+        try:
+            body = _json.loads(request.body)
+            track_id = int(body.get('id', 0))
+            text = str(body.get('body', '')).strip()[:500]
+            ts = max(0, int(body.get('ts', 0)))
+        except Exception:
+            return JsonResponse({'error': 'bad request'}, status=400)
+        if not text:
+            return JsonResponse({'error': 'empty'}, status=400)
+        track = get_object_or_404(PlaylistTrack, pk=track_id)
+        c = TrackComment.objects.create(user=request.user, track=track, body=text, ts=ts)
+        try:
+            handle = request.user.profile.handle or request.user.username
+        except Exception:
+            handle = request.user.username
+        return JsonResponse({
+            'id': c.pk, 'user': handle, 'is_mine': True,
+            'ts': c.ts, 'body': c.body, 'date': c.created_at.strftime('%b %d'),
+        }, status=201)
+
+    return JsonResponse({'error': 'method not allowed'}, status=405)
+
+
+def delete_track_comment(request, pk):
+    """POST → delete own comment (or staff)."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'login required'}, status=401)
+    c = get_object_or_404(TrackComment, pk=pk)
+    if c.user_id != request.user.pk and not request.user.is_staff:
+        return JsonResponse({'error': 'forbidden'}, status=403)
+    c.delete()
+    return JsonResponse({'deleted': True})
 
 
 def saved_tracks_json(request):

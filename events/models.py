@@ -1475,6 +1475,21 @@ class TrackReaction(models.Model):
         return f'{self.user} {self.reaction} {self.track}'
 
 
+class TrackComment(models.Model):
+    """A time-stamped text comment on a playlist track, left by a logged-in user."""
+    user  = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='track_comments')
+    track = models.ForeignKey(PlaylistTrack, on_delete=models.CASCADE, related_name='comments')
+    body  = models.TextField(max_length=500)
+    ts    = models.PositiveIntegerField(default=0, help_text='Playback position in seconds')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['ts', 'created_at']
+
+    def __str__(self):
+        return f'{self.user} @{self.ts}s on {self.track}'
+
+
 class VideoTrack(models.Model):
     """A video (YouTube or Twitch) harvested from a connected artist/venue/promoter channel."""
 

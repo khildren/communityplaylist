@@ -295,6 +295,11 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
 
   /* Visualizer */
   var visCtx = null, visAnalyser = null, visRaf = null, visInit = false;
+  var _VB = 38;
+  var _visLvl = new Float32Array(_VB);
+  var _visTgt = new Float32Array(_VB);
+  var _visPhs = (function(){ var a=new Float32Array(_VB); for(var i=0;i<_VB;i++) a[i]=i*0.41; return a; })();
+  var _visT = 0, _visPlaying = false;
 
   /* ── DOM ── */
   var artEl    = document.getElementById('pl-art');
@@ -366,31 +371,53 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
       visAnalyser.connect(ac.destination);
     } catch(e) {}
   }
-  function startVis(colors) {
-    if (!canvas || !visAnalyser || visRaf) return;
-    canvas.style.display = 'block';
-    visCtx = canvas.getContext('2d');
-    var data = new Uint8Array(visAnalyser.frequencyBinCount);
-    (function draw() {
-      visRaf = requestAnimationFrame(draw);
-      var w = canvas.width  = canvas.offsetWidth;
-      var h = canvas.height = canvas.offsetHeight;
-      visCtx.clearRect(0, 0, w, h);
+  function _drawVis() {
+    visRaf = requestAnimationFrame(_drawVis);
+    if (!visCtx || !canvas) return;
+    _visT += _visPlaying ? 0.055 : 0.008;
+    var W = canvas.offsetWidth, H = canvas.offsetHeight;
+    if (!W || !H) return;
+    canvas.width = W; canvas.height = H;
+    visCtx.clearRect(0, 0, W, H);
+    var bw = W / _VB - 1;
+    var data = null;
+    if (visAnalyser && _visPlaying) {
+      data = data || new Uint8Array(visAnalyser.frequencyBinCount);
       visAnalyser.getByteFrequencyData(data);
-      var bars = 52, bw = w / bars - 1;
-      for (var i = 0; i < bars; i++) {
-        var di = Math.floor(i * data.length / bars);
-        var amp = data[di] / 255;
-        var bh = amp * h * 0.88;
-        var alpha = 0.15 + amp * 0.65;
-        visCtx.fillStyle = 'rgba(255,107,53,' + alpha + ')';
-        visCtx.fillRect(i * (bw + 1), h - bh, bw, bh);
+    }
+    for (var i = 0; i < _VB; i++) {
+      var amp;
+      if (data) {
+        var di = Math.floor(i * data.length / _VB);
+        amp = data[di] / 255;
+      } else if (_visPlaying) {
+        var wave = Math.sin(_visT*2.1 + _visPhs[i])     * 0.32
+                 + Math.sin(_visT*4.8 + _visPhs[i]*1.7) * 0.22
+                 + Math.sin(_visT*7.3 + _visPhs[i]*0.9) * 0.14
+                 + Math.random() * 0.1;
+        _visTgt[i] = Math.max(0.02, Math.min(1, (wave + 0.5) * (1.1 - i/_VB*0.55)));
+        amp = 0;
+      } else {
+        _visTgt[i] = 0;
+        amp = 0;
       }
-    })();
+      if (!data) {
+        _visLvl[i] += (_visTgt[i] - _visLvl[i]) * (_visPlaying ? 0.28 : 0.07);
+        amp = _visLvl[i];
+      }
+      visCtx.fillStyle = 'rgba(255,107,53,' + (0.1 + amp * 0.72) + ')';
+      visCtx.fillRect(i * (bw + 1), H - amp * H * 0.82, Math.max(1, bw), amp * H * 0.82);
+    }
+  }
+  function startVis() {
+    if (!canvas) return;
+    if (!visCtx) visCtx = canvas.getContext('2d');
+    canvas.style.display = 'block';
+    if (!visRaf) _drawVis();
   }
   function stopVis() {
     if (visRaf) { cancelAnimationFrame(visRaf); visRaf = null; }
-    canvas.style.display = 'none';
+    if (canvas) canvas.style.display = 'none';
     if (visCtx) visCtx.clearRect(0, 0, canvas.width, canvas.height);
   }
 
@@ -411,12 +438,14 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
     if (isVideo) return;
     audio.play().catch(function(){});
     playBtn.textContent = '⏸';
-    stopVis(); initVis();
-    var t = tracks[current];
-    startVis(t ? genreColors(t.genre || t.artist || '') : null);
+    initVis();
+    _visPlaying = true;
+    startVis();
   }
   function pause() {
-    audio.pause(); playBtn.textContent = '▶'; stopVis();
+    audio.pause();
+    playBtn.textContent = '▶';
+    _visPlaying = false;
   }
   function nextTrack() { loadTrack(getNext()); play(); }
   function prevTrack() {
@@ -697,6 +726,9 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
       },
     });
   }
+
+  /* Start visualizer in idle mode immediately */
+  startVis();
 
   /* ── Load tracks ── */
   fetch('/api/tracks/')

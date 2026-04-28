@@ -29,6 +29,8 @@ urlpatterns = [
     path('api/youtube-playlist/', views.api_youtube_playlist_proxy, name='api_youtube_playlist_proxy'),
     path('save-track/', views.toggle_save_track, name='toggle_save_track'),
     path('react-track/', views.react_track, name='react_track'),
+    path('api/track-comments/', views.api_track_comments, name='api_track_comments'),
+    path('api/track-comments/<int:pk>/delete/', views.delete_track_comment, name='delete_track_comment'),
     path('drive-sync/', views.drive_sync, name='drive_sync'),
     path('tracks/<int:pk>/delete/', views.delete_track, name='delete_track'),
     # Promoters / Crews

@@ -96,16 +96,23 @@
       <img src="/static/img/cp_logo_face.png" alt="CP" style="width:20px;height:20px;object-fit:contain;border-radius:50%;opacity:.65;vertical-align:middle">
     </button>
     <button class="cp-panel-sec" id="cp-panel-popout-sec" title="Standalone app">⬡</button>
+    <button class="cp-panel-sec" id="cp-panel-chat-btn" title="Comments">💬</button>
   </div>
 
   <div class="cp-panel-ch-strip" id="cp-panel-ch-strip"></div>
 
-  <div class="cp-panel-queue">
+  <div class="cp-panel-queue" id="cp-panel-queue">
     <div class="cp-panel-q-header">
       <span>UP NEXT</span>
       <span id="cp-panel-q-count"></span>
     </div>
     <div class="cp-panel-q-list" id="cp-panel-q-list"></div>
+  </div>
+
+  <div class="cp-panel-chat" id="cp-panel-chat" style="display:none"
+       data-auth="{% if request.user.is_authenticated %}1{% else %}0{% endif %}">
+    <div class="cp-chat-list" id="cp-chat-list"></div>
+    <div class="cp-chat-input-wrap" id="cp-chat-input-wrap"></div>
   </div>
 </div>
 
@@ -216,12 +223,12 @@ function _cpGenreColors(g) {
   }
 
   // ── Track display ──
-  function setTrackDisplay(title, artist, genreStr, artUrl) {
+  function setTrackDisplay(title, artist, genreStr, artUrl, trackId) {
     if (barTitle)  barTitle.textContent  = (title  || '—').toUpperCase();
     if (barArtist) barArtist.textContent = (artist || '').toUpperCase();
     if (barGenre)  barGenre.textContent  = genreStr ? genreStr.toUpperCase() : '';
     _updateBarArt(artUrl || '', genreStr, artist);
-    if (window.cpPanel) window.cpPanel.onTrackMeta(title, artist, genreStr, artUrl);
+    if (window.cpPanel) window.cpPanel.onTrackMeta(title, artist, genreStr, artUrl, trackId);
   }
 
   function _updateBarArt(artUrl, genreStr, artist) {
@@ -278,7 +285,7 @@ function _cpGenreColors(g) {
       if (barSeekFill) barSeekFill.style.width = '0%';
       if (barCur)    barCur.textContent    = '0:00';
       clearRowProgress();
-      setTrackDisplay(t.title, t.artist, '', t.art_url || '');
+      setTrackDisplay(t.title, t.artist, '', t.art_url || '', t.id);
       _pendingVideo = t;
       window.cpPendingVideo = t;
       saveState();
@@ -289,7 +296,7 @@ function _cpGenreColors(g) {
     if (barSeekFill) barSeekFill.style.width = '0%';
     if (barCur)    barCur.textContent    = '0:00';
     clearRowProgress();
-    setTrackDisplay(t.title, t.artist, t.genre, t.art_url || '');
+    setTrackDisplay(t.title, t.artist, t.genre, t.art_url || '', t.id);
     if (seekTo > 0) {
       audio.addEventListener('loadedmetadata', function seek(){
         audio.currentTime = seekTo;
@@ -868,9 +875,16 @@ function _cpGenreColors(g) {
   var chStrip   = document.getElementById('cp-panel-ch-strip');
   var qList     = document.getElementById('cp-panel-q-list');
   var qCount    = document.getElementById('cp-panel-q-count');
+  var chatPane  = document.getElementById('cp-panel-chat');
+  var chatList  = document.getElementById('cp-chat-list');
+  var chatInputWrap = document.getElementById('cp-chat-input-wrap');
+  var chatBtn   = document.getElementById('cp-panel-chat-btn');
+  var queuePane = document.getElementById('cp-panel-queue');
 
   var isOpen    = false;
   var _activeGenre = 'all';
+  var _chatOpen = false;
+  var _chatTrackId = null;
 
   // ── Open / close ──
   function open() {
@@ -1192,6 +1206,118 @@ function _cpGenreColors(g) {
   // Escape
   document.addEventListener('keydown', function(e){ if (e.key==='Escape' && isOpen) close(); });
 
+  // ── Chat / time-stamped comments ──
+  function _chatFmt(ts) {
+    var m = Math.floor(ts / 60), s = ts % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function _renderComments(data) {
+    if (!chatList) return;
+    var auth = chatPane && chatPane.dataset.auth === '1';
+    chatList.innerHTML = '';
+    if (!data.comments.length) {
+      var empty = document.createElement('div');
+      empty.className = 'cp-chat-empty';
+      empty.textContent = 'No comments yet — be first.';
+      chatList.appendChild(empty);
+    }
+    data.comments.forEach(function(c) {
+      var row = document.createElement('div');
+      row.className = 'cp-chat-row';
+      var ts = document.createElement('button');
+      ts.className = 'cp-chat-ts';
+      ts.textContent = _chatFmt(c.ts);
+      ts.title = 'Jump to ' + _chatFmt(c.ts);
+      ts.addEventListener('click', function() {
+        var a = window.cpAudio;
+        if (a && !isNaN(a.duration)) a.currentTime = c.ts;
+      });
+      var body = document.createElement('span');
+      body.className = 'cp-chat-body';
+      body.textContent = c.body;
+      var meta = document.createElement('span');
+      meta.className = 'cp-chat-meta';
+      meta.textContent = '@' + c.user + ' · ' + c.date;
+      var right = document.createElement('span');
+      right.className = 'cp-chat-right';
+      right.appendChild(meta);
+      if (c.is_mine) {
+        var del = document.createElement('button');
+        del.className = 'cp-chat-del';
+        del.textContent = '×';
+        del.title = 'Delete';
+        del.addEventListener('click', function() {
+          fetch('/api/track-comments/' + c.id + '/delete/', {method:'POST', headers:{'X-CSRFToken': _csrf()}})
+            .then(function(r){ if (r.ok) _loadChat(_chatTrackId); });
+        });
+        right.appendChild(del);
+      }
+      row.appendChild(ts);
+      row.appendChild(body);
+      row.appendChild(right);
+      chatList.appendChild(row);
+    });
+    // Input form
+    if (!chatInputWrap) return;
+    chatInputWrap.innerHTML = '';
+    if (auth) {
+      var form = document.createElement('form');
+      form.className = 'cp-chat-form';
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var inp = form.querySelector('.cp-chat-inp');
+        var text = inp ? inp.value.trim() : '';
+        if (!text || !_chatTrackId) return;
+        var a = window.cpAudio;
+        var ts2 = (a && !isNaN(a.currentTime)) ? Math.floor(a.currentTime) : 0;
+        fetch('/api/track-comments/', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json','X-CSRFToken':_csrf()},
+          body: JSON.stringify({id: _chatTrackId, body: text, ts: ts2}),
+        }).then(function(r){ if (r.ok) { inp.value=''; _loadChat(_chatTrackId); } });
+      });
+      var inp2 = document.createElement('input');
+      inp2.type = 'text'; inp2.className = 'cp-chat-inp';
+      inp2.placeholder = 'Comment at ' + _chatFmt(Math.floor((window.cpAudio && !isNaN(window.cpAudio.currentTime) ? window.cpAudio.currentTime : 0)));
+      inp2.maxLength = 500;
+      var sub = document.createElement('button');
+      sub.type = 'submit'; sub.className = 'cp-chat-sub'; sub.textContent = '↵';
+      form.appendChild(inp2); form.appendChild(sub);
+      chatInputWrap.appendChild(form);
+    } else {
+      var loginMsg = document.createElement('a');
+      loginMsg.href = '/login/'; loginMsg.className = 'cp-chat-login';
+      loginMsg.textContent = 'Log in to comment';
+      chatInputWrap.appendChild(loginMsg);
+    }
+  }
+  function _csrf() {
+    var c = document.cookie.match(/csrftoken=([^;]+)/);
+    return c ? c[1] : '';
+  }
+  function _loadChat(trackId) {
+    if (!trackId) return;
+    _chatTrackId = trackId;
+    if (chatList) chatList.innerHTML = '<div class="cp-chat-empty">Loading…</div>';
+    fetch('/api/track-comments/?id=' + trackId)
+      .then(function(r){ return r.json(); })
+      .then(_renderComments)
+      .catch(function(){ if (chatList) chatList.innerHTML = '<div class="cp-chat-empty">Could not load.</div>'; });
+  }
+  function _toggleChat(trackId) {
+    _chatOpen = !_chatOpen;
+    if (chatPane) chatPane.style.display = _chatOpen ? 'flex' : 'none';
+    if (queuePane) queuePane.style.display = _chatOpen ? 'none' : 'flex';
+    if (chatBtn) chatBtn.classList.toggle('active', _chatOpen);
+    if (_chatOpen) _loadChat(trackId || _chatTrackId);
+  }
+  if (chatBtn) chatBtn.addEventListener('click', function() {
+    var tracks = window._cpTracks || [];
+    var cur    = window._cpCurrent || 0;
+    var t = tracks[cur];
+    _toggleChat(t ? t.id : null);
+  });
+
   // ── Callbacks from audio/video engines ──
   window.cpPanel = {
     open:   open,
@@ -1199,7 +1325,7 @@ function _cpGenreColors(g) {
     isOpen: function(){ return isOpen; },
     buildGenreStrip: buildGenreStrip,
 
-    onTrackMeta: function(title, artist, genre, artUrl) {
+    onTrackMeta: function(title, artist, genre, artUrl, trackId) {
       _fadeText(titleEl,  title  || '—');
       _fadeText(artistEl, artist || '');
       _fadeText(metaEl,   genre ? genre.toUpperCase() : '');
@@ -1207,8 +1333,9 @@ function _cpGenreColors(g) {
       _applyReaction(null, 0, 0);
       buildQueue();
       if (isOpen && !window.cpVideo?.isActive()) {
-        _startVisualizer();  // start if not already running; running loop auto-adapts to playing state
+        _startVisualizer();
       }
+      if (_chatOpen && trackId) _loadChat(trackId);
     },
     onPlayState: function(playing) {
       if (playBtn) playBtn.textContent = playing ? '⏸' : '▶';
