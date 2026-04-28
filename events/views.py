@@ -5018,6 +5018,9 @@ def toggle_comments_api(request):
 
 # ── Ko-fi webhook ─────────────────────────────────────────────────────────────
 
+from django.views.decorators.csrf import csrf_exempt as _csrf_exempt
+
+@_csrf_exempt
 def kofi_webhook_view(request):
     from events.kofi import kofi_webhook
     return kofi_webhook(request)
