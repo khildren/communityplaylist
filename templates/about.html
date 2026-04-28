@@ -114,7 +114,8 @@ h1{color:var(--accent);font-size:1.35em;font-weight:800;line-height:1.2;letter-s
 
 {# ── Hero ── #}
 <div class="hero">
-  <div class="hero-logo-placeholder">🎵</div>
+  <img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png"
+       alt="Community Playlist" class="hero-logo">
   <h1>Community Playlist</h1>
   <p class="tagline">Free, ad-free, community-run PDX event listings, artist profiles, venues, and local music discovery. Built in Portland for Portland.</p>
   <div class="badges">
@@ -162,7 +163,7 @@ h1{color:var(--accent);font-size:1.35em;font-weight:800;line-height:1.2;letter-s
   <a href="/artists/" class="nav-btn"><span class="nb-icon">🎤</span>Artists</a>
   <a href="/venues/" class="nav-btn"><span class="nb-icon">🏛</span>Venues</a>
   <a href="/promoters/" class="nav-btn"><span class="nb-icon">📣</span>Crews</a>
-  <a href="/spaces/" class="nav-btn"><span class="nb-icon">🌱</span>Spaces</a>
+  <a href="{% url 'community_space_list' %}" class="nav-btn"><span class="nb-icon">🌱</span>Spaces</a>
   <a href="/neighborhoods/" class="nav-btn"><span class="nb-icon">🗺</span>Hoods</a>
 </div>
 

@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Community Spaces — Community Playlist PDX{% endblock %}
+
+{% block styles %}
+<style>
+.spaces-wrap{max-width:640px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:1.2em;color:#eee;margin-bottom:6px}
+.sub{color:#555;font-size:.82em;margin-bottom:20px}
+.space-grid{display:flex;flex-direction:column;gap:8px}
+.space-card{display:flex;align-items:center;gap:14px;background:#161616;border:1px solid #1e1e1e;border-radius:12px;padding:14px 16px;text-decoration:none;color:#eee;transition:border-color .15s}
+.space-card:hover{border-color:#4caf50}
+.space-photo{width:48px;height:48px;border-radius:10px;object-fit:cover;flex-shrink:0;background:#1a1a1a;border:1px solid #2a2a2a}
+.space-placeholder{width:48px;height:48px;border-radius:10px;flex-shrink:0;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:1.3em}
+.space-body{flex:1;min-width:0}
+.space-name{font-size:.9em;font-weight:600;color:#ddd}
+.space-meta{font-size:.74em;color:#555;margin-top:2px;display:flex;gap:6px;flex-wrap:wrap}
+.space-type{background:#111;border:1px solid #222;border-radius:4px;padding:1px 6px}
+.space-hood{color:#444}
+.space-arrow{color:#333;font-size:.8em;flex-shrink:0}
+.empty{color:#444;font-size:.85em;padding:40px 0;text-align:center}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="spaces-wrap">
+  <h1>🌱 Community Spaces</h1>
+  <p class="sub">Gardens, third spaces, makerspaces, free libraries, and public gathering places in Portland.</p>
+
+  {% if spaces %}
+  <div class="space-grid">
+    {% for s in spaces %}
+    <a href="{{ s.get_absolute_url }}" class="space-card">
+      {% if s.photo %}
+        <img src="{{ s.photo.url }}" class="space-photo" alt="{{ s.name }}">
+      {% else %}
+        <div class="space-placeholder">🌱</div>
+      {% endif %}
+      <div class="space-body">
+        <div class="space-name">{{ s.name }}</div>
+        <div class="space-meta">
+          <span class="space-type">{{ s.get_space_type_display }}</span>
+          {% if s.neighborhood %}<span class="space-hood">📍 {{ s.neighborhood }}</span>{% endif %}
+        </div>
+      </div>
+      <span class="space-arrow">→</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">No spaces listed yet — <a href="/about/" style="color:#4caf50">suggest one →</a></div>
+  {% endif %}
+</div>
+{% endblock %}

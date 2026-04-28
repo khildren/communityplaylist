@@ -4830,6 +4830,11 @@ def _fetch_space_library(folder_url, show_audio, show_docs):
     return audio_files[:50], doc_files[:50]
 
 
+def community_space_list(request):
+    spaces = CommunitySpace.objects.filter(is_public=True).order_by('name')
+    return render(request, 'events/community_space_list.html', {'spaces': spaces})
+
+
 def community_space_profile(request, slug):
     from django.db.models import F as _F
     space = get_object_or_404(CommunitySpace, slug=slug, is_public=True)
