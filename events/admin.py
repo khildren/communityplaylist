@@ -6,7 +6,7 @@ from django.urls import path
 from django.http import HttpResponseRedirect, StreamingHttpResponse
 from django.contrib import messages
 from django import forms
-from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile, PromoterProfile, PlaylistTrack, RecordListing, RecordReservation, VideoTrack, Shelter, InstagramAccount, InstagramPost, WorkerTask, CommunitySpace, CommunityAsk, KofiPost
+from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile, PromoterProfile, PlaylistTrack, RecordListing, RecordReservation, VideoTrack, Shelter, InstagramAccount, InstagramPost, WorkerTask, CommunitySpace, CommunityAsk, KofiPost, SupportTicket
 import os
 import datetime
 import subprocess
@@ -632,6 +632,22 @@ class CommunityAskAdmin(admin.ModelAdmin):
     list_filter   = ['ask_type', 'status']
     search_fields = ['title', 'description']
     readonly_fields = ['board_offering', 'created_at']
+
+
+@admin.register(SupportTicket)
+class SupportTicketAdmin(admin.ModelAdmin):
+    list_display  = ['subject', 'ticket_type', 'from_name', 'from_email', 'status', 'created_at']
+    list_filter   = ['ticket_type', 'status']
+    search_fields = ['subject', 'body', 'from_name', 'from_email']
+    readonly_fields = ['created_at', 'updated_at', 'user']
+    list_editable = ['status']
+    ordering = ['-created_at']
+    fieldsets = [
+        (None,           {'fields': ['ticket_type', 'subject', 'body']}),
+        ('Submitter',    {'fields': ['from_name', 'from_email', 'user']}),
+        ('Admin',        {'fields': ['status', 'admin_notes']}),
+        ('Timestamps',   {'fields': ['created_at', 'updated_at'], 'classes': ['collapse']}),
+    ]
 
 
 @admin.register(KofiPost)

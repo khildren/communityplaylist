@@ -169,16 +169,44 @@ def kofi_webhook(request):
     # 2 — fall back to site-level CP shoutout
     site_token = getattr(_settings(), 'KOFI_VERIFICATION_TOKEN', '')
     if site_token and token == site_token:
+        from_name    = data.get('from_name') or 'A supporter'
+        message      = (data.get('message') or '').strip()
+        support_type = data.get('type', 'Donation')
+        kofi_url     = data.get('url', 'https://ko-fi.com/communityplaylist')
+        is_public    = data.get('is_public', True)
+        # Store as a site-level KofiPost (all entity FKs null)
+        _store_site_kofi_post(data)
         _fire_supporter_shoutout(
-            from_name    = data.get('from_name') or 'A supporter',
-            message      = (data.get('message') or '').strip(),
-            support_type = data.get('type', 'Donation'),
-            kofi_url     = data.get('url', 'https://ko-fi.com/communityplaylist'),
-            is_public    = data.get('is_public', True),
+            from_name=from_name, message=message, support_type=support_type,
+            kofi_url=kofi_url, is_public=is_public,
         )
         return HttpResponse('ok', status=200)
 
     return HttpResponse('forbidden', status=403)
+
+
+# ── Site-level KofiPost storage ──────────────────────────────────────────────
+
+def _store_site_kofi_post(data):
+    """Persist a site-level (CP's own Ko-fi) webhook event with no entity FK."""
+    from events.models import KofiPost
+    kofi_type = data.get('type', 'Donation').replace(' ', '_')
+    txn_id    = data.get('message_id') or data.get('kofi_transaction_id') or None
+    defaults  = {
+        'kofi_type': kofi_type,
+        'from_name': (data.get('from_name') or 'Anonymous').strip(),
+        'message':   (data.get('message') or '').strip(),
+        'url':       (data.get('url') or '').strip(),
+        'is_public': data.get('is_public', True),
+        'amount':    str(data.get('amount') or ''),
+        'currency':  (data.get('currency') or '').strip(),
+        'timestamp': _parse_ts(data.get('timestamp')),
+        'raw_data':  data,
+    }
+    if txn_id:
+        KofiPost.objects.get_or_create(kofi_transaction_id=txn_id, defaults=defaults)
+    else:
+        KofiPost.objects.create(**defaults)
 
 
 # ── Site-level supporter shoutout ─────────────────────────────────────────────

@@ -667,6 +667,54 @@ class CommunityAsk(models.Model):
         return ''
 
 
+class SupportTicket(models.Model):
+    """A suggestion, bug report, or general message submitted via the CP About page."""
+
+    TYPE_IDEA    = 'idea'
+    TYPE_BUG     = 'bug'
+    TYPE_VENUE   = 'venue'
+    TYPE_SPACE   = 'space'
+    TYPE_OTHER   = 'other'
+    TYPE_CHOICES = [
+        (TYPE_IDEA,  '💡 Idea / Feature'),
+        (TYPE_BUG,   '🐛 Bug Report'),
+        (TYPE_VENUE, '🏛 Add a Venue'),
+        (TYPE_SPACE, '🌱 Add a Space'),
+        (TYPE_OTHER, '💬 General Message'),
+    ]
+
+    STATUS_OPEN        = 'open'
+    STATUS_IN_PROGRESS = 'in_progress'
+    STATUS_CLOSED      = 'closed'
+    STATUS_CHOICES = [
+        (STATUS_OPEN,        'Open'),
+        (STATUS_IN_PROGRESS, 'In Progress'),
+        (STATUS_CLOSED,      'Closed'),
+    ]
+
+    ticket_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_OTHER)
+    subject     = models.CharField(max_length=200)
+    body        = models.TextField()
+    from_name   = models.CharField(max_length=120, blank=True)
+    from_email  = models.EmailField(blank=True)
+    user        = models.ForeignKey(
+        'auth.User', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='support_tickets',
+    )
+    status      = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_OPEN)
+    admin_notes = models.TextField(blank=True, help_text='Internal notes — not visible to submitter')
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Support Ticket'
+        verbose_name_plural = 'Support Tickets'
+
+    def __str__(self):
+        return f'[{self.get_ticket_type_display()}] {self.subject}'
+
+
 class RecordListing(models.Model):
     """A single record/item in a promoter's SOL shop, synced from a Google Sheet."""
     CONDITION_CHOICES = [

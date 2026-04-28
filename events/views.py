@@ -5035,6 +5035,96 @@ def toggle_comments_api(request):
     return JsonResponse({'ok': True, 'allow': allow})
 
 
+# ── About / Support page ──────────────────────────────────────────────────────
+
+def about_page(request):
+    from .models import SupportTicket, KofiPost, Event, Artist, Venue, CommunitySpace
+    from django.utils import timezone as _tz
+    import datetime as _dt
+
+    # Live stats
+    stats = {
+        'events':  Event.objects.filter(status='approved').count(),
+        'artists': Artist.objects.count(),
+        'venues':  Venue.objects.filter(active=True).count(),
+        'spaces':  CommunitySpace.objects.filter(is_public=True).count(),
+    }
+
+    # Site-level Ko-fi supporters (all entity FKs null)
+    site_supporters = list(
+        KofiPost.objects
+        .filter(community_space__isnull=True, artist__isnull=True, promoter__isnull=True, is_public=True)
+        .exclude(kofi_type='Blog_Post')
+        .order_by('-timestamp', '-created_at')[:50]
+    )
+    week_ago = _tz.now() - _dt.timedelta(days=7)
+    recent_supporters = [p for p in site_supporters if p.timestamp and p.timestamp >= week_ago]
+
+    submitted = False
+    error = ''
+
+    if request.method == 'POST':
+        ticket_type = request.POST.get('ticket_type', 'other')
+        subject     = request.POST.get('subject', '').strip()
+        body        = request.POST.get('body', '').strip()
+        from_name   = request.POST.get('from_name', '').strip()
+        from_email  = request.POST.get('from_email', '').strip()
+
+        if not subject or not body:
+            error = 'Please fill in a subject and message.'
+        else:
+            ticket = SupportTicket.objects.create(
+                ticket_type = ticket_type,
+                subject     = subject,
+                body        = body,
+                from_name   = from_name,
+                from_email  = from_email,
+                user        = request.user if request.user.is_authenticated else None,
+            )
+            # Discord notification
+            _notify_ticket_discord(ticket)
+            submitted = True
+
+    return render(request, 'about.html', {
+        'stats':             stats,
+        'site_supporters':   site_supporters,
+        'recent_supporters': recent_supporters,
+        'submitted':         submitted,
+        'error':             error,
+    })
+
+
+def _notify_ticket_discord(ticket):
+    from django.conf import settings
+    import json, urllib.request
+    webhook = getattr(settings, 'DISCORD_WEBHOOK', '') or getattr(settings, 'DISCORD_WEBHOOK_BOARD', '')
+    if not webhook:
+        return
+    type_labels = {
+        'idea': '💡 Idea', 'bug': '🐛 Bug', 'venue': '🏛 Venue',
+        'space': '🌱 Space', 'other': '💬 Message',
+    }
+    label = type_labels.get(ticket.ticket_type, '📩')
+    name  = ticket.from_name or (ticket.user.username if ticket.user else 'Anonymous')
+    desc  = f'**{label}** from **{name}**'
+    if ticket.from_email:
+        desc += f' ({ticket.from_email})'
+    desc += f'\n\n**{ticket.subject}**\n{ticket.body[:800]}'
+    embed = {
+        'title':       f'{label} — New Support Ticket #{ticket.pk}',
+        'description': desc,
+        'color':       0x4caf50,
+        'url':         f'https://communityplaylist.com/admin/events/supportticket/{ticket.pk}/change/',
+        'footer':      {'text': 'communityplaylist.com/about/'},
+    }
+    try:
+        data = json.dumps({'embeds': [embed]}).encode()
+        req  = urllib.request.Request(webhook, data=data, headers={'Content-Type': 'application/json'}, method='POST')
+        urllib.request.urlopen(req, timeout=8)
+    except Exception as e:
+        print(f'[Ticket] Discord notify error: {e}')
+
+
 # ── Ko-fi webhook ─────────────────────────────────────────────────────────────
 
 from django.views.decorators.csrf import csrf_exempt as _csrf_exempt

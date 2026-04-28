@@ -90,6 +90,7 @@ urlpatterns = [
     path('u/@<str:handle>/feed/', views.profile_feed, name='profile_feed'),
     path('follow/', views.toggle_follow, name='toggle_follow'),
     path('suggest-edit/', views.suggest_edit, name='suggest_edit'),
+    path('about/', views.about_page, name='about_page'),
     path('privacy/', views.privacy_page, name='privacy'),
     path('report/', views.report_page, name='report'),
     path('spaces/<slug:slug>/', views.community_space_profile, name='community_space_profile'),

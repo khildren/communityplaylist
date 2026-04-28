@@ -1,0 +1,290 @@
+{% extends 'base.html' %}
+{% block title %}About — Community Playlist PDX{% endblock %}
+
+{% block head_extra %}
+<meta property="og:type"        content="website">
+<meta property="og:title"       content="About — Community Playlist PDX">
+<meta property="og:description" content="Free, ad-free, community-run PDX event listings, artist profiles, and local music discovery. Built in Portland for Portland.">
+<meta property="og:url"         content="https://communityplaylist.com/about/">
+<meta property="og:site_name"   content="Community Playlist PDX">
+<meta name="twitter:card"       content="summary">
+<link rel="canonical"           href="https://communityplaylist.com/about/">
+{% endblock %}
+
+{% block site_header %}{% endblock %}
+{% block nav_strip %}{% endblock %}
+
+{% block styles %}
+<style>
+:root{--accent:#4caf50;--accent-dark:#388e3c;--accent-bg:rgba(76,175,80,.08)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0e0e0e;color:#eee;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
+.epk{max-width:480px;margin:0 auto;padding:24px 16px 90px;display:flex;flex-direction:column;gap:10px}
+
+/* Hero */
+.hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:32px 20px 24px;background:#161616;border:1px solid #222;border-radius:14px}
+.hero-logo{width:80px;height:80px;border-radius:16px;object-fit:cover;border:3px solid var(--accent)}
+.hero-logo-placeholder{width:80px;height:80px;border-radius:16px;background:#1a1a1a;border:3px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:2.4em}
+h1{color:var(--accent);font-size:1.35em;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+.tagline{color:#666;font-size:.82em;line-height:1.6;max-width:320px}
+.badges{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:4px}
+.badge{display:inline-flex;align-items:center;gap:4px;background:#111;border:1px solid #252525;border-radius:20px;padding:3px 10px;font-size:.72em;color:#666}
+
+/* Stats strip */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{background:#161616;border:1px solid #1e1e1e;border-radius:10px;padding:12px 8px;text-align:center}
+.stat-num{font-size:1.3em;font-weight:800;color:var(--accent);line-height:1}
+.stat-label{font-size:.65em;color:#444;margin-top:4px;letter-spacing:.04em;text-transform:uppercase}
+
+/* Section label */
+.section-label{font-size:.68em;text-transform:uppercase;letter-spacing:.1em;color:#444;margin:6px 0 4px;padding-left:4px}
+
+/* Recent supporter banner */
+.supporter-banner{background:var(--accent-bg);border:1px solid rgba(76,175,80,.25);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.supporter-banner-icon{font-size:1.4em;flex-shrink:0}
+.supporter-banner-names{flex:1;font-size:.82em;color:var(--accent);font-weight:600;line-height:1.5}
+.supporter-banner-sub{font-size:.72em;color:#555;margin-top:1px}
+.supporter-banner-link{font-size:.74em;color:#555;text-decoration:none;white-space:nowrap;border:1px solid #2a2a2a;padding:4px 10px;border-radius:20px;transition:all .15s;flex-shrink:0}
+.supporter-banner-link:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Mission card */
+.mission{background:#161616;border:1px solid #222;border-radius:14px;padding:20px}
+.mission p{color:#777;font-size:.84em;line-height:1.75;margin-bottom:12px}
+.mission p:last-child{margin-bottom:0}
+.mission strong{color:#aaa}
+
+/* Ticket form */
+.ticket-card{background:#161616;border:1px solid #222;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.ticket-card h2{color:var(--accent);font-size:.92em;font-weight:700}
+.ticket-card p{color:#666;font-size:.8em;line-height:1.6}
+
+/* Type chips */
+.type-chips{display:flex;flex-wrap:wrap;gap:6px}
+.type-chip{display:none}
+.type-chip + label{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;border:1px solid #2a2a2a;font-size:.78em;color:#666;cursor:pointer;transition:all .2s;background:#111;user-select:none}
+.type-chip:checked + label{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:.75em;color:#555}
+.fg input,.fg textarea{background:#111;border:1px solid #252525;border-radius:8px;color:#ddd;font-size:.84em;padding:9px 12px;font-family:inherit;outline:none;transition:border-color .15s;width:100%}
+.fg input:focus,.fg textarea:focus{border-color:var(--accent)}
+.fg textarea{resize:vertical;min-height:100px}
+.row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.submit-btn{background:var(--accent);color:#fff;border:none;padding:11px 24px;border-radius:10px;cursor:pointer;font-size:.88em;font-weight:700;font-family:inherit;transition:opacity .15s;align-self:flex-start}
+.submit-btn:hover{opacity:.88}
+
+.success-card{background:#0d1f0d;border:1px solid rgba(76,175,80,.3);border-radius:14px;padding:20px;text-align:center}
+.success-card .icon{font-size:2.4em;margin-bottom:10px}
+.success-card h2{color:var(--accent);font-size:1em;margin-bottom:6px}
+.success-card p{color:#666;font-size:.82em;line-height:1.6}
+
+.error-msg{background:#1f0d0d;border:1px solid rgba(255,80,80,.2);border-radius:8px;padding:10px 14px;color:#ff6666;font-size:.8em}
+
+/* Supporters all-time */
+.supporter-list{display:flex;flex-direction:column;gap:6px}
+.supporter-row{display:flex;align-items:center;gap:10px;background:#161616;border:1px solid #1a1a1a;border-radius:10px;padding:10px 12px}
+.supporter-emoji{font-size:1.1em;width:28px;text-align:center;flex-shrink:0}
+.supporter-name{flex:1;font-size:.84em;color:#ccc;font-weight:500}
+.supporter-meta{font-size:.72em;color:#444;display:flex;gap:8px}
+.supporter-amount{color:var(--accent);font-weight:600}
+
+/* Ko-fi CTA */
+.kofi-cta{display:flex;align-items:center;justify-content:center;gap:8px;background:#161616;border:1px solid #222;border-radius:12px;padding:14px 16px;text-decoration:none;color:#eee;font-size:.88em;font-weight:500;transition:all .15s}
+.kofi-cta:hover{border-color:var(--accent);background:var(--accent-bg);color:var(--accent)}
+
+/* Nav links */
+.nav-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.nav-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 10px;background:#161616;border:1px solid #1e1e1e;border-radius:12px;text-decoration:none;color:#888;transition:all .15s;font-size:.78em;text-align:center}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+.nav-btn .nb-icon{font-size:1.4em;line-height:1}
+
+/* Footer */
+.epk-footer{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:10px;padding:10px 16px;background:linear-gradient(transparent,#0e0e0e 60%);pointer-events:none;flex-wrap:wrap}
+.epk-footer a,.epk-footer button{pointer-events:auto;color:#333;font-size:.68em;text-decoration:none;letter-spacing:.04em;transition:color .15s;background:none;border:none;cursor:pointer;font-family:inherit;padding:0}
+.epk-footer a:hover,.epk-footer button:hover{color:var(--accent)}
+.epk-footer-sep{color:#222;font-size:.68em;pointer-events:none}
+
+@media(max-width:420px){.stats{grid-template-columns:repeat(2,1fr)}.row-2{grid-template-columns:1fr}.nav-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="epk">
+
+{# ── Hero ── #}
+<div class="hero">
+  <div class="hero-logo-placeholder">🎵</div>
+  <h1>Community Playlist</h1>
+  <p class="tagline">Free, ad-free, community-run PDX event listings, artist profiles, venues, and local music discovery. Built in Portland for Portland.</p>
+  <div class="badges">
+    <span class="badge">🌲 Portland, OR</span>
+    <span class="badge">🔓 Free forever</span>
+    <span class="badge">📵 No ads</span>
+    <span class="badge">🤝 Community-run</span>
+  </div>
+</div>
+
+{# ── Stats ── #}
+<div class="stats">
+  <div class="stat"><div class="stat-num">{{ stats.events }}</div><div class="stat-label">Events</div></div>
+  <div class="stat"><div class="stat-num">{{ stats.artists }}</div><div class="stat-label">Artists</div></div>
+  <div class="stat"><div class="stat-num">{{ stats.venues }}</div><div class="stat-label">Venues</div></div>
+  <div class="stat"><div class="stat-num">{{ stats.spaces }}</div><div class="stat-label">Spaces</div></div>
+</div>
+
+{# ── Recent supporter banner ── #}
+{% if recent_supporters %}
+<div class="supporter-banner">
+  <span class="supporter-banner-icon">☕</span>
+  <div style="flex:1;min-width:0">
+    <div class="supporter-banner-names">
+      {% for s in recent_supporters|slice:":3" %}{{ s.from_name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if recent_supporters|length > 3 %} + {{ recent_supporters|length|add:"-3" }} more{% endif %}
+    </div>
+    <div class="supporter-banner-sub">supported Community Playlist this week ♥</div>
+  </div>
+  <a href="#supporters" class="supporter-banner-link">Thank you ↓</a>
+</div>
+{% endif %}
+
+{# ── Mission ── #}
+<div class="section-label">What we are</div>
+<div class="mission">
+  <p>Community Playlist is a <strong>free, ad-free event calendar and artist directory for Portland, OR</strong> — built to keep local culture visible without paywalls, algorithms, or corporate gatekeeping.</p>
+  <p>We list music events, track local artists and crews, map venues and community spaces, and surface the underground scene that makes PDX worth living in.</p>
+  <p>No venture capital. No ads. No user data sold. Kept alive by <strong>community support</strong> and people who believe local culture deserves better than Facebook Events.</p>
+</div>
+
+{# ── Navigation quick links ── #}
+<div class="section-label">Explore</div>
+<div class="nav-grid">
+  <a href="/" class="nav-btn"><span class="nb-icon">🎉</span>Events</a>
+  <a href="/artists/" class="nav-btn"><span class="nb-icon">🎤</span>Artists</a>
+  <a href="/venues/" class="nav-btn"><span class="nb-icon">🏛</span>Venues</a>
+  <a href="/promoters/" class="nav-btn"><span class="nb-icon">📣</span>Crews</a>
+  <a href="/spaces/" class="nav-btn"><span class="nb-icon">🌱</span>Spaces</a>
+  <a href="/neighborhoods/" class="nav-btn"><span class="nb-icon">🗺</span>Hoods</a>
+</div>
+
+{# ── Support / Ko-fi CTA ── #}
+<a href="https://ko-fi.com/communityplaylist" class="kofi-cta" target="_blank" rel="noopener">
+  <span>☕</span>
+  <span style="flex:1">Buy us a coffee — keeps the site free &amp; ad-free</span>
+  <span style="color:#444;font-size:.8em">↗</span>
+</a>
+
+{# ── Ticket form ── #}
+<div class="section-label">Send a message</div>
+{% if submitted %}
+<div class="success-card">
+  <div class="icon">✅</div>
+  <h2>Got it — thank you!</h2>
+  <p>Your message landed. We read every one and usually follow up within a day or two. If you left an email, watch your inbox.</p>
+</div>
+{% else %}
+<div class="ticket-card">
+  <div>
+    <h2>💬 Ideas, bugs, suggestions</h2>
+    <p>Know a venue we're missing? Found a bug? Have an idea? Drop us a note — this goes straight to the admin queue and pings us on Discord.</p>
+  </div>
+
+  {% if error %}<div class="error-msg">{{ error }}</div>{% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="fg" style="margin-bottom:14px">
+      <label>What kind of message is this?</label>
+      <div class="type-chips">
+        <input class="type-chip" type="radio" name="ticket_type" id="t-idea"  value="idea">
+        <label for="t-idea">💡 Idea</label>
+
+        <input class="type-chip" type="radio" name="ticket_type" id="t-bug"   value="bug">
+        <label for="t-bug">🐛 Bug</label>
+
+        <input class="type-chip" type="radio" name="ticket_type" id="t-venue" value="venue">
+        <label for="t-venue">🏛 Add Venue</label>
+
+        <input class="type-chip" type="radio" name="ticket_type" id="t-space" value="space">
+        <label for="t-space">🌱 Add Space</label>
+
+        <input class="type-chip" type="radio" name="ticket_type" id="t-other" value="other" checked>
+        <label for="t-other">💬 Other</label>
+      </div>
+    </div>
+
+    <div class="fg">
+      <label for="subject">Subject</label>
+      <input type="text" id="subject" name="subject" placeholder="One-line summary" maxlength="200">
+    </div>
+
+    <div class="fg" style="margin-top:10px">
+      <label for="body">Message</label>
+      <textarea id="body" name="body" placeholder="Tell us more…" rows="4"></textarea>
+    </div>
+
+    <div class="row-2" style="margin-top:10px">
+      <div class="fg">
+        <label for="from_name">Your name <span style="color:#333">(optional)</span></label>
+        <input type="text" id="from_name" name="from_name"
+               value="{% if request.user.is_authenticated %}{{ request.user.get_full_name|default:request.user.username }}{% endif %}"
+               placeholder="Name or handle">
+      </div>
+      <div class="fg">
+        <label for="from_email">Email <span style="color:#333">(optional)</span></label>
+        <input type="email" id="from_email" name="from_email"
+               value="{% if request.user.is_authenticated %}{{ request.user.email }}{% endif %}"
+               placeholder="For follow-up">
+      </div>
+    </div>
+
+    <button type="submit" class="submit-btn" style="margin-top:4px">Send message →</button>
+  </form>
+</div>
+{% endif %}
+
+{# ── All-time supporters ── #}
+{% if site_supporters %}
+<div class="section-label" id="supporters">☕ Supporters</div>
+<div class="supporter-list">
+  {% for s in site_supporters %}
+  <div class="supporter-row">
+    <div class="supporter-emoji">
+      {% if s.kofi_type == 'Subscription' %}⭐
+      {% elif s.kofi_type == 'Shop_Order' %}🛒
+      {% elif s.kofi_type == 'Commission' %}🎨
+      {% else %}☕{% endif %}
+    </div>
+    <div class="supporter-name">{{ s.from_name }}</div>
+    <div class="supporter-meta">
+      {% if s.amount and s.amount != '0' and s.amount != '0.00' %}<span class="supporter-amount">${{ s.amount }}</span>{% endif %}
+      {% if s.timestamp %}<span>{{ s.timestamp|date:"M j, Y" }}</span>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+</div>{# /epk #}
+
+<div class="epk-footer">
+  <a href="/">Home</a>
+  <span class="epk-footer-sep">·</span>
+  <a href="/submit/">Submit event</a>
+  <span class="epk-footer-sep">·</span>
+  <a href="/privacy/">Privacy</a>
+  <span class="epk-footer-sep">·</span>
+  <a href="https://ko-fi.com/communityplaylist" target="_blank" rel="noopener">☕ Ko-fi</a>
+</div>
+
+<script>
+// Scroll to supporters anchor smoothly
+document.querySelectorAll('a[href="#supporters"]').forEach(function(a){
+  a.addEventListener('click',function(e){
+    e.preventDefault();
+    var el=document.getElementById('supporters');
+    if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+});
+</script>
+{% endblock %}
