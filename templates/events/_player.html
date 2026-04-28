@@ -343,8 +343,14 @@ function _cpGenreColors(g) {
       window._cpTracks  = tracks;
       window._cpCurrent = current;
       loadTrack(restoreIdx || 0, seekTo || 0);
-    }).catch(function(){});
+    }).catch(function(){ show(); setTrackDisplay('-- offline --', '', '', ''); });
   }
+
+  // ── Bar: click info area to toggle drop ──
+  var barMain = document.querySelector('#cp-bar .cp-bar-main');
+  if (barMain) barMain.addEventListener('click', function(){
+    bar.classList.toggle('drop-open');
+  });
 
   // ── Bar controls ──
   if (barPlay) barPlay.addEventListener('click', function(e){
