@@ -433,6 +433,7 @@ class CommunitySpace(models.Model):
     bluesky   = models.CharField(max_length=100, blank=True, help_text='Handle e.g. you.bsky.social')
     mastodon  = models.URLField(blank=True, help_text='Full profile URL e.g. https://pdx.social/@you')
     tiktok    = models.CharField(max_length=100, blank=True, help_text='Handle without @')
+    kofi      = models.CharField(max_length=100, blank=True, help_text='Ko-fi page ID or username e.g. U7U813CDB7 from ko-fi.com/U7U813CDB7 — embeds posts feed on profile')
 
     # Resources
     drive_folder_url = models.URLField(

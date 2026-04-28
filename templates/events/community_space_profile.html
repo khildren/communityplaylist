@@ -182,6 +182,7 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
     {% if space.bluesky %}<a href="https://bsky.app/profile/{{ space.bluesky }}" class="social-pill" target="_blank" rel="noopener">🦋 Bluesky</a>{% endif %}
     {% if space.mastodon %}<a href="{{ space.mastodon }}" class="social-pill" target="_blank" rel="noopener">🐘 Mastodon</a>{% endif %}
     {% if space.tiktok %}<a href="https://tiktok.com/@{{ space.tiktok }}" class="social-pill" target="_blank" rel="noopener">🎵 TikTok</a>{% endif %}
+    {% if space.kofi %}<a href="https://ko-fi.com/{{ space.kofi }}" class="social-pill" target="_blank" rel="noopener">☕ Ko-fi</a>{% endif %}
   </div>
 
   <div class="action-row">
@@ -352,7 +353,20 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
 </a>
 {% endif %}
 
-{# ── 7. Photo Gallery ── #}
+{# ── 7. Ko-fi Posts Feed ── #}
+{% if space.kofi %}
+<div class="section-label">☕ Ko-fi Posts</div>
+<div style="background:#161616;border:1px solid #222;border-radius:14px;overflow:hidden">
+  <iframe id="kofiframe"
+    src="https://ko-fi.com/{{ space.kofi }}/?hidefeed=false&widget=true&embed=true&preview=true"
+    style="border:none;width:100%;display:block;min-height:520px"
+    title="{{ space.name }} Ko-fi"
+    loading="lazy">
+  </iframe>
+</div>
+{% endif %}
+
+{# ── 8. Photo Gallery ── #}
 {% if photos or can_edit %}
 <div class="section-label">Photos</div>
 {% if photos %}
@@ -389,7 +403,7 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
 {% endif %}
 {% endif %}
 
-{# ── 8. Timeline / Updates ── #}
+{# ── 9. Timeline / Updates ── #}
 {% if updates or can_edit %}
 <div class="section-label">Updates</div>
 {% if can_edit %}
