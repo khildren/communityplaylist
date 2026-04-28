@@ -244,15 +244,13 @@ a.event.ee-loading{opacity:.6;pointer-events:none}
   <div class="filter-search-row">
 
     {# ⊕ Filters toggle pill #}
-    {% with has_active=selected_genre or selected_category or selected_neighborhood or selected_event_type or free_only or selected_radius %}
     <button type="button"
-            class="filter-toggle-btn {% if has_active %}open has-active{% endif %}"
+            class="filter-toggle-btn {% if selected_genre or selected_category or selected_neighborhood or selected_event_type or free_only or selected_radius %}open has-active{% endif %}"
             id="filter-toggle-btn"
             onclick="toggleFilterExpand()"
             title="Filters">
-      ⊕ Filters{% if has_active %} ●{% endif %}
+      ⊕ Filters{% if selected_genre or selected_category or selected_neighborhood or selected_event_type or free_only or selected_radius %} ●{% endif %}
     </button>
-    {% endwith %}
 
     <div class="filter-sep"></div>
 
