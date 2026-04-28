@@ -3239,13 +3239,20 @@ def api_queue(request):
             return ''
 
         def _ser_video(v):
+            # Resolve the embed identifier per source type
+            if v.source_type == 'twitch_live':
+                embed_id = v.twitch_username          # ?channel=<username>
+            elif v.source_type == 'twitch_vod':
+                embed_id = v.twitch_video_id or v.twitch_username  # ?video=<id>
+            else:
+                embed_id = v.youtube_video_id         # standard YT video ID
             return {
                 'type':                  v.source_type,
                 'id':                    None,
                 'title':                 v.title,
                 'artist':                v.artist_name_display or v.channel_title,
                 'genre':                 '',
-                'video_id':              v.youtube_video_id or v.twitch_video_id or v.twitch_username,
+                'video_id':              embed_id,
                 'embed_url':             v.embed_url,
                 'art_url':               v.thumbnail_url,
                 'source_url':            _video_source_url(v),
