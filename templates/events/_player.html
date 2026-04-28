@@ -285,7 +285,7 @@ function _cpGenreColors(g) {
       if (barSeekFill) barSeekFill.style.width = '0%';
       if (barCur)    barCur.textContent    = '0:00';
       clearRowProgress();
-      setTrackDisplay(t.title, t.artist, '', t.art_url || '', t.id);
+      setTrackDisplay(t.title, t.artist, t.genre || t.recorded_at || '', t.art_url || '', t.id);
       _pendingVideo = t;
       window.cpPendingVideo = t;
       saveState();
@@ -296,7 +296,7 @@ function _cpGenreColors(g) {
     if (barSeekFill) barSeekFill.style.width = '0%';
     if (barCur)    barCur.textContent    = '0:00';
     clearRowProgress();
-    setTrackDisplay(t.title, t.artist, t.genre, t.art_url || '', t.id);
+    setTrackDisplay(t.title, t.artist, t.genre || t.recorded_at || '', t.art_url || '', t.id);
     if (seekTo > 0) {
       audio.addEventListener('loadedmetadata', function seek(){
         audio.currentTime = seekTo;
@@ -1071,8 +1071,9 @@ function _cpGenreColors(g) {
       else { art2.textContent = '♫'; }
       var info2 = document.createElement('div');
       info2.className = 'cp-panel-q-info';
+      var pSub = t.genre || t.recorded_at || '';
       info2.innerHTML = '<div class="cp-panel-q-title">' + (t.title||'—') + '</div>'
-                      + '<div class="cp-panel-q-artist">' + (t.artist||'') + '</div>';
+                      + '<div class="cp-panel-q-artist">' + (t.artist||'') + (pSub ? ' <span style="opacity:.35">· ' + pSub + '</span>' : '') + '</div>';
       row.appendChild(art2); row.appendChild(info2);
       (function(ii){ row.onclick = function(){ if(window.cpPlayIdx) window.cpPlayIdx(ii); }; })(ti);
       qList.appendChild(row);

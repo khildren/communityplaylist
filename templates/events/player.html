@@ -460,7 +460,8 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
     audio.src = t.stream_url || '';
     titleEl.textContent  = t.title  || '—';
     artistEl.textContent = t.artist || '';
-    metaEl.textContent   = t.genre  ? t.genre.toUpperCase() : '';
+    var metaStr = t.genre || t.recorded_at || t.source || '';
+    metaEl.textContent = metaStr ? metaStr.toUpperCase() : '';
     updateArt(t.art_url || '', t.genre, t.artist);
     document.title = (t.title || '—') + ' · CP Player';
     buildQueue();
@@ -577,8 +578,10 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
         art.textContent = (t.artist || t.title || '?').charAt(0).toUpperCase();
       }
       var info = mk('div', 'pl-q-info');
+      var qSub = t.genre || t.recorded_at || t.source || t.artist || '';
+      if (qSub === t.artist && (t.genre || t.recorded_at)) qSub = t.genre || t.recorded_at;
       info.innerHTML = '<div class="pl-q-title">'+esc(t.title||'—')+'</div>'
-                     + '<div class="pl-q-artist">'+esc(t.artist||'')+'</div>';
+                     + '<div class="pl-q-artist">'+esc(t.artist||'')+(qSub && qSub !== t.artist ? ' <span style="color:#2a2a2a">·</span> '+esc(qSub) : '')+'</div>';
       row.appendChild(art); row.appendChild(info);
       row.addEventListener('click', (function(i) {
         return function() { loadTrack(i); play(); };

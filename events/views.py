@@ -3182,14 +3182,15 @@ def api_queue(request):
 
     audio_tracks = [
         {
-            'type':       'audio',
-            'id':         t.pk,
-            'title':      t.title,
-            'artist':     t.artist_name or t.source_label,
-            'genre':      t.genre.name if t.genre else (t.genre_raw or ''),
-            'stream_url': t.stream_url,
-            'source_url': _track_source_url(t),
-            'art_url':    t.artist.photo.url if (t.artist and t.artist.photo) else '',
+            'type':        'audio',
+            'id':          t.pk,
+            'title':       t.title,
+            'artist':      t.artist_name or t.source_label,
+            'genre':       t.genre.name if t.genre else (t.genre_raw or ''),
+            'recorded_at': t.recorded_at or '',
+            'stream_url':  t.stream_url,
+            'source_url':  _track_source_url(t),
+            'art_url':     t.artist.photo.url if (t.artist and t.artist.photo) else '',
         }
         for t in qs.order_by('-pk')
     ]
@@ -3201,14 +3202,15 @@ def api_queue(request):
         for a_name, hm_user, hm_sort, a_slug in hm_artists:
             for hm in _get_house_mixes_tracks(hm_user, sort=hm_sort or 'newest'):
                 audio_tracks.append({
-                    'type':       'audio',
-                    'id':         None,
-                    'title':      hm['title'],
-                    'artist':     a_name,
-                    'genre':      '',
-                    'stream_url': hm['stream_url'],
-                    'source_url': f'/artists/{a_slug}/',
-                    'art_url':    hm.get('thumbnail', ''),
+                    'type':        'audio',
+                    'id':          None,
+                    'title':       hm['title'],
+                    'artist':      a_name,
+                    'genre':       '',
+                    'recorded_at': '',
+                    'stream_url':  hm['stream_url'],
+                    'source_url':  f'/artists/{a_slug}/',
+                    'art_url':     hm.get('thumbnail', ''),
                 })
 
     # ── Video tracks (ALL only) ───────────────────────────────────────────────
