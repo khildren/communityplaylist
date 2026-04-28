@@ -86,6 +86,8 @@
     <button class="cp-panel-sec" id="cp-panel-shuffle" title="Shuffle: off">⇄</button>
     <button class="cp-panel-sec" id="cp-panel-repeat" title="Repeat: off">↻</button>
     <button class="cp-panel-sec cp-panel-heart" id="cp-panel-heart" title="Save track">♥</button>
+    <button class="cp-panel-sec cp-panel-thumb" id="cp-panel-thumb-up" title="Thumbs up">👍</button>
+    <button class="cp-panel-sec cp-panel-thumb" id="cp-panel-thumb-down" title="Thumbs down">👎</button>
     <div class="cp-panel-vol-wrap">
       <button class="cp-panel-sec" id="cp-panel-mute" title="Mute">🔈</button>
       <input type="range" class="cp-panel-vol" id="cp-panel-vol" min="0" max="100" value="80">
@@ -333,6 +335,7 @@ function _cpGenreColors(g) {
   function setChannel(g) {
     genre   = g;
     current = 0;
+    if (window.cpPanel && window.cpPanel.onChannelChange) window.cpPanel.onChannelChange(g);
     fetchTracks(g);
   }
 
@@ -801,6 +804,8 @@ function _cpGenreColors(g) {
   var shuffleBtn= document.getElementById('cp-panel-shuffle');
   var repeatBtn = document.getElementById('cp-panel-repeat');
   var heartBtn  = document.getElementById('cp-panel-heart');
+  var thumbUp   = document.getElementById('cp-panel-thumb-up');
+  var thumbDown = document.getElementById('cp-panel-thumb-down');
   var muteBtn   = document.getElementById('cp-panel-mute');
   var volSlide  = document.getElementById('cp-panel-vol');
   var seekEl    = document.getElementById('cp-panel-seek');
@@ -893,6 +898,14 @@ function _cpGenreColors(g) {
   function _stopVisualizer() {
     if (_visRaf) { cancelAnimationFrame(_visRaf); _visRaf = null; }
     if (canvas) { canvas.style.display = 'none'; }
+  }
+
+  // ── Smooth text transition ──
+  function _fadeText(el, text) {
+    if (!el) return;
+    if (el.textContent === text) return;
+    el.style.opacity = '0';
+    setTimeout(function(){ el.textContent = text; el.style.opacity = '1'; }, 120);
   }
 
   // ── Art ──
@@ -1076,6 +1089,27 @@ function _cpGenreColors(g) {
     }).catch(function(){});
   });
 
+  function _sendReaction(reaction) {
+    var t = (window._cpTracks || [])[window._cpCurrent || 0];
+    if (!t || !t.id) return;
+    if (!document.body.dataset.userId) { window.location='/login/'; return; }
+    fetch('/react-track/', {
+      method:'POST',
+      headers:{'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/)||[])[1]||'','Content-Type':'application/json'},
+      body: JSON.stringify({id: t.id, reaction: reaction})
+    }).then(function(r){ return r.json(); }).then(function(d){
+      _applyReaction(d.reaction, d.ups || 0, d.downs || 0);
+    }).catch(function(){});
+  }
+
+  function _applyReaction(reaction, ups, downs) {
+    if (thumbUp)   { thumbUp.classList.toggle('active', reaction === 'up');   thumbUp.title   = 'Thumbs up' + (ups   ? ' (' + ups   + ')' : ''); }
+    if (thumbDown) { thumbDown.classList.toggle('active', reaction === 'down'); thumbDown.title = 'Thumbs down' + (downs ? ' (' + downs + ')' : ''); }
+  }
+
+  if (thumbUp)   thumbUp.addEventListener('click',   function(){ _sendReaction('up'); });
+  if (thumbDown) thumbDown.addEventListener('click', function(){ _sendReaction('down'); });
+
   if (muteBtn) muteBtn.addEventListener('click', function(){
     var audio = window.cpAudio;
     if (!audio) return;
@@ -1120,10 +1154,11 @@ function _cpGenreColors(g) {
     buildGenreStrip: buildGenreStrip,
 
     onTrackMeta: function(title, artist, genre, artUrl) {
-      if (titleEl)  titleEl.textContent  = title  || '—';
-      if (artistEl) artistEl.textContent = artist || '';
-      if (metaEl)   metaEl.textContent   = genre  ? genre.toUpperCase() : '';
+      _fadeText(titleEl,  title  || '—');
+      _fadeText(artistEl, artist || '');
+      _fadeText(metaEl,   genre ? genre.toUpperCase() : '');
       updateArt(artUrl || '', genre, artist);
+      _applyReaction(null, 0, 0);
       buildQueue();
       if (isOpen && !window.cpVideo?.isActive()) {
         _stopVisualizer(); _startVisualizer();
@@ -1142,11 +1177,25 @@ function _cpGenreColors(g) {
       if (durEl) durEl.textContent = (dur && !isNaN(dur) && dur > 0) ? _cpFmt(dur) : '—';
     },
     onVideoPlay: function(title, artist, isLive) {
-      if (titleEl)  titleEl.textContent = title  || '—';
-      if (artistEl) artistEl.textContent = artist || '';
-      if (metaEl)   metaEl.textContent = isLive ? '● LIVE' : 'VIDEO';
+      _fadeText(titleEl,  title  || '—');
+      _fadeText(artistEl, artist || '');
+      _fadeText(metaEl,   isLive ? '● LIVE' : 'VIDEO');
+      _applyReaction(null, 0, 0);
       _stopVisualizer();
       buildQueue();
+    },
+    onChannelChange: function(g) {
+      _activeGenre = g;
+      if (qList) qList.innerHTML = '<div class="cp-panel-q-loading">LOADING…</div>';
+      if (qCount) qCount.textContent = '';
+      if (chStrip) {
+        chStrip.querySelectorAll('.cp-ch').forEach(function(btn){
+          var label = btn.textContent.trim().replace(/^●\s*/, '');
+          btn.classList.toggle('active',
+            g === 'all' ? label === 'ALL' : label === g.toUpperCase()
+          );
+        });
+      }
     },
     onVideoExit: function() {
       if (!isOpen) return;

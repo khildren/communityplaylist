@@ -1456,6 +1456,25 @@ class SavedTrack(models.Model):
         return f'{self.user} ♥ {self.track}'
 
 
+class TrackReaction(models.Model):
+    """A thumbs-up or thumbs-down reaction to a playlist track."""
+    THUMBS_UP   = 'up'
+    THUMBS_DOWN = 'down'
+    REACTION_CHOICES = [('up', 'Thumbs Up'), ('down', 'Thumbs Down')]
+
+    user     = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='track_reactions')
+    track    = models.ForeignKey(PlaylistTrack, on_delete=models.CASCADE, related_name='reactions')
+    reaction = models.CharField(max_length=4, choices=REACTION_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('user', 'track')]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user} {self.reaction} {self.track}'
+
+
 class VideoTrack(models.Model):
     """A video (YouTube or Twitch) harvested from a connected artist/venue/promoter channel."""
 

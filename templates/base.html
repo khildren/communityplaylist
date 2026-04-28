@@ -462,12 +462,14 @@ body.has-panel{padding-right:380px;box-sizing:border-box}
 .cp-panel-title{
   font-size:1em;font-weight:700;color:#eee;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;
+  transition:opacity .15s ease;
 }
 .cp-panel-artist{
   font-size:.85em;color:#888;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;
+  transition:opacity .15s ease;
 }
-.cp-panel-meta{font-size:.68em;color:#444;font-family:'Courier New',monospace;letter-spacing:.05em}
+.cp-panel-meta{font-size:.68em;color:#444;font-family:'Courier New',monospace;letter-spacing:.05em;transition:opacity .15s ease}
 /* Main controls */
 .cp-panel-controls{
   display:flex;align-items:center;justify-content:center;
@@ -484,8 +486,11 @@ body.has-panel{padding-right:380px;box-sizing:border-box}
   width:52px;height:52px;
   background:#ff6b35;color:#111!important;
   border-radius:50%;font-size:1.3em;
+  outline:none;border:none;flex-shrink:0;
+  box-shadow:none;
 }
-.cp-panel-play-btn:hover{background:#e55a25!important}
+.cp-panel-play-btn:hover{background:#e55a25!important;box-shadow:none}
+.cp-panel-play-btn:focus{outline:none;box-shadow:none}
 /* Secondary controls */
 .cp-panel-secondary{
   display:flex;align-items:center;justify-content:center;
@@ -500,6 +505,9 @@ body.has-panel{padding-right:380px;box-sizing:border-box}
 .cp-panel-sec:hover{color:#aaa}
 .cp-panel-sec.active{color:#ff6b35}
 .cp-panel-heart.saved{color:#cc4466!important}
+.cp-panel-thumb{font-size:.85em;opacity:.35;transition:opacity .15s,transform .15s}
+.cp-panel-thumb:hover{opacity:.7}
+.cp-panel-thumb.active{opacity:1;transform:scale(1.15)}
 .cp-panel-vol-wrap{display:flex;align-items:center;gap:4px;flex:1;max-width:88px}
 .cp-panel-vol{
   -webkit-appearance:none;appearance:none;
@@ -552,6 +560,11 @@ body.has-panel{padding-right:380px;box-sizing:border-box}
 .cp-panel-q-artist{
   font-size:.72em;color:#444;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.cp-panel-q-loading{
+  text-align:center;padding:24px 0;
+  color:#333;font-family:'Courier New',monospace;font-size:.72em;letter-spacing:.1em;
+  animation:cp-dot-pulse 1.4s ease-in-out infinite;
 }
 /* Mobile: full-width bottom sheet */
 @media(max-width:767px){

@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import admin, messages
 from django.template.response import TemplateResponse
-from .models import Event, EventPhoto, Genre, Artist, SiteStats, CalendarFeed, Venue, Neighborhood, UserProfile, Follow, EditSuggestion, PromoterProfile, PlaylistTrack, SavedTrack, RecordListing, RecordReservation, VideoTrack, Shelter, FlyerBackground, VideoRoomMessage, CommunitySpace, CommunityAsk
+from .models import Event, EventPhoto, Genre, Artist, SiteStats, CalendarFeed, Venue, Neighborhood, UserProfile, Follow, EditSuggestion, PromoterProfile, PlaylistTrack, SavedTrack, TrackReaction, RecordListing, RecordReservation, VideoTrack, Shelter, FlyerBackground, VideoRoomMessage, CommunitySpace, CommunityAsk
 from .forms import EventSubmitForm, EventPhotoForm, RegisterForm, StyledAuthForm, VenueForm
 from .geocode import geocode_location
 from urllib.parse import quote
@@ -3312,6 +3312,39 @@ def toggle_save_track(request):
         obj.delete()
         return JsonResponse({'saved': False})
     return JsonResponse({'saved': True})
+
+
+def react_track(request):
+    """POST {id: track_pk, reaction: 'up'|'down'} → toggles reaction, returns {reaction, ups, downs}."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'login required'}, status=401)
+    import json as _json
+    try:
+        body = _json.loads(request.body)
+        track_id = int(body.get('id', 0))
+        reaction = body.get('reaction', '').lower()
+    except Exception:
+        return JsonResponse({'error': 'bad request'}, status=400)
+    if reaction not in ('up', 'down'):
+        return JsonResponse({'error': 'invalid reaction'}, status=400)
+    track = get_object_or_404(PlaylistTrack, pk=track_id)
+    existing = TrackReaction.objects.filter(user=request.user, track=track).first()
+    if existing:
+        if existing.reaction == reaction:
+            existing.delete()
+            new_reaction = None
+        else:
+            existing.reaction = reaction
+            existing.save()
+            new_reaction = reaction
+    else:
+        TrackReaction.objects.create(user=request.user, track=track, reaction=reaction)
+        new_reaction = reaction
+    ups   = TrackReaction.objects.filter(track=track, reaction='up').count()
+    downs = TrackReaction.objects.filter(track=track, reaction='down').count()
+    return JsonResponse({'reaction': new_reaction, 'ups': ups, 'downs': downs})
 
 
 def saved_tracks_json(request):
