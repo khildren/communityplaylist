@@ -87,12 +87,17 @@ body.has-player .cp-bar{display:flex}
 }
 .cp-bar-art-grad{position:absolute;inset:0;transition:background .6s}
 .cp-bar-art-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.cp-bar-progress-wrap{padding:8px 10px 2px}
-.cp-bar-blocks{
-  letter-spacing:.05em;color:#ff6b35;font-size:.9em;
-  cursor:pointer;user-select:none;display:block;overflow:hidden;
+.cp-bar-vis{position:absolute;inset:0;width:100%;height:100%;opacity:.75;pointer-events:none;display:block}
+.cp-bar-progress-wrap{padding:8px 10px 4px}
+.cp-bar-seek{
+  width:100%;height:4px;background:#1c1c1c;
+  border-radius:2px;overflow:hidden;cursor:pointer;position:relative;
 }
-.cp-bar-blocks:hover{color:#ffaa66}
+.cp-bar-seek-fill{
+  height:100%;width:0%;background:#ff6b35;
+  border-radius:2px;transition:width .08s linear;pointer-events:none;
+}
+.cp-bar-seek:hover .cp-bar-seek-fill{background:#ffaa80}
 .cp-bar-times{
   display:flex;justify-content:space-between;
   font-size:.72em;color:#2a2a2a;margin-top:2px;

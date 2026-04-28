@@ -27,9 +27,12 @@
     <div class="cp-bar-art-wrap" id="cp-bar-art-wrap">
       <div class="cp-bar-art-grad" id="cp-bar-art-grad"></div>
       <img class="cp-bar-art-img" id="cp-bar-art-img" alt="" style="display:none">
+      <canvas id="cp-bar-vis" class="cp-bar-vis"></canvas>
     </div>
     <div class="cp-bar-progress-wrap">
-      <div class="cp-bar-blocks" id="cp-bar-blocks">░░░░░░░░░░░░░░░░░░░░</div>
+      <div class="cp-bar-seek" id="cp-bar-seek">
+        <div class="cp-bar-seek-fill" id="cp-bar-seek-fill"></div>
+      </div>
       <div class="cp-bar-times">
         <span id="cp-bar-cur">0:00</span>
         <span id="cp-bar-dur">—</span>
@@ -113,11 +116,6 @@ function _cpFmt(s) {
   var m = Math.floor(s / 60), sec = s % 60;
   return m + ':' + (sec < 10 ? '0' : '') + sec;
 }
-var _CP_BLOCKS = 20;
-function _cpBlocks(pct) {
-  var n = Math.round(Math.max(0, Math.min(1, pct / 100)) * _CP_BLOCKS);
-  return '█'.repeat(n) + '░'.repeat(_CP_BLOCKS - n);
-}
 function _cpGenreColors(g) {
   var p = {
     'techno':['#4a0f82','#0c0830'],'house':['#821028','#2e0818'],
@@ -139,7 +137,6 @@ function _cpGenreColors(g) {
   var audio    = document.getElementById('cp-audio');
   var bar      = document.getElementById('cp-bar');
   var STORE    = 'cp_state';
-  var NBLOCKS  = _CP_BLOCKS;
 
   var tracks       = [];
   var current      = 0;
@@ -159,7 +156,10 @@ function _cpGenreColors(g) {
   var barHeart   = document.getElementById('cp-bar-heart');
   var barChevron = document.getElementById('cp-bar-chevron');
   var barOpen    = document.getElementById('cp-bar-open');
-  var barBlocks  = document.getElementById('cp-bar-blocks');
+  var barSeek     = document.getElementById('cp-bar-seek');
+  var barSeekFill = document.getElementById('cp-bar-seek-fill');
+  var barVis      = document.getElementById('cp-bar-vis');
+  var _barVisRaf  = null;
   var barCur     = document.getElementById('cp-bar-cur');
   var barDur     = document.getElementById('cp-bar-dur');
   var barGenre   = document.getElementById('cp-bar-genre');
@@ -194,8 +194,7 @@ function _cpGenreColors(g) {
 
   function updateProgress() {
     var pct = _pct();
-    // Bar blocks
-    if (barBlocks) barBlocks.textContent = _cpBlocks(pct);
+    if (barSeekFill) barSeekFill.style.width = pct + '%';
     if (barCur)    barCur.textContent    = _cpFmt(audio.currentTime);
     if (barDur)    barDur.textContent    = (audio.duration && !isNaN(audio.duration)) ? _cpFmt(audio.duration) : '—';
     // Row highlight
@@ -273,7 +272,7 @@ function _cpGenreColors(g) {
 
     // Video-type items: hand off to the video engine, skip <audio>
     if (t.type && t.type !== 'audio') {
-      if (barBlocks) barBlocks.textContent = '░'.repeat(NBLOCKS);
+      if (barSeekFill) barSeekFill.style.width = '0%';
       if (barCur)    barCur.textContent    = '0:00';
       clearRowProgress();
       setTrackDisplay(t.title, t.artist, '', t.art_url || '');
@@ -283,7 +282,7 @@ function _cpGenreColors(g) {
     }
 
     audio.src = t.stream_url;
-    if (barBlocks) barBlocks.textContent = '░'.repeat(NBLOCKS);
+    if (barSeekFill) barSeekFill.style.width = '0%';
     if (barCur)    barCur.textContent    = '0:00';
     clearRowProgress();
     setTrackDisplay(t.title, t.artist, t.genre, t.art_url || '');
@@ -376,14 +375,39 @@ function _cpGenreColors(g) {
     bar.classList.remove('drop-open');
     if (window.cpPanel) window.cpPanel.open();
   });
-  // Click anywhere on bar-drop seek blocks to seek
-  if (barBlocks) barBlocks.addEventListener('click', function(e){
+  // Click seek bar to seek
+  if (barSeek) barSeek.addEventListener('click', function(e){
     if (!audio.duration || isNaN(audio.duration)) return;
-    var r = barBlocks.getBoundingClientRect();
+    var r = barSeek.getBoundingClientRect();
     var pct = (e.clientX - r.left) / r.width;
     audio.currentTime = pct * audio.duration;
     updateProgress();
   });
+
+  // ── Mini bar visualizer ──
+  function _drawBarVis() {
+    _barVisRaf = requestAnimationFrame(_drawBarVis);
+    if (!bar.classList.contains('drop-open') || !barVis) return;
+    var analyser = window.cpVisAnalyser;
+    if (!analyser) return;
+    var W = barVis.offsetWidth, H = barVis.offsetHeight;
+    if (!W || !H) return;
+    barVis.width = W; barVis.height = H;
+    var ctx = barVis.getContext('2d');
+    var data = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(data);
+    ctx.clearRect(0, 0, W, H);
+    var bars = 24, bw = W / bars - 1;
+    for (var i = 0; i < bars; i++) {
+      var di = Math.floor(i * data.length / bars);
+      var amp = data[di] / 255;
+      var bh = amp * H * 0.85;
+      var alpha = 0.15 + amp * 0.7;
+      ctx.fillStyle = 'rgba(255,107,53,' + alpha + ')';
+      ctx.fillRect(i * (bw + 1), H - bh, Math.max(1, bw), bh);
+    }
+  }
+  _drawBarVis();
 
   // ── Save track helper ──
   function _toggleSave() {
@@ -413,7 +437,10 @@ function _cpGenreColors(g) {
     loadTrack(getNextIdx()); play();
   });
   audio.addEventListener('timeupdate', updateProgress);
-  audio.addEventListener('play',  function(){ syncPlayBtn(true);  });
+  audio.addEventListener('play',  function(){
+    syncPlayBtn(true);
+    if (window.cpEnsureVis) window.cpEnsureVis();
+  });
   audio.addEventListener('pause', function(){ syncPlayBtn(false); });
 
   // ── Turbo hooks ──
@@ -792,8 +819,10 @@ function _cpGenreColors(g) {
       _visAnalyser.connect(actx.destination);
       _visCtx = canvas.getContext('2d');
       _visInit = true;
+      window.cpVisAnalyser = _visAnalyser;
     } catch(e){}
   }
+  window.cpEnsureVis = function() { _initVisualizer(); };
 
   function _startVisualizer() {
     _initVisualizer();
