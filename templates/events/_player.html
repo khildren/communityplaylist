@@ -355,6 +355,7 @@ function _cpGenreColors(g) {
   if (barPlay) barPlay.addEventListener('click', function(e){
     e.stopPropagation();
     if (window.cpVideo && window.cpVideo.isActive()) { window.cpVideo.togglePlay(); return; }
+    if (window.cpEnsureVis) window.cpEnsureVis();
     if (audio.paused) play(); else pause();
   });
   if (barNext) barNext.addEventListener('click', function(e){
@@ -437,10 +438,7 @@ function _cpGenreColors(g) {
     loadTrack(getNextIdx()); play();
   });
   audio.addEventListener('timeupdate', updateProgress);
-  audio.addEventListener('play',  function(){
-    syncPlayBtn(true);
-    if (window.cpEnsureVis) window.cpEnsureVis();
-  });
+  audio.addEventListener('play',  function(){ syncPlayBtn(true); });
   audio.addEventListener('pause', function(){ syncPlayBtn(false); });
 
   // ── Turbo hooks ──
@@ -820,9 +818,22 @@ function _cpGenreColors(g) {
       _visCtx = canvas.getContext('2d');
       _visInit = true;
       window.cpVisAnalyser = _visAnalyser;
+      window.cpAudioCtx = actx;
+      actx.resume().catch(function(){});
     } catch(e){}
   }
-  window.cpEnsureVis = function() { _initVisualizer(); };
+  window.cpEnsureVis = function() {
+    _initVisualizer();
+    if (window.cpAudioCtx && window.cpAudioCtx.state === 'suspended') {
+      window.cpAudioCtx.resume().catch(function(){});
+    }
+  };
+  // Unlock AudioContext on any user gesture (standard browser policy workaround)
+  document.addEventListener('click', function() {
+    if (window.cpAudioCtx && window.cpAudioCtx.state === 'suspended') {
+      window.cpAudioCtx.resume().catch(function(){});
+    }
+  }, { passive: true });
 
   function _startVisualizer() {
     _initVisualizer();
@@ -992,6 +1003,7 @@ function _cpGenreColors(g) {
     if (window.cpVideo && window.cpVideo.isActive()) { window.cpVideo.togglePlay(); return; }
     var audio = window.cpAudio;
     if (!audio) return;
+    if (window.cpEnsureVis) window.cpEnsureVis();
     if (audio.paused) audio.play().catch(function(){});
     else audio.pause();
     if (playBtn) playBtn.textContent = audio.paused ? '▶' : '⏸';
