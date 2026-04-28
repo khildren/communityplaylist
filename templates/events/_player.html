@@ -356,6 +356,7 @@ function _cpGenreColors(g) {
   });
   if (barOpen) barOpen.addEventListener('click', function(e){
     e.stopPropagation();
+    bar.classList.remove('drop-open');
     if (window.cpPanel) window.cpPanel.open();
   });
   // Click anywhere on bar-drop seek blocks to seek
