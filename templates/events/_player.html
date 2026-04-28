@@ -298,6 +298,11 @@ function _cpGenreColors(g) {
   }
 
   function play() {
+    // Always stop YT before starting audio — prevents overlap
+    if (window.cpVideo) {
+      if (window.cpVideo.isActive()) window.cpVideo.leave();
+      else if (window.cpVideo.stop) window.cpVideo.stop();
+    }
     audio.play().then(function(){ syncPlayBtn(true); }).catch(function(){});
   }
   function pause() {
@@ -715,10 +720,13 @@ function _cpGenreColors(g) {
   function leaveVideoMode() {
     if (!isVideoMode) return;
     isVideoMode = false;
+    _unifiedMode = false;
     clearInterval(_vidProgInterval);
     try { sessionStorage.setItem('cp_video_off', '1'); } catch(e){}
+    if (ytPlayer) {
+      try { ytPlayer.stopVideo(); } catch(e){}  // stopVideo fully cuts audio output
+    }
     _exitPanelVideo();
-    if (ytPlayer && ytPlayer.pauseVideo) { try { ytPlayer.pauseVideo(); } catch(e){} }
   }
 
   // Video btn in panel
@@ -760,6 +768,11 @@ function _cpGenreColors(g) {
     next:     nextVideo,
     prev:     prevVideo,
     isActive: function(){ return isVideoMode; },
+    stop: function(){
+      // Hard-stop YT without changing isVideoMode — used by audio engine
+      if (ytPlayer) { try { ytPlayer.stopVideo(); } catch(e){} }
+      clearInterval(_vidProgInterval);
+    },
     togglePlay: function(){
       if (!ytPlayer) return;
       var st = ytPlayer.getPlayerState ? ytPlayer.getPlayerState() : -1;
