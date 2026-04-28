@@ -239,7 +239,7 @@ body.has-player .cp-bar{display:flex}
 }
 
 /* ── Universal Site Header ── */
-.site-header{background:#111;border-bottom:1px solid #1a1a1a;font-family:sans-serif;position:sticky;top:0;z-index:850}
+.site-header{background:#111;border-bottom:1px solid #1a1a1a;font-family:sans-serif;position:sticky;top:0;z-index:920}
 .sh-inner{display:flex;align-items:center;gap:8px;padding:6px 14px;min-height:50px}
 .sh-logo img{height:34px;width:auto;display:block;flex-shrink:0}
 .sh-weather{display:flex;align-items:center;gap:5px;font-size:.8em;color:#666;white-space:nowrap;flex:1;min-width:0;max-width:300px;justify-content:center;padding:5px 12px;background:#1a1a1a;border:1px solid #222;border-radius:6px;margin:0 6px;cursor:pointer;transition:border-color .2s}
@@ -323,11 +323,10 @@ body.has-player .cp-bar{display:flex}
 .sh-drw-icon svg{width:1.35em;height:1.35em}
 .sh-drw-label{font-size:.58em;color:#555;text-align:center;white-space:nowrap;letter-spacing:.01em;line-height:1;margin-top:1px}
 .sh-drw-item:hover .sh-drw-label,.sh-drw-item.active .sh-drw-label{color:#ff6b35}
-/* Tablet: icon strip stays but compresses */
+/* Tablet: icon strip stays but compresses (weather + icon rules only here) */
 @media(min-width:769px) and (max-width:1100px){
   .sh-weather{max-width:140px}
   .sh-weather .wextra,.sh-weather .wsep{display:none}
-  .sh-search{max-width:200px}
   .sh-icons{gap:0}
   .sh-icon{width:30px;height:30px;font-size:.92em}
 }
@@ -355,6 +354,8 @@ body.has-player .cp-bar{display:flex}
 .sh-sr-item-sub{font-size:.75em;color:#666;margin-top:1px}
 .sh-sr-divider{border:none;border-top:1px solid #222;margin:2px 0}
 .sh-sr-empty{padding:14px;text-align:center;color:#555;font-size:.82em}
+/* Tablet: compress search width (must come AFTER base .sh-search rule to win) */
+@media(min-width:769px) and (max-width:1100px){.sh-search{max-width:200px}}
 /* Hide search on full-map view */
 body.view-map .sh-search{display:none}
 /* Mobile: search in drawer row */
