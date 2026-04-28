@@ -307,16 +307,32 @@ body.has-player .cp-bar{display:flex}
 .sh-menu-toggle{display:none;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;color:#888;font-size:1.3em;line-height:1;background:transparent;border:1px solid #333;cursor:pointer;flex-shrink:0;margin-left:auto;transition:all .15s}
 .sh-menu-toggle:hover{color:#ff6b35;border-color:#ff6b35}
 /* Icon drawer inside sticky nav */
-.sh-icon-drawer{max-height:0;overflow:hidden;transition:max-height .3s cubic-bezier(.4,0,.2,1)}
-.sh-icon-drawer.open{max-height:180px}
-.sh-icon-drawer-inner{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px;padding:12px 20px 14px;border-top:1px solid #1a1a1a}
-.sh-icon-drawer-inner .sh-icon{width:44px;height:44px;border-radius:8px;font-size:1.15em}
+.sh-icon-drawer{max-height:0;overflow:hidden;transition:max-height .38s cubic-bezier(.4,0,.2,1)}
+.sh-icon-drawer.open{max-height:420px}
+.sh-icon-drawer-inner{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:4px;padding:10px 12px 14px;border-top:1px solid #1a1a1a}
+/* App-style labeled drawer items */
+.sh-drw-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 4px 8px;border-radius:10px;text-decoration:none;color:#888;font-size:1em;background:transparent;border:none;cursor:pointer;transition:color .12s,background .12s;position:relative;width:100%}
+.sh-drw-item:hover,.sh-drw-item.active{color:#ff6b35;background:#ff6b3515}
+.sh-drw-icon{font-size:1.35em;line-height:1;display:flex;align-items:center;justify-content:center;position:relative}
+.sh-drw-icon svg{width:1.35em;height:1.35em}
+.sh-drw-label{font-size:.58em;color:#555;text-align:center;white-space:nowrap;letter-spacing:.01em;line-height:1;margin-top:1px}
+.sh-drw-item:hover .sh-drw-label,.sh-drw-item.active .sh-drw-label{color:#ff6b35}
+/* Tablet: icon strip stays but compresses */
+@media(min-width:769px) and (max-width:1100px){
+  .sh-weather{max-width:140px}
+  .sh-weather .wextra,.sh-weather .wsep{display:none}
+  .sh-search{max-width:200px}
+  .sh-icons{gap:0}
+  .sh-icon{width:30px;height:30px;font-size:.92em}
+}
+/* Mobile: drawer mode */
 @media(max-width:768px){
   .sh-icons{display:none!important}
   .sh-menu-toggle{display:flex}
   .sh-weather .wcond,.sh-weather .wextra,.sh-weather .wsep{display:none}
 }
-@media(min-width:769px) and (max-width:960px){.sh-weather .wextra,.sh-weather .wsep{display:none}}
+/* Very narrow: hide weather widget entirely */
+@media(max-width:420px){.sh-weather{display:none!important}}
 /* ── Global header search ── */
 .sh-search{position:relative;flex:1;min-width:0;max-width:480px;margin:0 8px}
 .sh-search-input{width:100%;background:#111;border:1px solid #2a2a2a;border-radius:20px;color:#ddd;font-size:.82em;padding:6px 14px;outline:none;transition:border-color .18s,background .18s;box-sizing:border-box}
