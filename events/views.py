@@ -4851,6 +4851,17 @@ def community_space_profile(request, slug):
     audio_files, doc_files = _fetch_space_library(
         space.drive_folder_url, space.show_audio, space.show_docs,
     )
+    from .models import SpacePhoto, SpaceUpdate
+    photos  = list(space.photos.all()[:30])
+    updates = list(space.updates.all()[:20])
+
+    # Handle new update post (owner only, AJAX-friendly)
+    if request.method == 'POST' and request.POST.get('_post_update') == '1' and can_edit:
+        body = request.POST.get('update_body', '').strip()
+        if body:
+            SpaceUpdate.objects.create(space=space, body=body, posted_by=request.user)
+        return redirect('community_space_profile', slug=slug)
+
     return render(request, 'events/community_space_profile.html', {
         'space':        space,
         'can_edit':     can_edit,
@@ -4858,6 +4869,8 @@ def community_space_profile(request, slug):
         'asks':         asks,
         'audio_files':  audio_files,
         'doc_files':    doc_files,
+        'photos':       photos,
+        'updates':      updates,
     })
 
 
@@ -4870,6 +4883,13 @@ def community_space_edit(request, slug):
     if request.method == 'GET':
         asks = list(space.asks.all())
         return render(request, 'events/community_space_edit.html', {'space': space, 'asks': asks})
+
+    if request.POST.get('_photo_only') == '1':
+        from .models import SpacePhoto
+        for f in request.FILES.getlist('extra_photos'):
+            SpacePhoto.objects.create(space=space, image=f, uploaded_by=request.user)
+        messages.success(request, 'Photos added.')
+        return redirect('community_space_profile', slug=space.slug)
 
     if request.POST.get('_asks_only') == '1':
         # Asks-only form — rebuild asks without touching space fields
@@ -4936,7 +4956,15 @@ def community_space_edit(request, slug):
 
     space.save()
 
-    # Rebuild asks
+    # Extra photos upload
+    from .models import SpacePhoto
+    for f in request.FILES.getlist('extra_photos'):
+        SpacePhoto.objects.create(space=space, image=f, uploaded_by=request.user)
+
+    # Delete requested photos
+    for pid in request.POST.getlist('delete_photo'):
+        SpacePhoto.objects.filter(pk=pid, space=space).delete()
+
     messages.success(request, 'Space updated.')
     return redirect('community_space_edit', slug=space.slug)
 

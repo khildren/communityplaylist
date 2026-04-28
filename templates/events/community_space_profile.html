@@ -56,7 +56,7 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
 .edit-link,.share-btn{background:transparent;border:1px solid #2a2a2a;color:#666;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:.82em;font-family:inherit;transition:all .15s;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
 .edit-link:hover,.share-btn:hover{border-color:var(--accent);color:var(--accent)}
 
-/* Custom link buttons (Linktree-style) */
+/* Custom link buttons */
 .link-btn{display:flex;align-items:center;gap:12px;background:#161616;border:1px solid #222;border-radius:12px;padding:12px 16px;text-decoration:none;color:#eee;font-size:.88em;font-weight:500;transition:all .15s;width:100%}
 .link-btn:hover{border-color:var(--accent);background:var(--accent-bg);color:var(--accent)}
 .link-thumb{width:40px;height:40px;border-radius:7px;object-fit:cover;flex-shrink:0;background:#1a1a1a}
@@ -64,7 +64,7 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
 .link-label{flex:1;text-align:center}
 .link-arrow{color:#444;font-size:.8em;flex-shrink:0}
 
-/* Special buttons */
+/* Action btn */
 .action-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:#161616;border:1px solid #222;border-radius:12px;padding:12px 16px;text-decoration:none;color:#eee;font-size:.88em;font-weight:500;transition:all .15s;width:100%}
 .action-btn:hover{border-color:var(--accent);background:var(--accent-bg);color:var(--accent)}
 .donate-btn{border-color:#cc4466 !important;color:#cc4466 !important}
@@ -73,30 +73,39 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
 /* Section label */
 .section-label{font-size:.68em;text-transform:uppercase;letter-spacing:.1em;color:#444;margin:6px 0 4px;padding-left:4px}
 
-/* Community Asks */
-.ask-card{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;background:#161616;border:1px solid #222;border-radius:12px;padding:14px 16px;margin-bottom:8px}
-.ask-card.in-progress{border-color:#1a2a1a}
-.ask-card.has-product{padding:10px 12px;gap:10px}
-.ask-product-img{width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;background:#1a1a1a;border:1px solid #2a2a2a}
-.ask-product-placeholder{width:56px;height:56px;border-radius:8px;flex-shrink:0;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:1.4em}
+/* ── Community Asks — collapsible with thumbnail peek ── */
+.asks-details{background:#161616;border:1px solid #222;border-radius:14px;overflow:hidden}
+.asks-summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;align-items:center;gap:10px;user-select:none}
+.asks-summary::-webkit-details-marker{display:none}
+.asks-summary-label{flex:1;font-size:.84em;font-weight:600;color:#ccc}
+.asks-summary-count{font-size:.72em;color:#555;background:#111;border:1px solid #222;padding:2px 8px;border-radius:10px}
+.asks-chevron{color:#444;font-size:.75em;transition:transform .25s;flex-shrink:0}
+.asks-details[open] .asks-chevron{transform:rotate(180deg)}
+
+/* Thumbnail peek strip — visible when collapsed */
+.asks-peek{display:flex;gap:5px;padding:0 14px 12px;overflow:hidden}
+.asks-details[open] .asks-peek{display:none}
+.ask-peek-thumb{width:48px;height:48px;border-radius:8px;object-fit:cover;border:1px solid #2a2a2a;flex-shrink:0}
+.ask-peek-more{width:48px;height:48px;border-radius:8px;background:#1a1a1a;border:1px solid #2a2a2a;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.7em;color:#555;font-weight:600}
+
+/* Expanded ask cards */
+.asks-expanded{padding:0 10px 10px;display:flex;flex-direction:column;gap:6px}
+.ask-card{display:flex;align-items:center;gap:10px;background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:9px 10px}
+.ask-card:hover{border-color:#2a2a2a}
+.ask-product-img{width:44px;height:44px;border-radius:7px;object-fit:cover;flex-shrink:0;background:#1a1a1a;border:1px solid #2a2a2a}
+.ask-product-placeholder{width:44px;height:44px;border-radius:7px;flex-shrink:0;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:1.1em}
 .ask-body{flex:1;min-width:0}
-.ask-badge{display:inline-block;font-size:.66em;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:3px;margin-bottom:6px}
-.ask-badge.fund{background:#1a2535;color:#5aabdd}
-.ask-badge.item{background:#221635;color:#bb88ff}
-.ask-badge.volunteer{background:#152515;color:var(--accent)}
-.ask-badge.skill{background:#252515;color:#ddbb44}
-.ask-title{color:#eee;font-size:.88em;font-weight:600;margin-bottom:3px}
-.ask-desc{color:#777;font-size:.78em;line-height:1.5}
-.ask-price{color:var(--accent);font-size:.8em;font-weight:600;margin-top:3px}
-.ask-target{color:#5aabdd;font-size:.74em;margin-top:4px}
-.ask-board-link{font-size:.72em;color:#555;text-decoration:none;display:block;margin-top:5px}
-.ask-board-link:hover{color:var(--accent)}
-.ask-cta{flex-shrink:0;align-self:center;display:flex;flex-direction:column;gap:5px;align-items:flex-end}
-.ask-cta a{display:inline-block;padding:6px 14px;border-radius:8px;font-size:.77em;font-weight:600;text-decoration:none;transition:opacity .15s;white-space:nowrap}
-.ask-cta a:hover{opacity:.8}
-.btn-donate{background:#cc4466;color:#fff !important}
-.btn-contact{background:transparent;border:1px solid #333;color:#888 !important}
-.btn-view-item{background:transparent;border:1px solid #333;color:#aaa !important;font-size:.72em !important;padding:4px 10px !important}
+.ask-title{color:#ddd;font-size:.82em;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ask-price{color:var(--accent);font-size:.75em;font-weight:600;margin-top:1px}
+.ask-cta{flex-shrink:0}
+.btn-view-item{display:inline-block;padding:4px 10px;border-radius:6px;font-size:.72em;font-weight:600;text-decoration:none;white-space:nowrap;background:transparent;border:1px solid #333;color:#888;transition:all .15s}
+.btn-view-item:hover{border-color:var(--accent);color:var(--accent)}
+.btn-i-have{display:inline-block;padding:4px 10px;border-radius:6px;font-size:.72em;font-weight:600;text-decoration:none;white-space:nowrap;background:transparent;border:1px solid #333;color:#888;transition:all .15s;cursor:pointer;font-family:inherit}
+.btn-i-have:hover{border-color:var(--accent);color:var(--accent)}
+.btn-donate-sm{display:inline-block;padding:5px 12px;border-radius:6px;font-size:.74em;font-weight:600;text-decoration:none;background:#cc4466;color:#fff;white-space:nowrap}
+
+/* Donate row inside expanded asks */
+.asks-donate-row{padding:6px 10px 4px;display:flex;justify-content:center}
 
 /* Audio library */
 .audio-list{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
@@ -109,7 +118,7 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
 .audio-row.playing .audio-progress{display:block}
 
 /* Document library */
-.doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:4px}
+.doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:4px}
 .doc-card{background:#161616;border:1px solid #222;border-radius:10px;overflow:hidden;text-decoration:none;color:#ccc;transition:border-color .15s;display:flex;flex-direction:column}
 .doc-card:hover{border-color:var(--accent)}
 .doc-preview{width:100%;aspect-ratio:3/4;border:none;pointer-events:none}
@@ -118,7 +127,30 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
 .doc-card.no-preview .doc-icon{font-size:2em;line-height:1}
 .doc-card.no-preview .doc-name{border:none;padding:0;font-size:.78em}
 
-@media(max-width:480px){h1{font-size:1.15em}.hero-photo,.hero-placeholder{width:72px;height:72px;font-size:1.8em}.doc-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}}
+/* Photo gallery */
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;border-radius:10px;overflow:hidden}
+.photo-grid img{width:100%;aspect-ratio:1;object-fit:cover;display:block;transition:opacity .15s}
+.photo-grid img:hover{opacity:.85;cursor:zoom-in}
+.photo-grid-more{background:#161616;border:1px solid #222;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:.75em;color:#555;aspect-ratio:1}
+
+/* Timeline */
+.timeline{display:flex;flex-direction:column;gap:0}
+.tl-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #1a1a1a}
+.tl-item:last-child{border-bottom:none}
+.tl-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px}
+.tl-body{flex:1;min-width:0}
+.tl-date{font-size:.68em;color:#444;margin-bottom:4px;letter-spacing:.02em}
+.tl-text{font-size:.82em;color:#aaa;line-height:1.55;white-space:pre-wrap}
+
+/* Update post form */
+.update-form{background:#161616;border:1px solid #222;border-radius:12px;padding:12px}
+.update-form textarea{width:100%;background:#111;border:1px solid #2a2a2a;border-radius:8px;color:#ddd;font-size:.82em;padding:8px 10px;resize:vertical;min-height:72px;font-family:inherit;outline:none;transition:border-color .15s}
+.update-form textarea:focus{border-color:var(--accent)}
+.update-form-actions{display:flex;justify-content:flex-end;margin-top:8px}
+.update-post-btn{background:var(--accent);color:#fff;border:none;padding:6px 16px;border-radius:8px;cursor:pointer;font-size:.8em;font-weight:600;font-family:inherit;transition:opacity .15s}
+.update-post-btn:hover{opacity:.85}
+
+@media(max-width:480px){h1{font-size:1.15em}.hero-photo,.hero-placeholder{width:72px;height:72px;font-size:1.8em}.doc-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}}
 </style>
 {% endblock %}
 
@@ -169,7 +201,7 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
   </div>
 </div>
 
-{# ── Custom link buttons ── #}
+{# ── 1. Custom link buttons (Code of Conduct, zines, etc.) ── #}
 {% if space.custom_links %}
 <div class="section-label">Links</div>
 {% for link in space.custom_links %}
@@ -185,77 +217,9 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
 {% endfor %}
 {% endif %}
 
-{# ── Community Asks ── #}
-{% if asks %}
-<div class="section-label" style="margin-top:18px">Community Asks</div>
-{% for ask in asks %}
-<div class="ask-card{% if ask.status == 'in_progress' %} in-progress{% endif %}{% if ask.product_url or ask.product_image_url %} has-product{% endif %}">
-  {# Product thumbnail #}
-  {% if ask.product_image_url %}
-    <img src="{{ ask.product_image_url }}" class="ask-product-img" alt="" loading="lazy">
-  {% elif ask.product_url %}
-    <div class="ask-product-placeholder">📦</div>
-  {% endif %}
-  <div class="ask-body">
-    <span class="ask-badge {{ ask.ask_type }}">
-      {% if ask.ask_type == 'fund' %}💰{% elif ask.ask_type == 'item' %}📦{% elif ask.ask_type == 'volunteer' %}🤝{% else %}🔧{% endif %}
-      {{ ask.get_ask_type_display }}{% if ask.status == 'in_progress' %} · In Progress{% endif %}
-    </span>
-    <div class="ask-title">{{ ask.title }}</div>
-    {% if ask.product_price %}<div class="ask-price">~${{ ask.product_price }}</div>{% endif %}
-    {% if ask.description %}<div class="ask-desc">{{ ask.description }}</div>{% endif %}
-    {% if ask.target_amount %}<div class="ask-target">Goal: ${{ ask.target_amount }}</div>{% endif %}
-    {% if ask.board_url %}<a href="{{ ask.board_url }}" class="ask-board-link">📋 See on community board ↗</a>{% endif %}
-  </div>
-  <div class="ask-cta">
-    {% if ask.ask_type == 'fund' %}
-      {% with donate_url=ask.donation_url|default:space.donation_url %}
-      {% if donate_url %}<a href="{{ donate_url }}" target="_blank" rel="noopener" class="btn-donate">♥ Donate</a>{% endif %}
-      {% endwith %}
-    {% elif ask.ask_type == 'item' %}
-      {% if space.contact_email %}<a href="mailto:{{ space.contact_email }}" class="btn-contact">🤝 I have this</a>
-      {% elif space.website %}<a href="{{ space.website }}" target="_blank" rel="noopener" class="btn-contact">🤝 I have this</a>{% endif %}
-      {% if ask.product_url %}<a href="{{ ask.product_url }}" target="_blank" rel="noopener" class="btn-view-item">View item ↗</a>{% endif %}
-    {% else %}
-      {% if space.contact_email %}<a href="mailto:{{ space.contact_email }}" class="btn-contact">✉ Reach out</a>
-      {% elif space.website %}<a href="{{ space.website }}" target="_blank" rel="noopener" class="btn-contact">✉ Contact</a>{% endif %}
-    {% endif %}
-  </div>
-</div>
-{% endfor %}
-{% endif %}
-
-{# ── Donate / funding ── #}
-{% if space.sol_wallet or space.donation_url %}
-<div class="section-label">Support</div>
-{% if space.donation_url %}
-<a href="{{ space.donation_url }}" class="action-btn donate-btn" target="_blank" rel="noopener">
-  <span>♥</span> <span>Donate / Support</span>
-</a>
-{% endif %}
-{% if space.sol_wallet %}
-<div style="background:#161616;border:1px solid #222;border-radius:12px;padding:12px 16px;font-size:.8em;color:#666">
-  <div style="color:#888;margin-bottom:6px;font-size:.85em">⚡ Solana (Phantom)</div>
-  <div style="font-family:monospace;word-break:break-all;font-size:.85em;color:#aaa;user-select:all">{{ space.sol_wallet }}</div>
-  <button onclick="navigator.clipboard.writeText('{{ space.sol_wallet|escapejs }}').then(function(){var b=this;b.textContent='✓ Copied';setTimeout(function(){b.textContent='Copy address'},2000)}.bind(this))"
-          style="margin-top:8px;background:transparent;border:1px solid #333;color:#666;font-size:.78em;padding:4px 12px;border-radius:6px;cursor:pointer;font-family:inherit">
-    Copy address
-  </button>
-</div>
-{% endif %}
-{% endif %}
-
-{# ── Resource library (Google Drive) ── #}
-{% if space.drive_folder_url %}
-<div class="section-label">Resources</div>
-<a href="{{ space.drive_folder_url }}" class="action-btn" target="_blank" rel="noopener">
-  <span>📁</span> <span>Resource Library</span> <span style="margin-left:auto;color:#444;font-size:.8em">↗</span>
-</a>
-{% endif %}
-
-{# ── Audio library ── #}
+{# ── 2. Audio library ── #}
 {% if audio_files %}
-<div class="section-label" style="margin-top:14px">🎵 Audio</div>
+<div class="section-label">🎵 Audio</div>
 <div class="audio-list" id="audio-library">
   {% for af in audio_files %}
   <div class="audio-row" data-src="{{ af.stream_url }}" data-idx="{{ forloop.counter0 }}">
@@ -270,9 +234,9 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
 <audio id="space-audio-player" preload="none" style="display:none"></audio>
 {% endif %}
 
-{# ── Document library ── #}
+{# ── 3. Document / Zine library ── #}
 {% if doc_files %}
-<div class="section-label" style="margin-top:14px">📄 Documents &amp; Zines</div>
+<div class="section-label">📄 Zines &amp; Docs</div>
 <div class="doc-grid">
   {% for df in doc_files %}
   {% if df.mimeType == 'application/pdf' or 'google-apps' in df.mimeType %}
@@ -290,7 +254,91 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
 </div>
 {% endif %}
 
-{# ── Find on maps ── #}
+{# ── 4. Resource library (Google Drive folder link) ── #}
+{% if space.drive_folder_url %}
+<a href="{{ space.drive_folder_url }}" class="action-btn" target="_blank" rel="noopener">
+  <span>📁</span> <span>Resource Library</span> <span style="margin-left:auto;color:#444;font-size:.8em">↗</span>
+</a>
+{% endif %}
+
+{# ── 5. Community Asks — collapsed with thumbnail peek ── #}
+{% if asks %}
+<div class="section-label" style="margin-top:8px">Community Asks</div>
+<details class="asks-details" id="asks-details">
+  <summary class="asks-summary">
+    <span class="asks-summary-label">🛒 Wish List</span>
+    <span class="asks-summary-count">{{ asks|length }} item{{ asks|length|pluralize }}</span>
+    <span class="asks-chevron">▼</span>
+  </summary>
+
+  {# Thumbnail peek strip — shown when collapsed #}
+  <div class="asks-peek">
+    {% for ask in asks %}
+      {% if ask.product_image_url %}
+        <img src="{{ ask.product_image_url }}" class="ask-peek-thumb" alt="" loading="lazy">
+      {% elif ask.product_url %}
+        <div class="ask-peek-more">📦</div>
+      {% endif %}
+      {% if forloop.counter == 6 and not forloop.last %}
+        <div class="ask-peek-more">+{{ asks|length|add:"-6" }}</div>
+        {% comment %}stop rendering peek thumbs{% endcomment %}
+        {% if True %}{% endif %}
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  {# Full expanded cards #}
+  <div class="asks-expanded">
+    {% for ask in asks %}
+    <div class="ask-card">
+      {% if ask.product_image_url %}
+        <img src="{{ ask.product_image_url }}" class="ask-product-img" alt="" loading="lazy">
+      {% elif ask.product_url %}
+        <div class="ask-product-placeholder">📦</div>
+      {% elif ask.ask_type == 'fund' %}
+        <div class="ask-product-placeholder">💰</div>
+      {% elif ask.ask_type == 'volunteer' %}
+        <div class="ask-product-placeholder">🤝</div>
+      {% else %}
+        <div class="ask-product-placeholder">🔧</div>
+      {% endif %}
+      <div class="ask-body">
+        <div class="ask-title">{{ ask.title }}</div>
+        {% if ask.product_price %}<div class="ask-price">~${{ ask.product_price }}</div>{% endif %}
+      </div>
+      <div class="ask-cta">
+        {% if ask.ask_type == 'item' and ask.product_url %}
+          <a href="{{ ask.product_url }}" target="_blank" rel="noopener" class="btn-view-item">View ↗</a>
+        {% elif ask.ask_type == 'fund' %}
+          {% with donate_url=ask.donation_url|default:space.donation_url %}
+          {% if donate_url %}<a href="{{ donate_url }}" target="_blank" rel="noopener" class="btn-donate-sm">♥</a>{% endif %}
+          {% endwith %}
+        {% else %}
+          {% if space.contact_email %}
+            <a href="mailto:{{ space.contact_email }}" class="btn-i-have">I have this</a>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+
+    {# Donate / wishlist source link at bottom of asks #}
+    <div class="asks-donate-row">
+      {% if space.website %}
+        <a href="{{ space.website }}" target="_blank" rel="noopener" class="action-btn donate-btn" style="padding:9px 16px;font-size:.82em">
+          ♥ Donate or support {{ space.name }}
+        </a>
+      {% elif space.donation_url %}
+        <a href="{{ space.donation_url }}" target="_blank" rel="noopener" class="action-btn donate-btn" style="padding:9px 16px;font-size:.82em">
+          ♥ Donate
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</details>
+{% endif %}
+
+{# ── 6. Location ── #}
 {% if space.address %}
 <div class="section-label">Location</div>
 <a href="https://www.google.com/maps/search/?api=1&query={{ space.address|urlencode }}"
@@ -302,6 +350,71 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
   </span>
   <span style="margin-left:auto;color:#444;font-size:.8em">↗</span>
 </a>
+{% endif %}
+
+{# ── 7. Photo Gallery ── #}
+{% if photos or can_edit %}
+<div class="section-label">Photos</div>
+{% if photos %}
+<div class="photo-grid">
+  {% for p in photos|slice:":9" %}
+    <img src="{{ p.image.url }}" alt="{{ p.caption|default:space.name }}" loading="lazy"
+         onclick="window.open('{{ p.image.url }}','_blank')">
+  {% endfor %}
+  {% if photos|length > 9 %}
+    <div class="photo-grid-more">+{{ photos|length|add:"-9" }} more</div>
+  {% endif %}
+</div>
+{% endif %}
+{% if can_edit %}
+<form method="post" action="{% url 'community_space_edit' slug=space.slug %}" enctype="multipart/form-data"
+      style="margin-top:6px">
+  {% csrf_token %}
+  {# pass all existing space fields as hidden so the edit view doesn't blank them #}
+  <input type="hidden" name="name"             value="{{ space.name|escapejs }}">
+  <input type="hidden" name="bio"              value="{{ space.bio|escapejs }}">
+  <input type="hidden" name="address"          value="{{ space.address|escapejs }}">
+  <input type="hidden" name="neighborhood"     value="{{ space.neighborhood|escapejs }}">
+  <input type="hidden" name="website"          value="{{ space.website|escapejs }}">
+  <input type="hidden" name="space_type"       value="{{ space.space_type }}">
+  <input type="hidden" name="_photo_only"      value="1">
+  <label style="display:flex;align-items:center;gap:8px;background:#161616;border:1px solid #222;border-radius:10px;padding:10px 14px;cursor:pointer;font-size:.82em;color:#888;transition:border-color .15s"
+         onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='#222'">
+    <span style="font-size:1.2em">📷</span>
+    <span>Add photos</span>
+    <input type="file" name="extra_photos" multiple accept="image/*" style="display:none"
+           onchange="this.closest('form').submit()">
+  </label>
+</form>
+{% endif %}
+{% endif %}
+
+{# ── 8. Timeline / Updates ── #}
+{% if updates or can_edit %}
+<div class="section-label">Updates</div>
+{% if can_edit %}
+<form method="post" action="{% url 'community_space_profile' slug=space.slug %}" class="update-form">
+  {% csrf_token %}
+  <input type="hidden" name="_post_update" value="1">
+  <textarea name="update_body" placeholder="Post an update, milestone, or note for the community…" rows="3"></textarea>
+  <div class="update-form-actions">
+    <button type="submit" class="update-post-btn">Post update</button>
+  </div>
+</form>
+{% endif %}
+{% if updates %}
+<div class="timeline" style="background:#161616;border:1px solid #222;border-radius:12px;padding:12px 14px;margin-top:6px">
+  {% for u in updates %}
+  <div class="tl-item">
+    <div class="tl-dot"></div>
+    <div class="tl-body">
+      <div class="tl-date">{{ u.created_at|date:"M j, Y" }}{% if u.posted_by %} · {{ u.posted_by.get_short_name|default:u.posted_by.username }}{% endif %}</div>
+      <div class="tl-text">{{ u.body }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 {% endif %}
 
 </div>{# /epk #}
@@ -330,7 +443,6 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
 </div>
 
 {% if not request.user.is_authenticated %}
-{# Join CP popup #}
 <div id="join-popup" style="display:none;position:fixed;bottom:44px;left:50%;transform:translateX(-50%);width:min(480px,94vw);background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:20px 22px;z-index:8000;box-shadow:0 8px 40px rgba(0,0,0,.6);font-family:-apple-system,sans-serif">
   <button onclick="document.getElementById('join-popup').style.display='none';sessionStorage.setItem('cpJoinDismissed','1')" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#444;font-size:1.2em;cursor:pointer;line-height:1">✕</button>
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
@@ -365,7 +477,6 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
   });
 })();
 
-// ── Logged-out follow CTA → triggers Join popup ──
 (function(){
   var cta = document.getElementById('follow-btn-cta');
   if (!cta) return;
@@ -375,7 +486,6 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
   });
 })();
 
-// ── Share button ──
 document.getElementById('share-profile-btn').addEventListener('click', function() {
   var title = '{{ space.name|escapejs }} — Community Playlist';
   if (navigator.share) {
@@ -390,7 +500,6 @@ document.getElementById('share-profile-btn').addEventListener('click', function(
   }
 });
 
-// ── Cookie modal ──
 function cpCookieModal() {
   var m = document.getElementById('cookie-modal');
   m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
@@ -406,38 +515,29 @@ document.getElementById('cookie-modal').addEventListener('click', function(e) {
 function getCookie(n){var v=document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');return v?v[2]:null}
 
 {% if audio_files %}
-// ── Audio library player ──
 (function(){
   var player = document.getElementById('space-audio-player');
   var rows   = document.querySelectorAll('#audio-library .audio-row');
   var currentIdx = -1;
-
   function updateRow(idx, playing) {
-    var row = rows[idx];
-    if (!row) return;
+    var row = rows[idx]; if (!row) return;
     row.classList.toggle('playing', playing);
     row.querySelector('.audio-play-btn').textContent = playing ? '⏸' : '▶';
   }
-
   function setProgress(idx, pct) {
-    var row = rows[idx];
-    if (!row) return;
+    var row = rows[idx]; if (!row) return;
     var bar = row.querySelector('.audio-progress-bar');
     if (bar) bar.style.width = pct + '%';
   }
-
   player.addEventListener('timeupdate', function(){
     if (!player.duration) return;
     setProgress(currentIdx, (player.currentTime / player.duration) * 100);
   });
-
   player.addEventListener('ended', function(){
-    updateRow(currentIdx, false);
-    setProgress(currentIdx, 0);
+    updateRow(currentIdx, false); setProgress(currentIdx, 0);
     var next = currentIdx + 1;
     if (next < rows.length) rows[next].click();
   });
-
   rows.forEach(function(row, idx) {
     row.addEventListener('click', function(){
       var src = row.dataset.src;
@@ -447,8 +547,7 @@ function getCookie(n){var v=document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');r
         return;
       }
       if (currentIdx >= 0) { updateRow(currentIdx, false); setProgress(currentIdx, 0); }
-      currentIdx = idx;
-      player.src = src;
+      currentIdx = idx; player.src = src;
       player.play().catch(function(){});
       updateRow(idx, true);
     });

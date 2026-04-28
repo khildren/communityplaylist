@@ -496,6 +496,34 @@ class CommunitySpace(models.Model):
         return reverse('community_space_profile', kwargs={'slug': self.slug})
 
 
+class SpacePhoto(models.Model):
+    space      = models.ForeignKey(CommunitySpace, on_delete=models.CASCADE, related_name='photos')
+    image      = models.ImageField(upload_to='space_photos/%Y/%m/')
+    caption    = models.CharField(max_length=200, blank=True)
+    uploaded_by = models.ForeignKey('auth.User', null=True, blank=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.space.name} photo {self.pk}"
+
+
+class SpaceUpdate(models.Model):
+    """Timeline post — news, milestones, or maintenance notes for a space."""
+    space      = models.ForeignKey(CommunitySpace, on_delete=models.CASCADE, related_name='updates')
+    body       = models.TextField()
+    posted_by  = models.ForeignKey('auth.User', null=True, blank=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.space.name} update {self.created_at:%Y-%m-%d}"
+
+
 class CommunityAsk(models.Model):
     """A specific need or request posted by a Venue or CommunitySpace."""
 
