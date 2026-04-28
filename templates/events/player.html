@@ -24,17 +24,35 @@
     /* ── Layout ── */
     .pl-wrap{display:flex;flex-direction:column;height:100vh}
     .pl-header{
-      display:flex;align-items:center;justify-content:space-between;
-      padding:10px 18px;border-bottom:1px solid #1a1a1a;flex-shrink:0;
-      background:#111;
+      display:flex;align-items:center;gap:12px;
+      padding:0 14px 0 12px;border-bottom:1px solid #1a1a1a;flex-shrink:0;
+      background:#0d0d0d;height:42px;overflow:hidden;
     }
-    .pl-logo{font-weight:700;font-size:.9em;color:#ff6b35;letter-spacing:.1em}
-    .pl-header-right{display:flex;align-items:center;gap:10px}
+    .pl-logo img{height:26px;width:auto;display:block;flex-shrink:0}
+    /* Green ticker */
+    .pl-ticker{
+      flex:1;overflow:hidden;position:relative;
+      background:#0a160a;border:1px solid #1a3a1a;border-radius:4px;
+      height:24px;display:flex;align-items:center;
+      mask-image:linear-gradient(to right,transparent 0%,black 5%,black 95%,transparent 100%);
+    }
+    .pl-ticker-inner{
+      display:inline-flex;align-items:center;white-space:nowrap;gap:0;
+      animation:pl-marquee 50s linear infinite;
+    }
+    .pl-ticker-inner:hover{animation-play-state:paused}
+    @keyframes pl-marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+    .pl-tick-item{color:#4caf50;font-size:.7em;font-weight:600;letter-spacing:.03em;text-decoration:none}
+    .pl-tick-item:hover{text-decoration:underline;color:#6fcf6f}
+    .pl-tick-soft{color:#2a4a2a;font-size:.7em}
+    .pl-tick-sep{color:#1a3a1a;margin:0 16px;font-size:.7em;user-select:none}
+    .pl-header-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
     .pl-header a{color:#555;font-size:.8em;text-decoration:none}
     .pl-header a:hover{color:#ff6b35}
     #pl-install-btn:hover{color:#ff6b35}
     /* Hide back link when opened as popup or standalone */
     @media(display-mode:standalone){#pl-back-link{display:none}}
+    @media(max-width:620px){.pl-ticker{display:none}}
     .pl-body{display:flex;flex:1;overflow:hidden}
 
     /* ── Stage (left) ── */
@@ -180,8 +198,21 @@
 <div class="pl-wrap">
 
   <header class="pl-header">
-    <span class="pl-logo">CP · PDX</span>
-    <span id="pl-ch-label" style="font-size:.8em;color:#555">ALL</span>
+    <a href="/" class="pl-logo" title="Community Playlist">
+      <img src="https://hihi.communityplaylist.com/files/timeline_files/store_file6809b5ed4135d-community_playlist_site_logo_2025.png" alt="CP">
+    </a>
+    <div class="pl-ticker">
+      <div class="pl-ticker-inner">
+        {% with items=ticker_banners %}
+        <span class="pl-tick-soft">Portland events · by the people, for the people</span><span class="pl-tick-sep">✦</span>
+        {% if visit_count %}<span class="pl-tick-soft">👁 {{ visit_count }} unique visitors</span><span class="pl-tick-sep">✦</span>{% endif %}
+        {% for b in items %}<a class="pl-tick-item" href="/board/aid/">🌹 {{ b }}</a><span class="pl-tick-sep">✦</span>{% endfor %}
+        <span class="pl-tick-soft">Portland events · by the people, for the people</span><span class="pl-tick-sep">✦</span>
+        {% if visit_count %}<span class="pl-tick-soft">👁 {{ visit_count }} unique visitors</span><span class="pl-tick-sep">✦</span>{% endif %}
+        {% for b in items %}<a class="pl-tick-item" href="/board/aid/">🌹 {{ b }}</a><span class="pl-tick-sep">✦</span>{% endfor %}
+        {% endwith %}
+      </div>
+    </div>
     <span class="pl-header-right">
       <button id="pl-install-btn" title="Install app" style="display:none;background:none;border:none;color:#555;cursor:pointer;font-size:.8em;padding:2px 6px;border-radius:4px;transition:color .15s">⊕ Install</button>
       <a href="/" id="pl-back-link">← Events</a>
@@ -315,7 +346,7 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
   var titleEl  = document.getElementById('pl-title');
   var artistEl = document.getElementById('pl-artist');
   var metaEl   = document.getElementById('pl-meta');
-  var chLabel  = document.getElementById('pl-ch-label');
+  var chLabel  = null; // removed — pill buttons show active channel
   var playBtn  = document.getElementById('pl-play');
   var prevBtn  = document.getElementById('pl-prev');
   var nextBtn  = document.getElementById('pl-next');
@@ -517,7 +548,7 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
     Array.from(channels.querySelectorAll('.pl-ch')).forEach(function(b) {
       b.classList.toggle('active', b.textContent === g);
     });
-    chLabel.textContent = g;
+    if (chLabel) chLabel.textContent = g;
     if (g === 'ALL') tracks = allTracks.slice();
     else tracks = allTracks.filter(function(t) {
       return (t.genre || '').toLowerCase().includes(g.toLowerCase());

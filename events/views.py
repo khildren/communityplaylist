@@ -4775,7 +4775,13 @@ def video_room(request):
 
 def player_page(request):
     """Standalone full-page music/video player."""
-    return render(request, 'events/player.html')
+    from board.models import BannerMessage
+    banners = list(BannerMessage.objects.filter(active=True).values_list('text', flat=True))
+    visit_count, _ = SiteStats.get_counts()
+    return render(request, 'events/player.html', {
+        'ticker_banners': banners,
+        'visit_count': f'{visit_count:,}',
+    })
 
 
 def player_manifest(request):
