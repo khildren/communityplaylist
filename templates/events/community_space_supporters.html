@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}Supporters — {{ space.name }} — Community Playlist{% endblock %}
+
+{% block site_header %}{% endblock %}
+{% block nav_strip %}{% endblock %}
+
+{% block styles %}
+<style>
+:root{--accent:{{ space.brand_color|default:"#4caf50" }};--accent-bg:color-mix(in srgb,var(--accent) 8%,#0e0e0e)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0e0e0e;color:#eee;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
+.wrap{max-width:480px;margin:0 auto;padding:24px 16px 80px}
+
+.back{display:inline-flex;align-items:center;gap:6px;color:#555;text-decoration:none;font-size:.82em;margin-bottom:20px;transition:color .15s}
+.back:hover{color:var(--accent)}
+
+.hero{text-align:center;padding:28px 20px 20px;background:#161616;border:1px solid #222;border-radius:14px;margin-bottom:16px}
+.hero-photo{width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);margin-bottom:12px}
+.hero-placeholder{width:64px;height:64px;border-radius:50%;background:#1a1a1a;border:3px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:2em;color:var(--accent);margin:0 auto 12px}
+h1{color:var(--accent);font-size:1.2em;font-weight:700}
+.subtitle{color:#555;font-size:.8em;margin-top:6px}
+
+.thank-banner{background:var(--accent-bg);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:12px;padding:16px 20px;text-align:center;margin-bottom:20px}
+.thank-banner-emoji{font-size:2em;line-height:1;margin-bottom:8px}
+.thank-banner-text{color:var(--accent);font-size:.92em;font-weight:600;line-height:1.5}
+.thank-banner-sub{color:#555;font-size:.78em;margin-top:6px;line-height:1.55}
+
+.supporter-list{display:flex;flex-direction:column;gap:8px}
+.supporter-card{background:#161616;border:1px solid #1e1e1e;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px}
+.supporter-emoji{font-size:1.4em;width:36px;text-align:center;flex-shrink:0}
+.supporter-body{flex:1;min-width:0}
+.supporter-name{font-size:.88em;font-weight:600;color:#ddd}
+.supporter-meta{font-size:.72em;color:#444;margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+.supporter-amount{color:var(--accent);font-weight:600}
+.supporter-message{font-size:.78em;color:#666;font-style:italic;margin-top:6px;line-height:1.5;padding-left:4px;border-left:2px solid #2a2a2a}
+
+.empty{text-align:center;padding:40px 20px;color:#444;font-size:.88em}
+
+.kofi-cta{display:flex;align-items:center;justify-content:center;gap:8px;background:#161616;border:1px solid #222;border-radius:12px;padding:14px 16px;text-decoration:none;color:#eee;font-size:.88em;font-weight:500;transition:all .15s;margin-top:16px}
+.kofi-cta:hover{border-color:var(--accent);background:var(--accent-bg);color:var(--accent)}
+
+.footer{text-align:center;margin-top:32px;font-size:.72em;color:#333}
+.footer a{color:#444;text-decoration:none;transition:color .15s}
+.footer a:hover{color:var(--accent)}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="wrap">
+
+<a href="{% url 'community_space_profile' slug=space.slug %}" class="back">← {{ space.name }}</a>
+
+<div class="hero">
+  {% if space.photo %}
+    <img src="{{ space.photo.url }}" alt="{{ space.name }}" class="hero-photo">
+  {% else %}
+    <div class="hero-placeholder">🌱</div>
+  {% endif %}
+  <h1>{{ space.name }}</h1>
+  <p class="subtitle">Community supporters</p>
+</div>
+
+<div class="thank-banner">
+  <div class="thank-banner-emoji">☕</div>
+  <div class="thank-banner-text">Thank you to everyone who has supported {{ space.name }}</div>
+  <div class="thank-banner-sub">
+    Every coffee, subscription, and donation helps keep this space alive and thriving for the community.
+  </div>
+</div>
+
+{% if supporters %}
+<div class="supporter-list">
+  {% for s in supporters %}
+  <div class="supporter-card">
+    <div class="supporter-emoji">
+      {% if s.kofi_type == 'Subscription' %}⭐
+      {% elif s.kofi_type == 'Shop_Order' %}🛒
+      {% elif s.kofi_type == 'Commission' %}🎨
+      {% else %}☕{% endif %}
+    </div>
+    <div class="supporter-body">
+      <div class="supporter-name">{{ s.from_name }}</div>
+      <div class="supporter-meta">
+        {% if s.amount and s.amount != '0' and s.amount != '0.00' %}
+          <span class="supporter-amount">${{ s.amount }}</span>
+        {% endif %}
+        <span>{{ s.kofi_type|lower|capfirst }}</span>
+        {% if s.timestamp %}<span>{{ s.timestamp|date:"M j, Y" }}</span>{% endif %}
+      </div>
+      {% if s.message %}
+        <div class="supporter-message">"{{ s.message }}"</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="empty">No supporters yet — be the first! ☕</div>
+{% endif %}
+
+{% if space.kofi %}
+<a href="https://ko-fi.com/{{ space.kofi }}" class="kofi-cta" target="_blank" rel="noopener">
+  <span>☕</span> <span>Support {{ space.name }} on Ko-fi</span> <span style="margin-left:auto;color:#444;font-size:.8em">↗</span>
+</a>
+{% endif %}
+
+<div class="footer">
+  <a href="{% url 'community_space_profile' slug=space.slug %}">← Back to {{ space.name }}</a>
+  &nbsp;·&nbsp;
+  <a href="/">Community Playlist PDX</a>
+</div>
+
+</div>
+{% endblock %}

@@ -94,6 +94,7 @@ urlpatterns = [
     path('report/', views.report_page, name='report'),
     path('spaces/<slug:slug>/', views.community_space_profile, name='community_space_profile'),
     path('spaces/<slug:slug>/edit/', views.community_space_edit, name='community_space_edit'),
+    path('spaces/<slug:slug>/supporters/', views.community_space_supporters, name='community_space_supporters'),
     # Ko-fi webhook — configure this URL at ko-fi.com/manage/webhooks
     path('webhooks/kofi/', views.kofi_webhook_view, name='kofi_webhook'),
 ]

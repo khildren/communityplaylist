@@ -4852,11 +4852,14 @@ def community_space_profile(request, slug):
         space.drive_folder_url, space.show_audio, space.show_docs,
     )
     from .models import SpacePhoto, SpaceUpdate, KofiPost
-    photos      = list(space.photos.all()[:30])
-    updates     = list(space.updates.all()[:20])
-    kofi_posts  = list(space.kofi_posts.filter(is_public=True).order_by('-timestamp', '-created_at')[:20]) if space.kofi else []
-    kofi_blog   = [p for p in kofi_posts if p.kofi_type == 'Blog_Post']
-    kofi_support = [p for p in kofi_posts if p.kofi_type in ('Donation', 'Subscription')]
+    from django.utils import timezone as _tz
+    photos       = list(space.photos.all()[:30])
+    updates      = list(space.updates.all()[:20])
+    kofi_posts   = list(space.kofi_posts.filter(is_public=True).order_by('-timestamp', '-created_at')[:20]) if space.kofi else []
+    kofi_blog    = [p for p in kofi_posts if p.kofi_type == 'Blog_Post']
+    kofi_support = [p for p in kofi_posts if p.kofi_type in ('Donation', 'Subscription', 'Commission', 'Shop_Order')]
+    week_ago     = _tz.now() - __import__('datetime').timedelta(days=7)
+    kofi_recent  = [p for p in kofi_support if p.timestamp and p.timestamp >= week_ago]
 
     # Handle new update post (owner only)
     if request.method == 'POST' and request.POST.get('_post_update') == '1' and can_edit:
@@ -4876,6 +4879,22 @@ def community_space_profile(request, slug):
         'updates':       updates,
         'kofi_blog':     kofi_blog,
         'kofi_support':  kofi_support,
+        'kofi_recent':   kofi_recent,
+    })
+
+
+def community_space_supporters(request, slug):
+    from .models import KofiPost
+    space = get_object_or_404(CommunitySpace, slug=slug, is_public=True)
+    supporters = list(
+        space.kofi_posts
+        .filter(is_public=True)
+        .exclude(kofi_type='Blog_Post')
+        .order_by('-timestamp', '-created_at')
+    )
+    return render(request, 'events/community_space_supporters.html', {
+        'space':      space,
+        'supporters': supporters,
     })
 
 
