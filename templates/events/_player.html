@@ -1177,7 +1177,7 @@ function _cpGenreColors(g) {
       _applyReaction(null, 0, 0);
       buildQueue();
       if (isOpen && !window.cpVideo?.isActive()) {
-        _stopVisualizer(); _startVisualizer();
+        _startVisualizer();  // start if not already running; running loop auto-adapts to playing state
       }
     },
     onPlayState: function(playing) {
