@@ -339,6 +339,19 @@ body.has-player .cp-bar{display:flex}
 }
 /* Very narrow: hide weather widget entirely */
 @media(max-width:420px){.sh-weather{display:none!important}}
+/* Panel open: right panel consumes 380px — collapse header sooner */
+@media(min-width:769px) and (max-width:1100px){
+  body.has-panel .sh-search{display:none}
+  body.has-panel .sh-icons{display:none!important}
+  body.has-panel .sh-menu-toggle{display:flex}
+}
+@media(min-width:1101px) and (max-width:1480px){
+  body.has-panel .sh-weather .wextra,
+  body.has-panel .sh-weather .wsep{display:none}
+  body.has-panel .sh-search{max-width:140px}
+  body.has-panel .sh-icons{gap:0}
+  body.has-panel .sh-icon{width:28px;height:28px;font-size:.85em}
+}
 /* ── Global header search ── */
 .sh-search{position:relative;flex:1;min-width:0;max-width:480px;margin:0 8px}
 .sh-search-input{width:100%;background:#111;border:1px solid #2a2a2a;border-radius:20px;color:#ddd;font-size:.82em;padding:6px 14px;outline:none;transition:border-color .18s,background .18s;box-sizing:border-box}

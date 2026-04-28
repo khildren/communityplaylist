@@ -799,7 +799,7 @@ function _cpGenreColors(g) {
       if (window.cpPanel) window.cpPanel.onProgress(cur, dur);
     }, 1000);
     if (window.cpPanel && window.cpPanel.onVideoPlay)
-      window.cpPanel.onVideoPlay(item.title || '', item.artist || '', item.is_live || false);
+      window.cpPanel.onVideoPlay(item.title || '', item.artist || '', item.is_live || false, _isTwitch);
     if (window.cpPanel && window.cpPanel.onVideoState) window.cpPanel.onVideoState(true);
   }
 
@@ -1222,10 +1222,14 @@ function _cpGenreColors(g) {
       if (curEl) curEl.textContent = _cpFmt(cur);
       if (durEl) durEl.textContent = (dur && !isNaN(dur) && dur > 0) ? _cpFmt(dur) : '—';
     },
-    onVideoPlay: function(title, artist, isLive) {
+    onVideoPlay: function(title, artist, isLive, isTwitch) {
       _fadeText(titleEl,  title  || '—');
       _fadeText(artistEl, artist || '');
-      _fadeText(metaEl,   isLive ? '● LIVE' : 'VIDEO');
+      var baseLabel = isLive ? '● LIVE' : 'VIDEO';
+      _fadeText(metaEl, isTwitch ? baseLabel + ' — click stream to dismiss any prompt' : baseLabel);
+      if (isTwitch) {
+        setTimeout(function(){ _fadeText(metaEl, baseLabel); }, 5000);
+      }
       _applyReaction(null, 0, 0);
       _stopVisualizer();
       buildQueue();
