@@ -3367,6 +3367,50 @@ def react_track(request):
     return JsonResponse({'reaction': new_reaction, 'ups': ups, 'downs': downs})
 
 
+def api_player_events(request):
+    """
+    GET ?artist=<name>&genre=<name>
+    Returns up to 3 upcoming approved events linked to the playing track's
+    artist/crew, falling back to genre tag if no artist match found.
+    """
+    artist_name = request.GET.get('artist', '').strip()
+    genre_name  = request.GET.get('genre',  '').strip()
+    now = timezone.now()
+    cutoff = now + timedelta(days=45)
+
+    base_qs = (
+        Event.objects
+        .filter(status='approved', start_date__gte=now, start_date__lte=cutoff)
+        .order_by('start_date')
+    )
+
+    events = []
+    if artist_name:
+        from django.db.models import Q as _Q
+        hits = base_qs.filter(
+            _Q(artists__name__iexact=artist_name) |
+            _Q(promoters__name__iexact=artist_name)
+        ).distinct()[:3]
+        events = list(hits)
+
+    if not events and genre_name:
+        hits = base_qs.filter(genres__name__iexact=genre_name).distinct()[:3]
+        events = list(hits)
+
+    def _ser(e):
+        venue = (e.location or '').split(',')[0].strip()
+        return {
+            'title':  e.title,
+            'slug':   e.slug or '',
+            'date':   e.start_date.strftime('%a %b %-d'),
+            'time':   e.start_date.strftime('%-I:%M %p').lower(),
+            'venue':  venue,
+            'free':   e.is_free,
+        }
+
+    return JsonResponse({'events': [_ser(e) for e in events]})
+
+
 def api_track_comments(request):
     """GET ?id=<pk> → comment list.  POST {id, body, ts} → create comment."""
     import json as _json

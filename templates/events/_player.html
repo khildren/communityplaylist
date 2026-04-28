@@ -74,6 +74,7 @@
     <div class="cp-panel-title" id="cp-panel-title">—</div>
     <div class="cp-panel-artist" id="cp-panel-artist"></div>
     <div class="cp-panel-meta" id="cp-panel-meta"></div>
+    <div class="cp-panel-events" id="cp-panel-events"></div>
   </div>
 
   <div class="cp-panel-controls">
@@ -875,6 +876,7 @@ function _cpGenreColors(g) {
   var chStrip   = document.getElementById('cp-panel-ch-strip');
   var qList     = document.getElementById('cp-panel-q-list');
   var qCount    = document.getElementById('cp-panel-q-count');
+  var eventsPane= document.getElementById('cp-panel-events');
   var chatPane  = document.getElementById('cp-panel-chat');
   var chatList  = document.getElementById('cp-chat-list');
   var chatInputWrap = document.getElementById('cp-chat-input-wrap');
@@ -1207,6 +1209,32 @@ function _cpGenreColors(g) {
   // Escape
   document.addEventListener('keydown', function(e){ if (e.key==='Escape' && isOpen) close(); });
 
+  // ── Related events ──
+  var _evtDebounce2 = null;
+  function _loadPanelEvents(artist, genre) {
+    if (!eventsPane) return;
+    clearTimeout(_evtDebounce2);
+    _evtDebounce2 = setTimeout(function() {
+      var q = '?artist=' + encodeURIComponent(artist || '') + '&genre=' + encodeURIComponent(genre || '');
+      fetch('/api/player-events/' + q)
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          eventsPane.innerHTML = '';
+          (d.events || []).forEach(function(e) {
+            var a = document.createElement('a');
+            a.className = 'cp-panel-event-chip';
+            a.href = e.slug ? '/events/' + e.slug + '/' : '/';
+            a.title = e.title;
+            a.innerHTML = '<span class="cp-panel-event-date">' + e.date + '</span>'
+                        + '<span class="cp-panel-event-title">' + e.title + '</span>'
+                        + (e.venue ? '<span class="cp-panel-event-venue">@ ' + e.venue + '</span>' : '');
+            eventsPane.appendChild(a);
+          });
+        })
+        .catch(function() {});
+    }, 400);
+  }
+
   // ── Chat / time-stamped comments ──
   function _chatFmt(ts) {
     var m = Math.floor(ts / 60), s = ts % 60;
@@ -1340,6 +1368,7 @@ function _cpGenreColors(g) {
       updateArt(artUrl || '', genre, artist);
       _applyReaction(null, 0, 0);
       buildQueue();
+      _loadPanelEvents(artist, genre);
       if (isOpen && !window.cpVideo?.isActive()) {
         _startVisualizer();
       }

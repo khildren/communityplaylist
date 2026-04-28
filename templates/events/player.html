@@ -121,6 +121,18 @@
     }
     .pl-artist{font-size:.82em;color:#aaa;margin-top:2px}
     .pl-meta{font-size:.7em;color:#555;letter-spacing:.07em;margin-top:2px}
+    /* Related events strip */
+    .pl-events{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+    .pl-event-chip{
+      display:flex;align-items:baseline;gap:6px;
+      font-size:.68em;color:#555;text-decoration:none;
+      border-left:2px solid #ff6b3540;padding-left:7px;
+      transition:border-color .15s,color .15s;line-height:1.4;
+    }
+    .pl-event-chip:hover{border-color:#ff6b35;color:#ccc}
+    .pl-event-date{color:#ff6b3580;white-space:nowrap;flex-shrink:0;font-weight:600}
+    .pl-event-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .pl-event-venue{color:#333;white-space:nowrap;flex-shrink:0}
 
     /* Controls */
     .pl-controls{
@@ -246,6 +258,7 @@
         <div class="pl-title" id="pl-title">Loading...</div>
         <div class="pl-artist" id="pl-artist"></div>
         <div class="pl-meta" id="pl-meta"></div>
+        <div class="pl-events" id="pl-events"></div>
       </div>
 
       <div class="pl-controls">
@@ -465,6 +478,7 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
     updateArt(t.art_url || '', t.genre, t.artist);
     document.title = (t.title || '—') + ' · CP Player';
     buildQueue();
+    _loadPlayerEvents(t.artist, t.genre);
   }
   function play() {
     if (isVideo) return;
@@ -559,6 +573,34 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
       if (!audio.paused) play();
     }
     buildQueue();
+  }
+
+  /* ── Related events ── */
+  var eventsEl = document.getElementById('pl-events');
+  var _evtDebounce = null;
+  function _loadPlayerEvents(artist, genre) {
+    if (!eventsEl) return;
+    clearTimeout(_evtDebounce);
+    _evtDebounce = setTimeout(function() {
+      var q = '?artist=' + encodeURIComponent(artist || '') + '&genre=' + encodeURIComponent(genre || '');
+      fetch('/api/player-events/' + q)
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          eventsEl.innerHTML = '';
+          (d.events || []).forEach(function(e) {
+            var a = document.createElement('a');
+            a.className = 'pl-event-chip';
+            a.href = e.slug ? '/events/' + e.slug + '/' : '/';
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.innerHTML = '<span class="pl-event-date">' + esc(e.date) + '</span>'
+                        + '<span class="pl-event-title">' + esc(e.title) + '</span>'
+                        + (e.venue ? '<span class="pl-event-venue">@ ' + esc(e.venue) + '</span>' : '');
+            eventsEl.appendChild(a);
+          });
+        })
+        .catch(function() {});
+    }, 400);
   }
 
   /* ── Queue ── */

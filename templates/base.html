@@ -484,6 +484,17 @@ body.has-panel{padding-right:380px;box-sizing:border-box}
   transition:opacity .15s ease;
 }
 .cp-panel-meta{font-size:.68em;color:#444;font-family:'Courier New',monospace;letter-spacing:.05em;transition:opacity .15s ease}
+.cp-panel-events{display:flex;flex-direction:column;gap:3px;margin-top:6px;padding:0 2px}
+.cp-panel-event-chip{
+  display:flex;align-items:baseline;gap:5px;
+  font-size:.66em;color:#444;text-decoration:none;
+  border-left:2px solid #ff6b3530;padding-left:6px;
+  transition:border-color .15s,color .15s;line-height:1.35;
+}
+.cp-panel-event-chip:hover{border-color:#ff6b35;color:#aaa}
+.cp-panel-event-date{color:#ff6b3570;white-space:nowrap;flex-shrink:0;font-weight:600}
+.cp-panel-event-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cp-panel-event-venue{color:#2a2a2a;white-space:nowrap;flex-shrink:0}
 /* Main controls */
 .cp-panel-controls{
   display:flex;align-items:center;justify-content:center;
