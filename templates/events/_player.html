@@ -650,18 +650,26 @@ function _cpGenreColors(g) {
           _pendingStart = 0;
         },
         onStateChange: function(e) {
-          if (e.data === YT.PlayerState.ENDED) {
+          var st = e.data;
+          // Sync our play button with actual YT state
+          if (st === 1 || st === 2) {
+            if (window.cpPanel && window.cpPanel.onVideoState) window.cpPanel.onVideoState(st === 1);
+          }
+          if (st === 1) {
+            // Playing — push title to panel (only on play, not pause/buffer)
+            var v = _unifiedMode ? {} : (videoQueue[videoIdx] || {});
+            if (window.cpPanel && window.cpPanel.onVideoPlay)
+              window.cpPanel.onVideoPlay(v.title || '', v.artist || '', v.is_live || false);
+          }
+          if (st === 0) {
+            // Ended
             if (_unifiedMode) {
               _unifiedMode = false;
-              // Advance the main unified queue
               if (window.cpPlayIdx && window.cpGetNextIdx) window.cpPlayIdx(window.cpGetNextIdx());
             } else {
               nextVideo();
             }
           }
-          var v = _unifiedMode ? {} : (videoQueue[videoIdx] || {});
-          if (window.cpPanel && window.cpPanel.onVideoPlay)
-            window.cpPanel.onVideoPlay(v.title || '', v.artist || '', v.is_live || false);
         }
       }
     });
@@ -763,6 +771,8 @@ function _cpGenreColors(g) {
     }, 1000);
     if (window.cpPanel && window.cpPanel.onVideoPlay)
       window.cpPanel.onVideoPlay(item.title || '', item.artist || '', item.is_live || false);
+    // Show ⏸ immediately — video is loading/starting (audio already paused above)
+    if (window.cpPanel && window.cpPanel.onVideoState) window.cpPanel.onVideoState(true);
   }
 
   window.cpVideo = {
@@ -779,7 +789,13 @@ function _cpGenreColors(g) {
     togglePlay: function(){
       if (!ytPlayer) return;
       var st = ytPlayer.getPlayerState ? ytPlayer.getPlayerState() : -1;
-      if (st === 1) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
+      if (st === 1) {
+        ytPlayer.pauseVideo();
+        if (window.cpPanel && window.cpPanel.onVideoState) window.cpPanel.onVideoState(false);
+      } else {
+        ytPlayer.playVideo();
+        if (window.cpPanel && window.cpPanel.onVideoState) window.cpPanel.onVideoState(true);
+      }
     },
     getQueue:       function(){ return videoQueue; },
     getCurrentIdx:  function(){ return videoIdx; },
@@ -1197,7 +1213,15 @@ function _cpGenreColors(g) {
         });
       }
     },
+    onVideoState: function(playing) {
+      if (playBtn) playBtn.textContent = playing ? '⏸' : '▶';
+      var bp = document.getElementById('cp-bar-play');
+      if (bp) bp.textContent = playing ? '⏸' : '▶';
+    },
     onVideoExit: function() {
+      if (playBtn) playBtn.textContent = '▶';
+      var bp = document.getElementById('cp-bar-play');
+      if (bp) bp.textContent = '▶';
       if (!isOpen) return;
       var t = (window._cpTracks || [])[window._cpCurrent || 0];
       if (t) {
