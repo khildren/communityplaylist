@@ -112,6 +112,8 @@ h1{color:var(--accent);font-size:1.25em;font-weight:700;line-height:1.2}
 .save-btn.saved{color:#cc4466}
 .del-track-btn{background:transparent;border:none;color:#2a2a2a;font-size:.75em;cursor:pointer;padding:0 3px;line-height:1;flex-shrink:0;transition:color .15s;font-family:monospace}
 .del-track-btn:hover{color:#ff4444}
+.track-comment-badge{background:transparent;border:none;color:#444;font-size:.7em;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;white-space:nowrap;transition:color .15s;letter-spacing:.02em}
+.track-comment-badge:hover{color:#ff6b35}
 
 /* Drive sync */
 .drive-sync-wrap{padding:10px 16px 14px;border-top:1px solid #1a1a1a}
@@ -326,6 +328,7 @@ window.cpEmbedLinks = [
         {% if t.genre %}<span class="track-genre">{{ t.genre.name }}</span>{% elif t.genre_raw %}<span class="track-genre">{{ t.genre_raw }}</span>{% endif %}
         {% if t.duration_display %}<span class="track-dur">{{ t.duration_display }}</span>{% endif %}
       </div>
+      <button class="track-comment-badge" title="Comments" onclick="cpOpenChat(this,{{ t.pk }})">💬{% if comment_counts|get_item:t.pk %} {{ comment_counts|get_item:t.pk }}{% endif %}</button>
       {% if request.user.is_authenticated %}
       <button class="save-btn {% if t.pk in saved_ids %}saved{% endif %}" title="Save" onclick="cpSaveTrack(this)" data-id="{{ t.pk }}">{% if t.pk in saved_ids %}♥{% else %}♡{% endif %}</button>
       {% endif %}
@@ -544,6 +547,27 @@ function cpPlay(btn) {
     }
   }
   if (window.cpLoad) window.cpLoad(row.dataset.stream, row.dataset.title, row.dataset.artist, window.location.pathname);
+}
+
+// ── Track comment chat ──
+function cpOpenChat(btn, trackId) {
+  btn.stopPropagation && btn.stopPropagation();
+  if (btn.stopPropagation) btn.stopPropagation(); // don't trigger row click
+  var row  = btn.closest('.track-row');
+  var card = row && row.closest('.card');
+  // Play the track into the panel
+  var playBtn = row && row.querySelector('.track-play');
+  if (playBtn) cpPlay(playBtn);
+  // Open panel then open chat
+  function _doChat() {
+    if (window.cpPanel && !window.cpPanel.isOpen()) window.cpPanel.open();
+    // Small delay so panel state settles after open animation
+    setTimeout(function() {
+      if (window.cpOpenChatById) window.cpOpenChatById(trackId);
+    }, 120);
+  }
+  if (window.cpPanel) _doChat();
+  else { window._cpPendingChat = trackId; }
 }
 
 // ── Twitch clip modal ──

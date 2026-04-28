@@ -920,6 +920,15 @@ def artist_profile(request, slug):
     saved_ids = set(
         SavedTrack.objects.filter(user=request.user, track_id__in={t.pk for t in tracks}).values_list('track_id', flat=True)
     ) if request.user.is_authenticated and tracks else set()
+    # Comment counts: {track_pk: count}
+    from django.db.models import Count as _Count
+    _comment_rows = (
+        TrackComment.objects
+        .filter(track_id__in=[t.pk for t in tracks])
+        .values('track_id')
+        .annotate(n=_Count('id'))
+    ) if tracks else []
+    comment_counts = {r['track_id']: r['n'] for r in _comment_rows}
     yt_embed_html = _get_yt_embed_cached(artist.youtube) if _is_yt_channel(artist.youtube) else ''
     _twitch_data  = _get_twitch_clips_cached(artist.twitch) if artist.twitch and not artist.is_live else {}
     twitch_clips  = _twitch_data.get('clips', [])
@@ -933,6 +942,7 @@ def artist_profile(request, slug):
         'cross_pks': cross_pks,
         'can_edit': can_edit,
         'saved_ids': saved_ids,
+        'comment_counts': comment_counts,
         'yt_embed_html': yt_embed_html,
         'twitch_clips': twitch_clips,
         'twitch_vods': twitch_vods,

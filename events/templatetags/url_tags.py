@@ -20,3 +20,9 @@ def domain(url):
 def is_safe(url):
     """Boolean — use in {% if obj.website|is_safe %} guards."""
     return is_safe_url(url or '')
+
+
+@register.filter
+def get_item(d, key):
+    """Dict lookup in templates: {{ my_dict|get_item:key }}"""
+    return d.get(key)

@@ -1318,6 +1318,13 @@ function _cpGenreColors(g) {
     _toggleChat(t ? t.id : null);
   });
 
+  // Exposed so artist profile badge can open chat for a specific track
+  window.cpOpenChatById = function(trackId) {
+    if (_chatOpen && _chatTrackId === trackId) return;
+    if (_chatOpen) _toggleChat(null); // close first if different track
+    _toggleChat(trackId);
+  };
+
   // ── Callbacks from audio/video engines ──
   window.cpPanel = {
     open:   open,
