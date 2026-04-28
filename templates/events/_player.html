@@ -145,6 +145,7 @@ function _cpGenreColors(g) {
   var shuffleMode  = false;
   var shuffleOrder = [];
   var repeatMode   = 0;  // 0=off 1=one 2=all
+  var _pendingVideo = null;
 
   audio.volume = 0.8;
 
@@ -270,13 +271,14 @@ function _cpGenreColors(g) {
     window._cpTracks  = tracks;
     window._cpCurrent = current;
 
-    // Video-type items: hand off to the video engine, skip <audio>
+    // Video-type items: store for user-initiated play, don't auto-start
     if (t.type && t.type !== 'audio') {
       if (barSeekFill) barSeekFill.style.width = '0%';
       if (barCur)    barCur.textContent    = '0:00';
       clearRowProgress();
       setTrackDisplay(t.title, t.artist, '', t.art_url || '');
-      if (window.cpVideo) window.cpVideo.playItem(t);
+      _pendingVideo = t;
+      window.cpPendingVideo = t;
       saveState();
       return;
     }
@@ -351,16 +353,34 @@ function _cpGenreColors(g) {
     bar.classList.toggle('drop-open');
   });
 
+  // ── Play current track (audio or pending video) ──
+  function _playCurrentTrack() {
+    var t = tracks[current];
+    if (!t) return;
+    if (t.type && t.type !== 'audio') {
+      _pendingVideo = null;
+      window.cpPendingVideo = null;
+      if (window.cpVideo) window.cpVideo.playItem(t);
+    } else {
+      play();
+    }
+  }
+
   // ── Bar controls ──
   if (barPlay) barPlay.addEventListener('click', function(e){
     e.stopPropagation();
     if (window.cpVideo && window.cpVideo.isActive()) { window.cpVideo.togglePlay(); return; }
+    if (_pendingVideo) {
+      var v = _pendingVideo; _pendingVideo = null; window.cpPendingVideo = null;
+      if (window.cpVideo) window.cpVideo.playItem(v);
+      return;
+    }
     if (audio.paused) play(); else pause();
   });
   if (barNext) barNext.addEventListener('click', function(e){
     e.stopPropagation();
     if (window.cpVideo && window.cpVideo.isActive()) { window.cpVideo.next(); return; }
-    loadTrack(getNextIdx()); play();
+    loadTrack(getNextIdx()); _playCurrentTrack();
   });
   if (barHeart) barHeart.addEventListener('click', function(e){
     e.stopPropagation();
@@ -446,7 +466,7 @@ function _cpGenreColors(g) {
   // ── Audio events ──
   audio.addEventListener('ended', function(){
     if (repeatMode === 1) { audio.currentTime = 0; audio.play(); return; }
-    loadTrack(getNextIdx()); play();
+    loadTrack(getNextIdx()); _playCurrentTrack();
   });
   audio.addEventListener('timeupdate', updateProgress);
   audio.addEventListener('play',  function(){ syncPlayBtn(true); });
@@ -482,11 +502,12 @@ function _cpGenreColors(g) {
     window._cpTracks  = tracks;
     window._cpCurrent = current;
     show(); audio.volume = 0.8;
-    loadTrack(current); play();
+    loadTrack(current); _playCurrentTrack();
   };
   window.cpSetShuffle  = function(on){ shuffleMode = on; if (on) buildShuffleOrder(); window._cpShuffleMode = on; };
   window.cpSetRepeat   = function(m){ repeatMode = m; window._cpRepeatMode = m; };
-  window.cpPlayIdx     = function(idx){ loadTrack(idx); play(); };
+  window.cpPlayIdx     = function(idx){ loadTrack(idx); _playCurrentTrack(); };
+  window.cpPlayCurrent = function(){ _playCurrentTrack(); };
   window.cpGetNextIdx  = getNextIdx;
   window.cpGetPrevIdx  = getPrevIdx;
   window.cpSetChannel  = setChannel;
@@ -992,6 +1013,11 @@ function _cpGenreColors(g) {
 
   if (playBtn) playBtn.addEventListener('click', function(){
     if (window.cpVideo && window.cpVideo.isActive()) { window.cpVideo.togglePlay(); return; }
+    if (window.cpPendingVideo) {
+      var v = window.cpPendingVideo; window.cpPendingVideo = null;
+      if (window.cpVideo) window.cpVideo.playItem(v);
+      return;
+    }
     var audio = window.cpAudio;
     if (!audio) return;
     if (audio.paused) audio.play().catch(function(){});
