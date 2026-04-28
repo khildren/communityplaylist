@@ -67,12 +67,13 @@ body{background:#111;color:#eee;font-family:sans-serif}
 
 /* ── Filter bar ── */
 .filter-bar{background:#151515;border-bottom:1px solid #1c1c1c;position:sticky;top:50px;z-index:900;font-family:sans-serif}
-.filter-search-row{display:flex;align-items:center;gap:7px;padding:7px 10px}
-.filter-q{flex:1;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;padding:8px 12px;color:#eee;font-size:.85em;min-width:0;transition:border-color .15s}
-.filter-q:focus{outline:none;border-color:#ff6b35}
-/* ⊕ expand toggle */
-.filter-toggle-btn{flex-shrink:0;width:30px;height:30px;border-radius:50%;background:#1a1a1a;border:1.5px solid #333;color:#555;font-size:1.1em;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;padding:0}
-.filter-toggle-btn:hover,.filter-toggle-btn.open{background:#ff6b35;border-color:#ff6b35;color:#111}
+.filter-search-row{display:flex;align-items:center;gap:6px;padding:7px 10px;flex-wrap:nowrap}
+/* ⊕ Filters pill */
+.filter-toggle-btn{flex-shrink:0;height:30px;padding:0 12px;border-radius:15px;background:#1a1a1a;border:1.5px solid #333;color:#888;font-size:.8em;font-weight:600;letter-spacing:.02em;line-height:1;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;white-space:nowrap}
+.filter-toggle-btn:hover,.filter-toggle-btn.open{background:#ff6b35;border-color:#ff6b35;color:#fff}
+.filter-toggle-btn.has-active{border-color:#ff6b35;color:#ff6b35}
+/* separator */
+.filter-sep{width:1px;height:20px;background:#2a2a2a;flex-shrink:0;margin:0 2px}
 /* View buttons row */
 .filter-view-group{display:flex;gap:3px;flex-shrink:0}
 .filter-view-burger{display:none;position:relative;flex-shrink:0}
@@ -237,10 +238,35 @@ a.event.ee-loading{opacity:.6;pointer-events:none}
 {% block body %}
 
 <form method="get" action="/" id="filter-form">
+  {# preserve ?q= from nav search when other filters are applied #}
+  {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
 <div class="filter-bar" id="filter-body">
   <div class="filter-search-row">
-    <input type="text" name="q" id="filter-q" class="filter-q" placeholder="🔍 Search events..." value="{{ search_query|default:'' }}" autocomplete="off">
-    <button type="button" class="filter-toggle-btn {% if selected_genre or selected_category or selected_neighborhood or selected_event_type or free_only or selected_radius %}open{% endif %}" id="filter-toggle-btn" onclick="toggleFilterExpand()" title="Filters">⊕</button>
+
+    {# ⊕ Filters toggle pill #}
+    {% with has_active=selected_genre or selected_category or selected_neighborhood or selected_event_type or free_only or selected_radius %}
+    <button type="button"
+            class="filter-toggle-btn {% if has_active %}open has-active{% endif %}"
+            id="filter-toggle-btn"
+            onclick="toggleFilterExpand()"
+            title="Filters">
+      ⊕ Filters{% if has_active %} ●{% endif %}
+    </button>
+    {% endwith %}
+
+    <div class="filter-sep"></div>
+
+    {# Tool pills — always visible #}
+    <button type="button" class="cp-near-pill" id="cp-near-pill" onclick="cpNearPillClick(this)" title="Set starting point">
+      <span class="cp-near-label" id="cp-near-label">📍 Near</span>
+      <span class="cp-near-x" id="cp-near-x" style="display:none" onclick="event.stopPropagation();cpHomeClear()" title="Clear">✕</span>
+    </button>
+    <button type="button" class="cp-nb-btn" id="cp-nb-btn" onclick="cpNightBuilderToggle()" title="Night Builder GPS mode">🧭 <span class="cp-nb-text">Night Builder</span></button>
+    <button type="button" class="cp-nb-btn" id="radar-btn" onclick="cpRadarToggle()" title="Live precipitation radar">🌧 <span class="cp-nb-text">Radar</span></button>
+
+    <div class="filter-sep" style="margin-left:auto"></div>
+
+    {# View toggles #}
     <div class="filter-view-group">
       <button type="button" class="view-btn" id="list-btn"   data-view="list"   onclick="setView('list')">≡ List</button>
       <button type="button" class="view-btn" id="map-btn"    data-view="map"    onclick="setView('map')">⊙ Map</button>
@@ -256,7 +282,10 @@ a.event.ee-loading{opacity:.6;pointer-events:none}
         <button type="button" class="view-btn" data-view="hybrid" onclick="setView('hybrid')">⊟ Hybrid</button>
       </div>
     </div>
+
   </div>
+
+  {# Expandable filter dropdowns #}
   <div class="filter-extras {% if selected_genre or selected_category or selected_neighborhood or selected_event_type or free_only or selected_radius %}open{% endif %}" id="filter-extras">
     <div class="filter-extras-inner">
       <select name="genre" id="desk-genre">
@@ -304,14 +333,8 @@ a.event.ee-loading{opacity:.6;pointer-events:none}
       <label class="free-label">
         <input type="checkbox" name="free" value="1" {% if free_only %}checked{% endif %}> Free
       </label>
-      <button type="submit" class="filter-btn">Filter</button>
+      <button type="submit" class="filter-btn">Apply</button>
       <a href="/" class="clear-btn">Clear</a>
-      <button type="button" class="cp-near-pill" id="cp-near-pill" onclick="cpNearPillClick(this)" title="Set starting point">
-        <span class="cp-near-label" id="cp-near-label">📍 Near</span>
-        <span class="cp-near-x" id="cp-near-x" style="display:none" onclick="event.stopPropagation();cpHomeClear()" title="Clear">✕</span>
-      </button>
-      <button type="button" class="cp-nb-btn" id="cp-nb-btn" onclick="cpNightBuilderToggle()" title="Night Builder GPS mode">🧭 <span class="cp-nb-text">Night Builder</span></button>
-      <button type="button" class="cp-nb-btn" id="radar-btn" onclick="cpRadarToggle()" title="Live precipitation radar">🌧 <span class="cp-nb-text">Radar</span></button>
     </div>
   </div>
 </div>
@@ -1008,7 +1031,7 @@ document.getElementById('filter-form').addEventListener('submit', function(e) {
   const cat = (document.getElementById('desk-category') || {}).value || '';
   if (cat === 'artists') {
     e.preventDefault();
-    const q = (document.getElementById('filter-q') || {}).value || '';
+    const q = (document.querySelector('#filter-form [name="q"]') || {}).value || '';
     window.location.href = '/artists/' + (q.trim() ? '?q=' + encodeURIComponent(q.trim()) : '');
     return;
   }
