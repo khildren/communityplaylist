@@ -434,6 +434,10 @@ class CommunitySpace(models.Model):
     mastodon  = models.URLField(blank=True, help_text='Full profile URL e.g. https://pdx.social/@you')
     tiktok    = models.CharField(max_length=100, blank=True, help_text='Handle without @')
     kofi      = models.CharField(max_length=100, blank=True, help_text='Ko-fi page ID or username e.g. U7U813CDB7 from ko-fi.com/U7U813CDB7 — embeds posts feed on profile')
+    kofi_token = models.CharField(
+        max_length=64, blank=True, unique=True, null=True,
+        help_text='Auto-generated webhook verification token — paste this into Ko-fi Settings → Webhooks',
+    )
 
     # Resources
     drive_folder_url = models.URLField(
@@ -523,6 +527,63 @@ class SpaceUpdate(models.Model):
 
     def __str__(self):
         return f"{self.space.name} update {self.created_at:%Y-%m-%d}"
+
+
+class KofiPost(models.Model):
+    """A Ko-fi event received via webhook — blog post, donation, subscription, or shop order."""
+
+    TYPE_DONATION     = 'Donation'
+    TYPE_SUBSCRIPTION = 'Subscription'
+    TYPE_SHOP_ORDER   = 'Shop_Order'
+    TYPE_BLOG_POST    = 'Blog_Post'
+    TYPE_CHOICES = [
+        ('Donation',     'Donation'),
+        ('Subscription', 'Subscription'),
+        ('Shop_Order',   'Shop Order'),
+        ('Blog_Post',    'Blog Post'),
+    ]
+
+    community_space = models.ForeignKey(
+        'CommunitySpace', null=True, blank=True, on_delete=models.CASCADE,
+        related_name='kofi_posts',
+    )
+    artist = models.ForeignKey(
+        'Artist', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='kofi_posts',
+    )
+    promoter = models.ForeignKey(
+        'PromoterProfile', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='kofi_posts',
+    )
+
+    kofi_type            = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_DONATION)
+    from_name            = models.CharField(max_length=200, blank=True)
+    message              = models.TextField(blank=True)
+    url                  = models.URLField(blank=True, max_length=500)
+    is_public            = models.BooleanField(default=True)
+    amount               = models.CharField(max_length=20, blank=True)
+    currency             = models.CharField(max_length=10, blank=True)
+    kofi_transaction_id  = models.CharField(max_length=120, blank=True, unique=True, null=True)
+    timestamp            = models.DateTimeField(null=True, blank=True)
+    raw_data             = models.JSONField(default=dict)
+    created_at           = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-timestamp', '-created_at']
+        verbose_name = 'Ko-fi Post'
+        verbose_name_plural = 'Ko-fi Posts'
+
+    def __str__(self):
+        owner = self.community_space or self.artist or self.promoter or '?'
+        return f'{self.kofi_type} from {self.from_name} [{owner}]'
+
+    @property
+    def is_blog_post(self):
+        return self.kofi_type == self.TYPE_BLOG_POST
+
+    @property
+    def is_support(self):
+        return self.kofi_type in (self.TYPE_DONATION, self.TYPE_SUBSCRIPTION)
 
 
 class CommunityAsk(models.Model):

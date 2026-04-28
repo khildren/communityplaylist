@@ -4851,11 +4851,14 @@ def community_space_profile(request, slug):
     audio_files, doc_files = _fetch_space_library(
         space.drive_folder_url, space.show_audio, space.show_docs,
     )
-    from .models import SpacePhoto, SpaceUpdate
-    photos  = list(space.photos.all()[:30])
-    updates = list(space.updates.all()[:20])
+    from .models import SpacePhoto, SpaceUpdate, KofiPost
+    photos      = list(space.photos.all()[:30])
+    updates     = list(space.updates.all()[:20])
+    kofi_posts  = list(space.kofi_posts.filter(is_public=True).order_by('-timestamp', '-created_at')[:20]) if space.kofi else []
+    kofi_blog   = [p for p in kofi_posts if p.kofi_type == 'Blog_Post']
+    kofi_support = [p for p in kofi_posts if p.kofi_type in ('Donation', 'Subscription')]
 
-    # Handle new update post (owner only, AJAX-friendly)
+    # Handle new update post (owner only)
     if request.method == 'POST' and request.POST.get('_post_update') == '1' and can_edit:
         body = request.POST.get('update_body', '').strip()
         if body:
@@ -4863,14 +4866,16 @@ def community_space_profile(request, slug):
         return redirect('community_space_profile', slug=slug)
 
     return render(request, 'events/community_space_profile.html', {
-        'space':        space,
-        'can_edit':     can_edit,
-        'is_following': is_following,
-        'asks':         asks,
-        'audio_files':  audio_files,
-        'doc_files':    doc_files,
-        'photos':       photos,
-        'updates':      updates,
+        'space':         space,
+        'can_edit':      can_edit,
+        'is_following':  is_following,
+        'asks':          asks,
+        'audio_files':   audio_files,
+        'doc_files':     doc_files,
+        'photos':        photos,
+        'updates':       updates,
+        'kofi_blog':     kofi_blog,
+        'kofi_support':  kofi_support,
     })
 
 
@@ -4928,9 +4933,14 @@ def community_space_edit(request, slug):
         space.brand_color = ''
 
     for field in ['name', 'bio', 'address', 'neighborhood', 'website',
-                  'contact_email', 'instagram', 'bluesky', 'mastodon', 'tiktok',
+                  'contact_email', 'instagram', 'bluesky', 'mastodon', 'tiktok', 'kofi',
                   'drive_folder_url', 'sol_wallet', 'donation_url']:
         space.__setattr__(field, request.POST.get(field, '').strip())
+
+    # Auto-generate webhook token on first save if Ko-fi handle is set
+    if space.kofi and not space.kofi_token:
+        from events.kofi import generate_kofi_token
+        space.kofi_token = generate_kofi_token()
 
     space.show_audio = request.POST.get('show_audio') == '1'
     space.show_docs  = request.POST.get('show_docs')  == '1'

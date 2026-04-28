@@ -133,6 +133,22 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
 .photo-grid img:hover{opacity:.85;cursor:zoom-in}
 .photo-grid-more{background:#161616;border:1px solid #222;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:.75em;color:#555;aspect-ratio:1}
 
+/* Ko-fi post cards */
+.kofi-posts{display:flex;flex-direction:column;gap:8px}
+.kofi-post-card{background:#161616;border:1px solid #222;border-radius:12px;padding:14px 16px;text-decoration:none;color:#eee;display:block;transition:border-color .15s}
+.kofi-post-card:hover{border-color:var(--accent)}
+.kofi-post-meta{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.kofi-post-icon{font-size:1.1em;line-height:1}
+.kofi-post-date{font-size:.7em;color:#444;letter-spacing:.02em}
+.kofi-post-title{font-size:.88em;font-weight:600;color:#ddd;line-height:1.4;margin-bottom:4px}
+.kofi-post-excerpt{font-size:.78em;color:#666;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.kofi-post-link{font-size:.74em;color:var(--accent);margin-top:6px;display:inline-block}
+
+/* Supporter strip */
+.supporters-strip{display:flex;flex-wrap:wrap;gap:6px}
+.supporter-pill{display:inline-flex;align-items:center;gap:4px;background:#111;border:1px solid #1e1e1e;border-radius:20px;padding:4px 10px;font-size:.74em;color:#888}
+.supporter-pill .sp-emoji{font-size:.9em}
+
 /* Timeline */
 .timeline{display:flex;flex-direction:column;gap:0}
 .tl-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #1a1a1a}
@@ -353,17 +369,47 @@ h1{color:var(--accent);font-size:1.3em;font-weight:700;line-height:1.2}
 </a>
 {% endif %}
 
-{# ── 7. Ko-fi Posts Feed ── #}
+{# ── 7. Ko-fi Posts + Supporters ── #}
 {% if space.kofi %}
+{% if kofi_blog %}
 <div class="section-label">☕ Ko-fi Posts</div>
+<div class="kofi-posts">
+  {% for post in kofi_blog %}
+  <a href="{{ post.url }}" class="kofi-post-card" target="_blank" rel="noopener">
+    <div class="kofi-post-meta">
+      <span class="kofi-post-icon">📝</span>
+      {% if post.timestamp %}<span class="kofi-post-date">{{ post.timestamp|date:"M j, Y" }}</span>{% endif %}
+    </div>
+    <div class="kofi-post-title">{{ post.message|truncatechars:120 }}</div>
+    <span class="kofi-post-link">Read on Ko-fi ↗</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if kofi_support %}
+<div class="section-label" style="margin-top:{% if kofi_blog %}10{% else %}0{% endif %}px">☕ Supporters</div>
+<div class="supporters-strip">
+  {% for s in kofi_support %}
+  {% if s.is_public %}
+  <span class="supporter-pill">
+    <span class="sp-emoji">{% if s.kofi_type == 'Subscription' %}⭐{% else %}☕{% endif %}</span>
+    {{ s.from_name }}{% if s.amount and s.amount != '0' %} · ${{ s.amount }}{% endif %}
+  </span>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if not kofi_blog and not kofi_support %}
+{# No webhook data yet — show the embed as fallback #}
+<div class="section-label">☕ Ko-fi</div>
 <div style="background:#161616;border:1px solid #222;border-radius:14px;overflow:hidden">
-  <iframe id="kofiframe"
-    src="https://ko-fi.com/{{ space.kofi }}/?hidefeed=false&widget=true&embed=true&preview=true"
-    style="border:none;width:100%;display:block;min-height:520px"
-    title="{{ space.name }} Ko-fi"
-    loading="lazy">
+  <iframe src="https://ko-fi.com/{{ space.kofi }}/?hidefeed=false&widget=true&embed=true&preview=true"
+    style="border:none;width:100%;display:block;min-height:480px" title="{{ space.name }} Ko-fi" loading="lazy">
   </iframe>
 </div>
+{% endif %}
 {% endif %}
 
 {# ── 8. Photo Gallery ── #}

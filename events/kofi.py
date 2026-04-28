@@ -1,30 +1,23 @@
 """
-Ko-fi integration for Community Playlist.
+Ko-fi webhook integration for Community Playlist.
 
-Two entry points:
+Routing:
+  Each CommunitySpace (and in future, Artist/PromoterProfile) has a unique
+  `kofi_token` that the owner pastes into their Ko-fi Settings → Webhooks.
+  When Ko-fi fires a POST, the payload's `verification_token` is matched
+  against stored tokens to route the event to the right entity.
 
-  handle_kofi_webhook(request) → HttpResponse
-      Called by the /webhooks/kofi/ view. Verifies the payload, matches the
-      Ko-fi creator to a CP artist or promoter, then fires a Discord shoutout
-      and a Bluesky thank-you post.
-
-  kofi_daily_broadcast()
-      Called by the kofi_broadcast management command (run daily via cron).
-      Posts a "support us on Ko-fi" message to both Bluesky and Discord,
-      optionally listing the day's new supporters (names only, no amounts).
-
-Settings (all optional — feature silently disabled if missing):
-  KOFI_VERIFICATION_TOKEN  — from ko-fi.com/manage/api (the KF_API_... key)
-  DISCORD_WEBHOOK_KOFI     — dedicated Discord webhook URL for Ko-fi posts
-  BLUESKY_HANDLE / BLUESKY_APP_PASSWORD — reuses existing Bluesky creds
+  If no entity matches, the site-level KOFI_VERIFICATION_TOKEN is tried,
+  and the event is treated as a CP-level supporter shoutout.
 
 Ko-fi webhook payload reference:
-  https://ko-fi.com/manage/webhooks  (docs linked from the API page)
+  https://ko-fi.com/manage/webhooks
 """
 import json
+import secrets
 import urllib.request
 import urllib.error
-from datetime import datetime, timezone
+from datetime import datetime, timezone as _tz
 
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -38,9 +31,19 @@ def _settings():
     return settings
 
 
-def _verify_token(payload_token):
-    token = getattr(_settings(), 'KOFI_VERIFICATION_TOKEN', '')
-    return token and payload_token == token
+def _parse_ts(ts_str):
+    if not ts_str:
+        return None
+    for fmt in ('%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S'):
+        try:
+            return datetime.strptime(ts_str, fmt).replace(tzinfo=_tz.utc)
+        except (ValueError, TypeError):
+            pass
+    return None
+
+
+def generate_kofi_token():
+    return secrets.token_urlsafe(32)
 
 
 def _discord_post(webhook_url, payload):
@@ -60,8 +63,11 @@ def _discord_post(webhook_url, payload):
 
 
 def _bsky_session():
-    from board.social import _bsky_session as _s
-    return _s()
+    try:
+        from board.social import _bsky_session as _s
+        return _s()
+    except Exception:
+        return None, None
 
 
 def _bsky_create(token, did, text, facets=None):
@@ -74,17 +80,66 @@ def _bsky_facets(text, links=(), hashtags=()):
     return _f(text, links=list(links), hashtags=list(hashtags))
 
 
-def _find_creator(kofi_username):
-    """Return (type, obj) matching kofi_username, or (None, None)."""
-    from events.models import Artist, PromoterProfile
-    username = kofi_username.lower().strip()
-    artist = Artist.objects.filter(kofi__iexact=username).first()
-    if artist:
-        return 'artist', artist
-    promoter = PromoterProfile.objects.filter(kofi__iexact=username).first()
-    if promoter:
-        return 'promoter', promoter
+# ── Entity lookup ─────────────────────────────────────────────────────────────
+
+def _find_entity_by_token(token):
+    """Return (kind, obj) for the entity whose kofi_token matches, or (None, None)."""
+    if not token:
+        return None, None
+    from events.models import CommunitySpace
+    space = CommunitySpace.objects.filter(kofi_token=token).first()
+    if space:
+        return 'space', space
+    # Future: Artist / PromoterProfile lookup here
     return None, None
+
+
+# ── Entity-level event handler ────────────────────────────────────────────────
+
+def _handle_entity_event(kind, obj, data):
+    """Persist an incoming webhook payload as a KofiPost for a specific entity."""
+    from events.models import KofiPost
+
+    kofi_type  = data.get('type', 'Donation')
+    txn_id     = data.get('message_id') or data.get('kofi_transaction_id') or None
+    from_name  = (data.get('from_name') or 'Anonymous').strip()
+    message    = (data.get('message') or '').strip()
+    url        = (data.get('url') or '').strip()
+    is_public  = data.get('is_public', True)
+    amount     = str(data.get('amount') or '')
+    currency   = (data.get('currency') or '').strip()
+    timestamp  = _parse_ts(data.get('timestamp'))
+
+    defaults = {
+        'kofi_type': kofi_type,
+        'from_name': from_name,
+        'message':   message,
+        'url':       url,
+        'is_public': is_public,
+        'amount':    amount,
+        'currency':  currency,
+        'timestamp': timestamp,
+        'raw_data':  data,
+    }
+    if kind == 'space':
+        defaults['community_space'] = obj
+
+    if txn_id:
+        KofiPost.objects.get_or_create(kofi_transaction_id=txn_id, defaults=defaults)
+    else:
+        KofiPost.objects.create(**defaults)
+
+    # Discord shoutout for donation/subscription events
+    s = _settings()
+    webhook = getattr(s, 'DISCORD_WEBHOOK_BOARD', '')
+    if webhook and kofi_type != 'Blog_Post':
+        emoji = {'Subscription': '⭐', 'Shop_Order': '🛒'}.get(kofi_type, '☕')
+        label = {'Subscription': 'subscribed', 'Shop_Order': 'placed a shop order'}.get(kofi_type, 'supported')
+        name  = getattr(obj, 'name', str(obj))
+        msg   = f'**{from_name}** just {label} **{name}** on Ko-fi! {emoji}'
+        if message and is_public:
+            msg += f'\n> {message}'
+        _discord_post(webhook, {'embeds': [{'description': msg, 'color': 0xFF5E5B}]})
 
 
 # ── Webhook receiver ──────────────────────────────────────────────────────────
@@ -93,8 +148,8 @@ def _find_creator(kofi_username):
 @require_POST
 def kofi_webhook(request):
     """
-    Receives Ko-fi webhook POSTs. Ko-fi sends the payload as a form field
-    named 'data' containing JSON.
+    Receives Ko-fi webhook POSTs.
+    Ko-fi sends the payload as a form field named 'data' containing JSON.
     """
     raw = request.POST.get('data') or request.body.decode('utf-8', errors='replace')
     try:
@@ -102,23 +157,30 @@ def kofi_webhook(request):
     except (json.JSONDecodeError, TypeError):
         return HttpResponse('bad payload', status=400)
 
-    if not _verify_token(data.get('verification_token', '')):
-        return HttpResponse('forbidden', status=403)
+    token = data.get('verification_token', '')
 
-    support_type  = data.get('type', 'Donation')          # Donation / Subscription / Shop Order
-    from_name     = data.get('from_name') or 'A supporter'
-    message       = (data.get('message') or '').strip()
-    kofi_url      = data.get('url', 'https://ko-fi.com/communityplaylist')
-    is_public     = data.get('is_public', True)
-    kofi_creator  = (data.get('kofi_transaction_id') or '')  # not the creator username
+    # 1 — try to route to a specific space / artist / promoter
+    kind, obj = _find_entity_by_token(token)
+    if kind and obj:
+        _handle_entity_event(kind, obj, data)
+        return HttpResponse('ok', status=200)
 
-    # Ko-fi doesn't send the page-owner's username in the webhook — the webhook
-    # is tied to your account, so it's always CP's own page unless you route
-    # per-artist webhooks (future). We thank the supporter on behalf of CP.
-    _fire_supporter_shoutout(from_name, message, support_type, kofi_url, is_public)
+    # 2 — fall back to site-level CP shoutout
+    site_token = getattr(_settings(), 'KOFI_VERIFICATION_TOKEN', '')
+    if site_token and token == site_token:
+        _fire_supporter_shoutout(
+            from_name    = data.get('from_name') or 'A supporter',
+            message      = (data.get('message') or '').strip(),
+            support_type = data.get('type', 'Donation'),
+            kofi_url     = data.get('url', 'https://ko-fi.com/communityplaylist'),
+            is_public    = data.get('is_public', True),
+        )
+        return HttpResponse('ok', status=200)
 
-    return HttpResponse('ok', status=200)
+    return HttpResponse('forbidden', status=403)
 
+
+# ── Site-level supporter shoutout ─────────────────────────────────────────────
 
 def _fire_supporter_shoutout(from_name, message, support_type, kofi_url, is_public):
     s = _settings()
@@ -129,30 +191,25 @@ def _fire_supporter_shoutout(from_name, message, support_type, kofi_url, is_publ
     emoji = {'Subscription': '⭐', 'Shop Order': '🛒'}.get(support_type, '☕')
     label = {'Subscription': 'subscribed', 'Shop Order': 'placed a shop order'}.get(support_type, 'bought a coffee')
 
-    # Discord embed
     if webhook:
         desc = f'**{from_name}** just {label} on Ko-fi! {emoji}'
         if message and is_public:
             desc += f'\n> {message}'
         desc += f'\n\n[Support Community Playlist]({cp_url})'
-        embed = {
-            'title':       f'{emoji} Ko-fi Support — Thank You!',
+        _discord_post(webhook, {'embeds': [{
+            'title': f'{emoji} Ko-fi Support — Thank You!',
             'description': desc,
-            'color':       0xFF5E5B,  # Ko-fi brand coral
-            'url':         cp_url,
-            'footer':      {'text': 'ko-fi.com/communityplaylist'},
-        }
-        _discord_post(webhook, {'embeds': [embed]})
+            'color': 0xFF5E5B,
+            'url': cp_url,
+        }]})
 
-    # Bluesky post
     token, did = _bsky_session()
     if token:
         pub_msg = f' "{message}"' if (message and is_public and len(message) < 120) else ''
         text = (
             f'{emoji} {from_name} just supported Community Playlist on Ko-fi!{pub_msg}\n\n'
             f'If you love free local PDX music listings, a coffee helps keep us running:\n'
-            f'{cp_url}\n\n'
-            f'#PDX #Portland #CommunityPlaylist'
+            f'{cp_url}\n\n#PDX #Portland #CommunityPlaylist'
         )[:300]
         facets = _bsky_facets(text, links=[cp_url], hashtags=['#PDX', '#Portland', '#CommunityPlaylist'])
         try:
@@ -164,38 +221,26 @@ def _fire_supporter_shoutout(from_name, message, support_type, kofi_url, is_publ
 # ── Daily broadcast ───────────────────────────────────────────────────────────
 
 def kofi_daily_broadcast(dry_run=False):
-    """
-    Post a daily Ko-fi awareness message to Discord + Bluesky.
-    Designed to be called from the kofi_broadcast management command.
-    Returns (discord_ok, bluesky_ok).
-    """
     s = _settings()
     webhook  = getattr(s, 'DISCORD_WEBHOOK_KOFI', '') or getattr(s, 'DISCORD_WEBHOOK_BOARD', '')
     cp_kofi  = getattr(s, 'KOFI_PAGE', 'communityplaylist')
     cp_url   = f'https://ko-fi.com/{cp_kofi}'
 
     from django.utils import timezone
-    day = timezone.now().strftime('%A')  # e.g. "Monday"
+    day = timezone.now().strftime('%A')
 
     discord_text = (
-        f'☕ **Happy {day}, PDX!**\n\n'
-        f'Community Playlist is free, ad-free, and community-run. '
-        f'If you find value in local event listings, mixes, and artist pages — '
-        f'a Ko-fi goes a long way.\n\n'
-        f'**[Buy us a coffee ☕]({cp_url})**\n\n'
-        f'Every supporter gets a shoutout here. Thank you! 🙏'
+        f'☕ **Happy {day}, PDX!**\n\nCommunity Playlist is free, ad-free, and community-run. '
+        f'If you find value in local event listings, mixes, and artist pages — a Ko-fi goes a long way.\n\n'
+        f'**[Buy us a coffee ☕]({cp_url})**\n\nEvery supporter gets a shoutout. Thank you! 🙏'
     )
-
     bsky_text = (
-        f'☕ Happy {day}, PDX!\n\n'
-        f'Community Playlist is free, ad-free, and run by locals. '
+        f'☕ Happy {day}, PDX!\n\nCommunity Playlist is free, ad-free, and run by locals. '
         f'If you enjoy free PDX event listings + artist mixes, a Ko-fi keeps the lights on.\n\n'
-        f'{cp_url}\n\n'
-        f'#PDX #Portland #PDXEvents #CommunityPlaylist'
+        f'{cp_url}\n\n#PDX #Portland #PDXEvents #CommunityPlaylist'
     )[:300]
 
-    discord_ok = False
-    bluesky_ok = False
+    discord_ok = bluesky_ok = False
 
     if dry_run:
         print(f'[DRY] Discord:\n{discord_text}\n')
@@ -203,14 +248,12 @@ def kofi_daily_broadcast(dry_run=False):
         return True, True
 
     if webhook:
-        embed = {
-            'title':       '☕ Support Community Playlist on Ko-fi',
+        discord_ok = _discord_post(webhook, {'embeds': [{
+            'title': '☕ Support Community Playlist on Ko-fi',
             'description': discord_text,
-            'color':       0xFF5E5B,
-            'url':         cp_url,
-            'footer':      {'text': 'ko-fi.com/communityplaylist · free · ad-free · local'},
-        }
-        discord_ok = _discord_post(webhook, {'embeds': [embed]})
+            'color': 0xFF5E5B,
+            'url': cp_url,
+        }]})
 
     token, did = _bsky_session()
     if token:

@@ -6,7 +6,7 @@ from django.urls import path
 from django.http import HttpResponseRedirect, StreamingHttpResponse
 from django.contrib import messages
 from django import forms
-from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile, PromoterProfile, PlaylistTrack, RecordListing, RecordReservation, VideoTrack, Shelter, InstagramAccount, InstagramPost, WorkerTask, CommunitySpace, CommunityAsk
+from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile, PromoterProfile, PlaylistTrack, RecordListing, RecordReservation, VideoTrack, Shelter, InstagramAccount, InstagramPost, WorkerTask, CommunitySpace, CommunityAsk, KofiPost
 import os
 import datetime
 import subprocess
@@ -632,6 +632,15 @@ class CommunityAskAdmin(admin.ModelAdmin):
     list_filter   = ['ask_type', 'status']
     search_fields = ['title', 'description']
     readonly_fields = ['board_offering', 'created_at']
+
+
+@admin.register(KofiPost)
+class KofiPostAdmin(admin.ModelAdmin):
+    list_display  = ['kofi_type', 'from_name', 'amount', 'community_space', 'artist', 'promoter', 'is_public', 'timestamp']
+    list_filter   = ['kofi_type', 'is_public']
+    search_fields = ['from_name', 'message']
+    readonly_fields = ['raw_data', 'created_at', 'timestamp']
+    ordering = ['-timestamp']
 
 
 @admin.register(Venue)

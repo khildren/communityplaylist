@@ -119,6 +119,11 @@ h1{color:var(--accent);font-size:1.2em;margin-bottom:22px}
     <label>TikTok handle</label>
     <input type="text" name="tiktok" value="{{ space.tiktok }}" placeholder="no @">
   </div>
+  <div class="fg">
+    <label>Ko-fi page ID / handle</label>
+    <input type="text" name="kofi" value="{{ space.kofi }}" placeholder="e.g. U7U813CDB7">
+    <div class="hint">The ID or username from your Ko-fi URL — ko-fi.com/<strong>U7U813CDB7</strong>. Enables the posts feed and webhook sync.</div>
+  </div>
 </div>
 
 <div class="card">
@@ -135,6 +140,48 @@ h1{color:var(--accent);font-size:1.2em;margin-bottom:22px}
     <div class="hint">Shown alongside the donation link — visitors can copy and send directly via Phantom</div>
   </div>
 </div>
+
+{% if space.kofi %}
+<div class="card" style="border-color:#2a1f00">
+  <div class="card-title" style="color:#cc8800">☕ Ko-fi Webhook Setup</div>
+  <p style="font-size:.8em;color:#666;margin-bottom:14px;line-height:1.6">
+    Connect your Ko-fi account so new posts, donations, and subscriptions appear natively on your profile page — no iframe, no scraping.
+  </p>
+  <div class="fg">
+    <label style="color:#888">Webhook URL — paste this into Ko-fi Settings → Webhooks</label>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="text" id="kofi-webhook-url" readonly
+             value="https://communityplaylist.com/webhooks/kofi/"
+             style="font-family:monospace;font-size:.82em;background:#111;cursor:pointer"
+             onclick="this.select()">
+      <button type="button" onclick="cpCopy('kofi-webhook-url',this)"
+              style="background:transparent;border:1px solid #333;color:#666;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:.78em;white-space:nowrap;flex-shrink:0">Copy</button>
+    </div>
+  </div>
+  <div class="fg">
+    <label style="color:#888">Verification Token — paste this into the Ko-fi webhook token field</label>
+    {% if space.kofi_token %}
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="text" id="kofi-token-val" readonly
+             value="{{ space.kofi_token }}"
+             style="font-family:monospace;font-size:.78em;background:#111;cursor:pointer"
+             onclick="this.select()">
+      <button type="button" onclick="cpCopy('kofi-token-val',this)"
+              style="background:transparent;border:1px solid #333;color:#666;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:.78em;white-space:nowrap;flex-shrink:0">Copy</button>
+    </div>
+    {% else %}
+    <p style="font-size:.8em;color:#555;font-style:italic">Save this page once to generate your token.</p>
+    {% endif %}
+  </div>
+  <ol style="font-size:.78em;color:#555;line-height:1.9;padding-left:18px;margin-top:6px">
+    <li>Go to <a href="https://ko-fi.com/manage/webhooks" target="_blank" rel="noopener" style="color:#cc8800">ko-fi.com/manage/webhooks</a></li>
+    <li>Paste the Webhook URL above into the URL field</li>
+    <li>Paste the Verification Token above into the token field</li>
+    <li>Check all event types you want (Posts, Donations, Subscriptions)</li>
+    <li>Hit Save — new activity will appear on your profile automatically</li>
+  </ol>
+</div>
+{% endif %}
 
 <div class="card">
   <div class="card-title">📁 Resource Library</div>
@@ -344,5 +391,15 @@ document.getElementById('add-link-btn').addEventListener('click', function() {
     '<button type="button" class="remove-link" onclick="this.closest(\'.link-row\').remove()" title="Remove">✕</button>';
   list.appendChild(row);
 });
+
+function cpCopy(inputId, btn) {
+  var el = document.getElementById(inputId);
+  el.select();
+  navigator.clipboard.writeText(el.value).then(function() {
+    var orig = btn.textContent;
+    btn.textContent = '✓ Copied';
+    setTimeout(function(){ btn.textContent = orig; }, 2000);
+  });
+}
 </script>
 {% endblock %}
