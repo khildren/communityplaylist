@@ -3262,8 +3262,9 @@ def api_queue(request):
                 'show_soon_event_slug':  upcoming_slug.get(v.artist_id, '') if v.artist_id else '',
             }
 
-        live_objs = [v for v in all_vt if v.is_live]
-        vod_objs  = [v for v in all_vt if not v.is_live]
+        live_cutoff = now - timedelta(minutes=30)
+        live_objs = [v for v in all_vt if v.is_live and v.live_checked_at and v.live_checked_at >= live_cutoff]
+        vod_objs  = [v for v in all_vt if not (v.is_live and v.live_checked_at and v.live_checked_at >= live_cutoff)]
 
         # Weighted shuffle: artists with upcoming shows get 3× weight
         pool = []
