@@ -53,7 +53,7 @@
     /* Hide back link when opened as popup or standalone */
     @media(display-mode:standalone){#pl-back-link{display:none}}
     @media(max-width:620px){.pl-ticker{display:none}}
-    .pl-body{display:flex;flex:1;overflow:hidden}
+    .pl-body{display:flex;flex:1;overflow:hidden;position:relative}
 
     /* ── Stage (left) ── */
     .pl-stage{
@@ -197,11 +197,12 @@
     .pl-q-title{font-size:.8em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .pl-q-artist{font-size:.7em;color:#555;margin-top:1px}
 
-    /* Mobile */
+    /* Mobile — stacked: art on top, queue below */
     @media(max-width:620px){
       html,body{overflow:auto}
       .pl-body{flex-direction:column}
       .pl-stage{width:100%;flex:none}
+      .pl-art{flex:none;height:46vw;min-height:160px}
       .pl-sidebar{min-height:300px}
     }
   </style>
@@ -232,7 +233,6 @@
   </header>
 
   <div class="pl-body">
-
     <!-- Stage -->
     <div class="pl-stage">
 
@@ -273,6 +273,7 @@
         <button class="pl-btn" id="pl-mute" title="Mute">🔈</button>
         <input type="range" id="pl-vol" min="0" max="100" value="80">
         <button class="pl-btn" id="pl-video-btn" title="Video mode">📺</button>
+        <button class="pl-btn" id="pl-vis-btn" title="Visualizer style">▮▮▮</button>
       </div>
 
     </div>
@@ -339,19 +340,24 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
 
   /* Visualizer */
   var visCtx = null, visAnalyser = null, visRaf = null, visInit = false;
-  var _VB = 38;
-  var _visLvl = new Float32Array(_VB);
-  var _visTgt = new Float32Array(_VB);
-  var _visPhs = (function(){ var a=new Float32Array(_VB); for(var i=0;i<_VB;i++) a[i]=i*0.41; return a; })();
+  var _visMaxBars = 200;
+  var _visLvl = new Float32Array(_visMaxBars);
+  var _visTgt = new Float32Array(_visMaxBars);
+  var _visPhs = (function(){ var a=new Float32Array(_visMaxBars); for(var i=0;i<_visMaxBars;i++) a[i]=i*0.41; return a; })();
+  /* log-scale freq mapping: 30Hz–16kHz caps at MP3 cutoff */
+  var _visLogMin = Math.log(30), _visLogMax = Math.log(16000), _visNyquist = 22050;
   var _visT = 0, _visPlaying = false;
+  var _visMode = 0; // 0=bars 1=mirror 2=scope
+  var _visModeLabels = ['▮▮▮','◈','〰'];
+  var _visModeNames  = ['Bars','Mirror','Scope'];
 
   /* ── DOM ── */
   var artEl    = document.getElementById('pl-art');
   var artGrad  = document.getElementById('pl-art-grad');
   var artImg   = document.getElementById('pl-art-img');
   var artInit  = document.getElementById('pl-art-init');
-  var canvas   = document.getElementById('pl-canvas');
-  var videoArea= document.getElementById('pl-video-area');
+  var canvas    = document.getElementById('pl-canvas');
+  var videoArea = document.getElementById('pl-video-area');
   var seekEl   = document.getElementById('pl-seek');
   var seekFill = document.getElementById('pl-seek-fill');
   var curEl    = document.getElementById('pl-cur');
@@ -368,6 +374,7 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
   var muteBtn    = document.getElementById('pl-mute');
   var volSlide   = document.getElementById('pl-vol');
   var videoBtn   = document.getElementById('pl-video-btn');
+  var visBtn     = document.getElementById('pl-vis-btn');
   var qList      = document.getElementById('pl-q-list');
   var qCount     = document.getElementById('pl-q-count');
   var channels   = document.getElementById('pl-channels');
@@ -407,51 +414,114 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
     if (visInit) return; visInit = true;
     try {
       var ac = new (window.AudioContext || window.webkitAudioContext)();
+      ac.resume();
+      var src = ac.createMediaElementSource(audio);
       visAnalyser = ac.createAnalyser();
       visAnalyser.fftSize = 512;
       visAnalyser.smoothingTimeConstant = 0.8;
-      var src = ac.createMediaElementSource(audio);
       src.connect(visAnalyser);
       visAnalyser.connect(ac.destination);
-    } catch(e) {}
+      console.log('[vis] Web Audio connected, ctx state:', ac.state);
+    } catch(e) {
+      visAnalyser = null;
+      console.warn('[vis] Web Audio init failed — fake wave active:', e.name, e.message);
+    }
+  }
+  function _drawFrame(ctx, cv, op, freqData, waveData, amps, numBars) {
+    var W = cv.offsetWidth, H = cv.offsetHeight;
+    if (!W || !H) return;
+    cv.width = W; cv.height = H;
+    ctx.clearRect(0, 0, W, H);
+    var nb = numBars || amps.length;
+    /* ── MODE 0: Bars ── */
+    if (_visMode === 0) {
+      var bw = W / nb - 1;
+      for (var i = 0; i < nb; i++) {
+        var a = amps[i];
+        var bh = a * H * 0.82;
+        ctx.fillStyle = 'rgba(255,107,53,' + (0.08 + a * 0.78) * op + ')';
+        ctx.fillRect(i * (bw + 1), H - bh, Math.max(1, bw), bh);
+      }
+    /* ── MODE 1: Mirror ── */
+    } else if (_visMode === 1) {
+      var bw = W / nb - 1, cy = H / 2;
+      for (var i = 0; i < nb; i++) {
+        var a = amps[i], bh = a * cy * 0.9;
+        ctx.fillStyle = 'rgba(255,107,53,' + (0.08 + a * 0.75) * op + ')';
+        ctx.fillRect(i * (bw + 1), cy - bh, Math.max(1, bw), bh * 2);
+      }
+    /* ── MODE 2: Scope ── */
+    } else {
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(255,107,53,' + (0.85 * op) + ')';
+      ctx.shadowColor = '#ff6b35';
+      ctx.shadowBlur  = 8 * op;
+      ctx.beginPath();
+      var pts = waveData ? waveData.length : 256;
+      for (var i = 0; i < pts; i++) {
+        var x = i / pts * W;
+        var v = waveData ? (waveData[i] / 128 - 1) * 0.42
+              : _visPlaying ? (Math.sin(_visT*3.1+i*0.045)*0.22+Math.sin(_visT*7.4+i*0.019)*0.12)*0.7
+              : Math.sin(_visT*0.8+i*0.06)*0.025;
+        var y = H / 2 + v * H;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
   }
   function _drawVis() {
     visRaf = requestAnimationFrame(_drawVis);
-    if (!visCtx || !canvas) return;
     _visT += _visPlaying ? 0.055 : 0.008;
-    var W = canvas.offsetWidth, H = canvas.offsetHeight;
-    if (!W || !H) return;
-    canvas.width = W; canvas.height = H;
-    visCtx.clearRect(0, 0, W, H);
-    var bw = W / _VB - 1;
-    var data = null;
+
+    /* collect audio data once per frame */
+    var freqData = null, waveData = null;
     if (visAnalyser && _visPlaying) {
-      data = data || new Uint8Array(visAnalyser.frequencyBinCount);
-      visAnalyser.getByteFrequencyData(data);
-    }
-    for (var i = 0; i < _VB; i++) {
-      var amp;
-      if (data) {
-        var di = Math.floor(i * data.length / _VB);
-        amp = data[di] / 255;
-      } else if (_visPlaying) {
-        var wave = Math.sin(_visT*2.1 + _visPhs[i])     * 0.32
-                 + Math.sin(_visT*4.8 + _visPhs[i]*1.7) * 0.22
-                 + Math.sin(_visT*7.3 + _visPhs[i]*0.9) * 0.14
-                 + Math.random() * 0.1;
-        _visTgt[i] = Math.max(0.02, Math.min(1, (wave + 0.5) * (1.1 - i/_VB*0.55)));
-        amp = 0;
-      } else {
-        _visTgt[i] = 0;
-        amp = 0;
+      var _rf = new Uint8Array(visAnalyser.frequencyBinCount);
+      visAnalyser.getByteFrequencyData(_rf);
+      for (var _s = 0; _s < _rf.length; _s += 4) {
+        if (_rf[_s] > 2) { freqData = _rf; break; }
       }
-      if (!data) {
-        _visLvl[i] += (_visTgt[i] - _visLvl[i]) * (_visPlaying ? 0.28 : 0.07);
-        amp = _visLvl[i];
+      if (_visMode === 2) {
+        waveData = new Uint8Array(visAnalyser.fftSize);
+        visAnalyser.getByteTimeDomainData(waveData);
       }
-      visCtx.fillStyle = 'rgba(255,107,53,' + (0.1 + amp * 0.72) + ')';
-      visCtx.fillRect(i * (bw + 1), H - amp * H * 0.82, Math.max(1, bw), amp * H * 0.82);
     }
+
+    /* auto bar count: one bar per ~9px, capped at _visMaxBars */
+    var _cW = canvas ? canvas.offsetWidth : 300;
+    var numBars = Math.min(_visMaxBars, Math.max(20, Math.floor(_cW / 9)));
+
+    /* build smoothed amplitude array (bars + mirror) with log freq mapping */
+    var amps = new Float32Array(numBars);
+    if (_visMode !== 2) {
+      for (var i = 0; i < numBars; i++) {
+        var raw;
+        if (freqData) {
+          /* log-scale: maps bar i → Hz → FFT bin, 30Hz–16kHz */
+          var freq = Math.exp(_visLogMin + (_visLogMax - _visLogMin) * i / (numBars - 1));
+          var bin  = Math.min(freqData.length - 1, Math.round(freq / _visNyquist * freqData.length));
+          raw = freqData[bin] / 255;
+        } else if (_visPlaying) {
+          var fw = Math.sin(_visT*2.1+_visPhs[i])*0.32
+                 + Math.sin(_visT*4.8+_visPhs[i]*1.7)*0.22
+                 + Math.sin(_visT*7.3+_visPhs[i]*0.9)*0.14
+                 + Math.random()*0.1;
+          _visTgt[i] = Math.max(0.02, Math.min(1, (fw+0.5)*(1.1-i/numBars*0.55)));
+          raw = -1;
+        } else {
+          _visTgt[i] = 0; raw = -1;
+        }
+        if (raw < 0) {
+          _visLvl[i] += (_visTgt[i] - _visLvl[i]) * (_visPlaying ? 0.28 : 0.07);
+          amps[i] = _visLvl[i];
+        } else {
+          amps[i] = raw;
+        }
+      }
+    }
+
+    if (visCtx && canvas) _drawFrame(visCtx, canvas, 1.0, freqData, waveData, amps, numBars);
   }
   function startVis() {
     if (!canvas) return;
@@ -461,8 +531,7 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
   }
   function stopVis() {
     if (visRaf) { cancelAnimationFrame(visRaf); visRaf = null; }
-    if (canvas) canvas.style.display = 'none';
-    if (visCtx) visCtx.clearRect(0, 0, canvas.width, canvas.height);
+    if (canvas) { canvas.style.display = 'none'; visCtx && visCtx.clearRect(0,0,canvas.width,canvas.height); }
   }
 
   /* ── Audio ── */
@@ -682,6 +751,11 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
   });
   videoBtn.addEventListener('click', function() {
     if (isVideo) leaveVideo(); else enterVideo();
+  });
+  if (visBtn) visBtn.addEventListener('click', function() {
+    _visMode = (_visMode + 1) % 3;
+    visBtn.textContent = _visModeLabels[_visMode];
+    visBtn.title = 'Visualizer: ' + _visModeNames[_visMode];
   });
 
   /* ── Video mode ── */

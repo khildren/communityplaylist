@@ -3560,9 +3560,15 @@ def api_video_queue(request):
     if not all_videos:
         return JsonResponse({'videos': []})
 
-    # Split live streams out — they always lead the queue
-    live   = [v for v in all_videos if v.is_live]
-    others = [v for v in all_videos if not v.is_live]
+    # Split live streams out — they always lead the queue.
+    # Apply the same 30-min staleness filter as api_queue: a track whose
+    # live_checked_at is older than 30 min is treated as ended (VOD/skip).
+    live_cutoff = now - timedelta(minutes=30)
+    def _is_truly_live(v):
+        return v.is_live and v.live_checked_at and v.live_checked_at >= live_cutoff
+
+    live   = [v for v in all_videos if _is_truly_live(v)]
+    others = [v for v in all_videos if not _is_truly_live(v) and not v.source_type == 'twitch_live']
 
     # Weighted shuffle of non-live videos
     pool = []
