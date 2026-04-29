@@ -3111,6 +3111,17 @@ def playlist_tracks_json(request):
             status='approved',
         ).values_list('artists', flat=True).distinct()
     )
+    # Name-based fallback: PlaylistTracks often have artist_name but no artist FK
+    upcoming_artist_names = set(
+        Artist.objects.filter(pk__in=upcoming_artist_ids)
+        .values_list('name', flat=True)
+    )
+
+    def _has_show(t):
+        if t.artist_id and t.artist_id in upcoming_artist_ids:
+            return True
+        name = (t.artist_name or '').strip()
+        return bool(name and name in upcoming_artist_names)
 
     def source_url(t):
         if t.artist:   return f'/artists/{t.artist.slug}/'
@@ -3129,7 +3140,7 @@ def playlist_tracks_json(request):
             'source':       t.source_label,
             'source_url':   source_url(t),
             'art_url':      t.artist.photo.url if (t.artist and t.artist.photo) else '',
-            'has_show_soon': bool(t.artist_id and t.artist_id in upcoming_artist_ids),
+            'has_show_soon': _has_show(t),
         }
         for t in qs.order_by('-pk')
     ]

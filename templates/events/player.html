@@ -438,7 +438,7 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
       var bw = W / nb - 1;
       for (var i = 0; i < nb; i++) {
         var a = amps[i];
-        var bh = a * H * 0.82;
+        var bh = a * H;
         ctx.fillStyle = 'rgba(255,107,53,' + (0.08 + a * 0.78) * op + ')';
         ctx.fillRect(i * (bw + 1), H - bh, Math.max(1, bw), bh);
       }
