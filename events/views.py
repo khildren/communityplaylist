@@ -3096,54 +3096,61 @@ def delete_track(request, pk):
 def playlist_tracks_json(request):
     """
     Returns JSON list of all PlaylistTrack records with stream URLs.
-    Optional ?genre=<name> filter.
-    Used by the CP music player in the header.
+    Used by the CP standalone player. Genre filtering is done client-side.
     """
-    genre_filter = request.GET.get('genre', '').strip()
+    from datetime import timedelta
     qs = PlaylistTrack.objects.select_related('genre', 'artist', 'promoter', 'venue')
-    if genre_filter:
-        qs = qs.filter(genre__name__iexact=genre_filter)
+
+    # Artist IDs with shows in the next 30 days → powers the COMING EVENTS pill
+    now = timezone.now()
+    upcoming_artist_ids = set(
+        Event.objects.filter(
+            artists__isnull=False,
+            start_date__gte=now,
+            start_date__lte=now + timedelta(days=30),
+            status='approved',
+        ).values_list('artists', flat=True).distinct()
+    )
+
     def source_url(t):
-        if t.artist:
-            return f'/artists/{t.artist.slug}/'
-        if t.promoter:
-            return f'/promoters/{t.promoter.slug}/'
-        if t.venue:
-            return f'/venues/{t.venue.slug}/'
+        if t.artist:   return f'/artists/{t.artist.slug}/'
+        if t.promoter: return f'/promoters/{t.promoter.slug}/'
+        if t.venue:    return f'/venues/{t.venue.slug}/'
         return ''
 
     tracks = [
         {
-            'id':          t.pk,
-            'title':       t.title,
-            'artist':      t.artist_name or t.source_label,
-            'genre':       t.genre.name if t.genre else t.genre_raw,
-            'recorded_at': t.recorded_at,
-            'stream_url':  t.stream_url,
-            'source':      t.source_label,
-            'source_url':  source_url(t),
-            'art_url':     t.artist.photo.url if (t.artist and t.artist.photo) else '',
+            'id':           t.pk,
+            'title':        t.title,
+            'artist':       t.artist_name or t.source_label,
+            'genre':        t.genre.name if t.genre else t.genre_raw,
+            'recorded_at':  t.recorded_at,
+            'stream_url':   t.stream_url,
+            'source':       t.source_label,
+            'source_url':   source_url(t),
+            'art_url':      t.artist.photo.url if (t.artist and t.artist.photo) else '',
+            'has_show_soon': bool(t.artist_id and t.artist_id in upcoming_artist_ids),
         }
-        for t in qs.order_by('-pk')  # newest first
+        for t in qs.order_by('-pk')
     ]
 
-    # Merge house-mixes.com tracks (no genre metadata — only in ALL channel)
-    if not genre_filter:
-        hm_artists = Artist.objects.filter(house_mixes__gt='', is_stub=False).values_list(
-            'name', 'house_mixes', 'house_mixes_sort', 'slug')
-        for a_name, hm_user, hm_sort, a_slug in hm_artists:
-            for hm in _get_house_mixes_tracks(hm_user, sort=hm_sort or 'newest'):
-                tracks.append({
-                    'id':          None,
-                    'title':       hm['title'],
-                    'artist':      a_name,
-                    'genre':       None,
-                    'recorded_at': None,
-                    'stream_url':  hm['stream_url'],
-                    'source':      'House-Mixes',
-                    'source_url':  f'/artists/{a_slug}/',
-                    'art_url':     hm.get('thumbnail', ''),
-                })
+    # Merge house-mixes.com tracks (no genre — included in ALL and COMING EVENTS)
+    hm_artists = Artist.objects.filter(house_mixes__gt='', is_stub=False).values_list(
+        'name', 'house_mixes', 'house_mixes_sort', 'slug', 'pk')
+    for a_name, hm_user, hm_sort, a_slug, a_pk in hm_artists:
+        for hm in _get_house_mixes_tracks(hm_user, sort=hm_sort or 'newest'):
+            tracks.append({
+                'id':           None,
+                'title':        hm['title'],
+                'artist':       a_name,
+                'genre':        None,
+                'recorded_at':  None,
+                'stream_url':   hm['stream_url'],
+                'source':       'House-Mixes',
+                'source_url':   f'/artists/{a_slug}/',
+                'art_url':      hm.get('thumbnail', ''),
+                'has_show_soon': bool(a_pk in upcoming_artist_ids),
+            })
 
     genres = list(
         Genre.objects.filter(tracks__isnull=False)

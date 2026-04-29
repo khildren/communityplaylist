@@ -608,35 +608,37 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
     else if (repeatMode === 2 || tracks.length > 1) nextTrack();
   });
 
-  /* ── Genre channels ── */
+  /* ── Genre / filter channels ── */
   var activeGenre = 'ALL';
   function buildChannels(genres) {
     channels.innerHTML = '';
-    var all = mk('button', 'pl-ch active', 'ALL');
-    all.addEventListener('click', function() { setGenre('ALL'); });
-    channels.appendChild(all);
-    genres.forEach(function(g) {
-      var b = mk('button', 'pl-ch', g);
-      b.addEventListener('click', function() { setGenre(g); });
+    var hasComing = allTracks.some(function(t) { return t.has_show_soon; });
+
+    function pill(label, key) {
+      var b = mk('button', 'pl-ch' + (key === activeGenre ? ' active' : ''), label);
+      b.dataset.key = key;
+      b.addEventListener('click', function() { setGenre(key); });
       channels.appendChild(b);
-    });
-    var vb = mk('button', 'pl-ch', '📺 VIDEO');
-    vb.id = 'pl-ch-video';
-    vb.addEventListener('click', function() {
-      if (isVideo) leaveVideo(); else enterVideo();
-    });
-    channels.appendChild(vb);
+    }
+
+    pill('ALL', 'ALL');
+    if (hasComing) pill('COMING EVENTS', '__COMING__');
+    genres.forEach(function(g) { pill(g, g); });
   }
   function setGenre(g) {
     activeGenre = g;
     Array.from(channels.querySelectorAll('.pl-ch')).forEach(function(b) {
-      b.classList.toggle('active', b.textContent === g);
+      b.classList.toggle('active', b.dataset.key === g);
     });
-    if (chLabel) chLabel.textContent = g;
-    if (g === 'ALL') tracks = allTracks.slice();
-    else tracks = allTracks.filter(function(t) {
-      return (t.genre || '').toLowerCase().includes(g.toLowerCase());
-    });
+    if (g === 'ALL') {
+      tracks = allTracks.slice();
+    } else if (g === '__COMING__') {
+      tracks = allTracks.filter(function(t) { return t.has_show_soon; });
+    } else {
+      tracks = allTracks.filter(function(t) {
+        return (t.genre || '').toLowerCase().includes(g.toLowerCase());
+      });
+    }
     if (tracks.length) {
       loadTrack(0);
       if (!audio.paused) play();
