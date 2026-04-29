@@ -3095,9 +3095,10 @@ def delete_track(request, pk):
 
 def playlist_tracks_json(request):
     """
-    Returns JSON list of all PlaylistTrack records with stream URLs.
-    Used by the CP standalone player. Genre filtering is done client-side.
+    Returns JSON list of PlaylistTracks + YouTube VideoTracks for the standalone player.
+    YouTube videos are interleaved 1:6 with audio tracks. Genre filtering is client-side.
     """
+    import random as _random
     from datetime import timedelta
     qs = PlaylistTrack.objects.select_related('genre', 'artist', 'promoter', 'venue')
 
@@ -3117,41 +3118,43 @@ def playlist_tracks_json(request):
         .values_list('name', flat=True)
     )
 
-    def _has_show(t):
+    def _has_show_audio(t):
         if t.artist_id and t.artist_id in upcoming_artist_ids:
             return True
         name = (t.artist_name or '').strip()
         return bool(name and name in upcoming_artist_names)
 
-    def source_url(t):
+    def _src_url_audio(t):
         if t.artist:   return f'/artists/{t.artist.slug}/'
         if t.promoter: return f'/promoters/{t.promoter.slug}/'
         if t.venue:    return f'/venues/{t.venue.slug}/'
         return ''
 
-    tracks = [
+    audio_tracks = [
         {
             'id':           t.pk,
+            'type':         'audio',
             'title':        t.title,
             'artist':       t.artist_name or t.source_label,
             'genre':        t.genre.name if t.genre else t.genre_raw,
             'recorded_at':  t.recorded_at,
             'stream_url':   t.stream_url,
             'source':       t.source_label,
-            'source_url':   source_url(t),
+            'source_url':   _src_url_audio(t),
             'art_url':      t.artist.photo.url if (t.artist and t.artist.photo) else '',
-            'has_show_soon': _has_show(t),
+            'has_show_soon': _has_show_audio(t),
         }
         for t in qs.order_by('-pk')
     ]
 
-    # Merge house-mixes.com tracks (no genre — included in ALL and COMING EVENTS)
+    # Merge house-mixes.com tracks
     hm_artists = Artist.objects.filter(house_mixes__gt='', is_stub=False).values_list(
         'name', 'house_mixes', 'house_mixes_sort', 'slug', 'pk')
     for a_name, hm_user, hm_sort, a_slug, a_pk in hm_artists:
         for hm in _get_house_mixes_tracks(hm_user, sort=hm_sort or 'newest'):
-            tracks.append({
+            audio_tracks.append({
                 'id':           None,
+                'type':         'audio',
                 'title':        hm['title'],
                 'artist':       a_name,
                 'genre':        None,
@@ -3163,6 +3166,56 @@ def playlist_tracks_json(request):
                 'has_show_soon': bool(a_pk in upcoming_artist_ids),
             })
 
+    # ── YouTube VideoTracks from artist/crew/venue profiles ──────────────────
+    # Genre: use the artist's most common audio track genre as proxy
+    artist_genre_map = {}
+    for row in (PlaylistTrack.objects
+                .filter(artist__isnull=False, genre__isnull=False)
+                .values('artist_id', 'genre__name')):
+        artist_genre_map.setdefault(row['artist_id'], row['genre__name'])
+
+    def _src_url_video(v):
+        if v.artist_id   and v.artist   and v.artist.slug:   return f'/artists/{v.artist.slug}/'
+        if v.promoter_id and v.promoter and v.promoter.slug: return f'/promoters/{v.promoter.slug}/'
+        if v.venue_id    and v.venue    and v.venue.slug:    return f'/venues/{v.venue.slug}/'
+        return ''
+
+    yt_objs = (
+        VideoTrack.objects
+        .filter(is_active=True, source_type=VideoTrack.SOURCE_YOUTUBE)
+        .select_related('artist', 'promoter', 'venue')
+        .order_by('-published_at')[:300]
+    )
+    video_tracks = []
+    for v in yt_objs:
+        genre = artist_genre_map.get(v.artist_id, '')
+        video_tracks.append({
+            'id':           None,
+            'type':         'youtube',
+            'title':        v.title,
+            'artist':       v.artist_name_display or v.channel_title,
+            'genre':        genre,
+            'recorded_at':  '',
+            'stream_url':   '',
+            'source':       'YouTube',
+            'source_url':   _src_url_video(v),
+            'art_url':      v.thumbnail_url,
+            'video_id':     v.youtube_video_id,
+            'embed_url':    v.embed_url,
+            'has_show_soon': bool(v.artist_id and v.artist_id in upcoming_artist_ids),
+        })
+
+    # Interleave: 1 YouTube video per 6 audio tracks
+    _random.shuffle(video_tracks)
+    tracks, vi = [], 0
+    for i, t in enumerate(audio_tracks):
+        tracks.append(t)
+        if (i + 1) % 6 == 0 and vi < len(video_tracks):
+            tracks.append(video_tracks[vi])
+            vi += 1
+    tracks.extend(video_tracks[vi:])
+
+    # Genres from audio tracks only (YouTube videos inherit artist genre)
     genres = list(
         Genre.objects.filter(tracks__isnull=False)
         .values_list('name', flat=True)
