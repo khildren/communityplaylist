@@ -19,7 +19,7 @@ import requests
 import math
 import re
 
-CP_VERSION = '0.9.3'   # bump on each deploy
+CP_VERSION = '0.9.4'   # bump on each deploy
 
 # Portland city center
 PDX_LAT, PDX_LNG = 45.5051, -122.6750

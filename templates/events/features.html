@@ -82,7 +82,8 @@ code{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:3px;padding:1px 6
   <h1>Community Playlist</h1>
   <p>Portland events, artists, venues, and community — open source, no ads, no tracking, built by the people for the people.</p>
   <div class="version-row">
-    <span class="v-pill current">v0.6 — Apr 2026</span>
+    <span class="v-pill current">v0.7 — Apr 2026</span>
+    <span class="v-pill">v0.6 — Community layer</span>
     <span class="v-pill">v0.5 — Mobile &amp; chrome</span>
     <span class="v-pill">v0.4 — PDXTV</span>
     <span class="v-pill">v0.3 — Profiles &amp; follows</span>
@@ -90,8 +91,59 @@ code{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:3px;padding:1px 6
   </div>
 </div>
 
+<!-- ── v0.7 ── -->
+<div class="section" id="v07">v0.7 — Genre system &amp; artist intelligence <span class="section-badge">Latest</span></div>
+
+<div class="feature">
+  <div class="f-icon">🎛</div>
+  <div class="f-body">
+    <h3>Genre pills on the player <span class="badge badge-new">New</span></h3>
+    <p>The player queue is now filterable by genre — pills along the top let you jump straight to Hip-Hop, Drum &amp; Bass, Synth, or any genre in the current queue. Amber/glowing pills flag genres that have upcoming shows this week. The active pill snaps to match the playing track automatically as the queue advances — no click needed.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="f-icon">💡</div>
+  <div class="f-body">
+    <h3>Suggest a genre <span class="badge badge-new">New</span></h3>
+    <p>A dashed <strong>+ genre</strong> pill at the end of the genre strip opens an inline suggestion box. Type any genre and submit — suggestions land in the admin queue where they can be accepted (applying the genre to the track) or rejected in one click. Community-powered tagging without requiring an account.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="f-icon">🔍</div>
+  <div class="f-body">
+    <h3>Artist profile enrichment pipeline <span class="badge badge-new">New</span></h3>
+    <p>A nightly background pipeline auto-builds artist profiles from public music APIs — no API keys required for most sources. <strong>Last.fm</strong> fills in bio, MusicBrainz ID, listener counts, and similar artists. <strong>ListenBrainz</strong> adds genre (weighted by real listen counts), website, Instagram, YouTube, and city from MB relations. <strong>MusicBrainz</strong> fills social links and verifies location. Artists can set <em>Enrichment Locked</em> in the admin if the auto-data doesn't fit — all commands respect that flag.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="f-icon">📡</div>
+  <div class="f-body">
+    <h3>Portland artist self-discovery <span class="badge badge-new">New</span></h3>
+    <p>A weekly job queries MusicBrainz's area index for artists tagged to Portland, OR — over 2,600 in the index. New names are automatically created as stub profiles and fed into the enrichment pipeline. Artists already in the database get their MusicBrainz ID back-filled if it was missing. No manual curation needed to grow the local artist library.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="f-icon">🎬</div>
+  <div class="f-body">
+    <h3>Event video section <span class="badge badge-new">New</span></h3>
+    <p>Every event detail page now surfaces a <strong>Videos</strong> section showing YouTube clips from all the performing artists and crews. Click a thumbnail to play it inline — no tab switch. Admins can also paste a YouTube playlist URL on any event (a label's set list, a promoter's recap reel) and it embeds as a full 16:9 player above the artist grid. Only videos with embedding enabled appear — Error 153 is filtered at harvest time.</p>
+  </div>
+</div>
+
+<div class="feature">
+  <div class="f-icon">🔎</div>
+  <div class="f-body">
+    <h3>Search bar always visible <span class="badge badge-new">New</span></h3>
+    <p>The global search bar now stays in the header at all screen widths where the icon strip is still showing — icons collapse to the drawer first. Search is also now visible on the map view, where it was previously hidden. On mobile (≤768px) search moves into the slide-out drawer as before.</p>
+  </div>
+</div>
+
 <!-- ── v0.6 ── -->
-<div class="section" id="v06">v0.6 — Community layer &amp; player <span class="section-badge">Latest</span></div>
+<div class="section" id="v06">v0.6 — Community layer &amp; player <span class="section-badge v4">v0.6</span></div>
 
 <div class="feature">
   <div class="f-icon">🌹</div>
