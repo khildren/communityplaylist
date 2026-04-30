@@ -6,7 +6,7 @@ from django.urls import path
 from django.http import HttpResponseRedirect, StreamingHttpResponse
 from django.contrib import messages
 from django import forms
-from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile, PromoterProfile, PlaylistTrack, RecordListing, RecordReservation, VideoTrack, Shelter, InstagramAccount, InstagramPost, WorkerTask, CommunitySpace, CommunityAsk, KofiPost, SupportTicket
+from .models import Event, EventPhoto, VenueFeed, CalendarFeed, Genre, Artist, RecurringEvent, CronStatus, Venue, EditSuggestion, Neighborhood, UserProfile, PromoterProfile, PlaylistTrack, RecordListing, RecordReservation, VideoTrack, Shelter, InstagramAccount, InstagramPost, WorkerTask, CommunitySpace, CommunityAsk, KofiPost, SupportTicket, GenreSuggestion
 import os
 import datetime
 import subprocess
@@ -98,7 +98,7 @@ class ArtistAdmin(admin.ModelAdmin):
     raw_id_fields = ['claimed_by', 'linked_promoter']
     change_form_template = 'admin/events/artist/change_form.html'
     fieldsets = [
-        (None, {'fields': ['name', 'slug', 'photo', 'bio', 'website']}),
+        (None, {'fields': ['name', 'slug', 'photo', 'bio', 'website', 'genre']}),
         ('Social links', {'fields': ['instagram', 'soundcloud', 'bandcamp', 'mixcloud',
                                      'youtube', 'spotify', 'mastodon', 'bluesky',
                                      'tiktok', 'twitch', 'beatport', 'discogs',
@@ -115,7 +115,8 @@ class ArtistAdmin(admin.ModelAdmin):
             ),
         }),
         ('Auto-generated', {'fields': ['is_stub', 'auto_bio', 'home_neighborhood', 'city',
-                                        'latitude', 'longitude', 'last_enriched_at'], 'classes': ['collapse']}),
+                                        'latitude', 'longitude', 'last_enriched_at',
+                                        'enrichment_locked'], 'classes': ['collapse']}),
     ]
 
     def get_urls(self):
@@ -2178,3 +2179,36 @@ class CommunitySpaceAdmin(admin.ModelAdmin):
         ('Custom Links', {'fields': ['custom_links']}),
         ('Stats', {'fields': ['view_count', 'created_at'], 'classes': ['collapse']}),
     ]
+
+
+@admin.register(GenreSuggestion)
+class GenreSuggestionAdmin(admin.ModelAdmin):
+    list_display  = ['submitted_at', 'artist_name', 'track_title', 'current_genre', 'suggested_genre', 'status', 'track_link']
+    list_filter   = ['status']
+    search_fields = ['artist_name', 'track_title', 'suggested_genre']
+    readonly_fields = ['submitted_at', 'track', 'video_track', 'artist_name', 'track_title',
+                       'current_genre', 'suggested_genre']
+    actions = ['accept_suggestions', 'reject_suggestions']
+
+    def track_link(self, obj):
+        if obj.track_id:
+            return format_html('<a href="/admin/events/playlisttrack/{}/change/">PT #{}</a>', obj.track_id, obj.track_id)
+        return '—'
+    track_link.short_description = 'Track'
+
+    @admin.action(description='✓ Accept — apply genre to track')
+    def accept_suggestions(self, request, queryset):
+        applied = 0
+        for s in queryset.filter(status=GenreSuggestion.STATUS_PENDING):
+            genre_obj, _ = Genre.objects.get_or_create(name=s.suggested_genre)
+            if s.track_id:
+                PlaylistTrack.objects.filter(pk=s.track_id).update(genre=genre_obj, genre_raw=s.suggested_genre)
+            s.status = GenreSuggestion.STATUS_ACCEPTED
+            s.save(update_fields=['status'])
+            applied += 1
+        self.message_user(request, f'{applied} suggestion(s) accepted and applied.')
+
+    @admin.action(description='✗ Reject suggestions')
+    def reject_suggestions(self, request, queryset):
+        count = queryset.filter(status=GenreSuggestion.STATUS_PENDING).update(status=GenreSuggestion.STATUS_REJECTED)
+        self.message_user(request, f'{count} suggestion(s) rejected.')

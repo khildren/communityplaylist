@@ -33,9 +33,12 @@ LASTFM_API = 'https://ws.audioscrobbler.com/2.0/'
 SKIP_TAGS = {
     'seen live', 'favourite', 'favorites', 'favourites', 'love', 'beautiful',
     'awesome', 'epic', 'cool', 'good', 'great', 'amazing', 'best', 'classic',
-    'all', 'music', 'albums i own', 'american', 'british', 'german', 'swedish',
-    'canadian', 'australian', 'under 2000 listeners', '00s', '90s', '80s', '70s',
+    'all', 'music', 'albums i own', 'under 2000 listeners', '00s', '90s', '80s', '70s',
     '60s', '2000s', '2010s',
+    # nationality / language tags — not genres
+    'american', 'british', 'german', 'swedish', 'canadian', 'australian',
+    'japanese', 'korean', 'french', 'norwegian', 'finnish', 'icelandic',
+    'j-pop', 'k-pop',
 }
 
 

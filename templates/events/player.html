@@ -175,6 +175,16 @@
     }
     .pl-ch:hover{color:#ff6b35;border-color:#ff6b35}
     .pl-ch.active{background:#ff6b35;border-color:#ff6b35;color:#fff}
+    .pl-ch--hot:not(.active){border-color:#5a3a1a;color:#c07830}
+    .pl-ch--hot:not(.active):hover{border-color:#ff6b35}
+    .pl-suggest-pill{background:transparent;border:1px dashed #333;color:#444;border-radius:20px;padding:4px 11px;font-size:.75em;cursor:pointer;transition:color .15s,border-color .15s;line-height:1}
+    .pl-suggest-pill:hover{border-color:#ff6b35;color:#ff6b35}
+    .pl-suggest-box{display:none;align-items:center;gap:6px;padding:6px 2px;flex-wrap:wrap}
+    .pl-suggest-box input{background:#1a1a1a;border:1px solid #333;color:#ccc;border-radius:12px;padding:3px 10px;font-size:.75em;outline:none;width:160px}
+    .pl-suggest-box input:focus{border-color:#ff6b35}
+    .pl-suggest-box button{background:#ff6b35;border:none;color:#fff;border-radius:12px;padding:3px 10px;font-size:.75em;cursor:pointer}
+    .pl-suggest-label{font-size:.72em;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+    .pl-suggest-thanks{font-size:.72em;color:#4caf50;display:none}
 
     /* Queue */
     .pl-q-label{
@@ -281,6 +291,12 @@
     <!-- Sidebar -->
     <div class="pl-sidebar">
       <div class="pl-channels" id="pl-channels"></div>
+      <div class="pl-suggest-box" id="pl-suggest-box">
+        <span class="pl-suggest-label" id="pl-suggest-label"></span>
+        <input id="pl-suggest-input" type="text" placeholder="e.g. Drum &amp; Bass" maxlength="80" autocomplete="off">
+        <button id="pl-suggest-submit">submit</button>
+        <span class="pl-suggest-thanks" id="pl-suggest-thanks">✓ thanks!</span>
+      </div>
       <div class="pl-q-label">UP NEXT &nbsp;<span id="pl-q-count"></span></div>
       <div class="pl-q-list" id="pl-q-list"></div>
     </div>
@@ -560,6 +576,7 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
       metaEl.textContent   = (t.genre || '').toUpperCase();
       updateArt(t.art_url || '', t.genre, t.artist);
       document.title = (t.title || '—') + ' · CP Player';
+      _syncPillToTrack(t.genre);
       buildQueue();
       _loadPlayerEvents(t.artist, t.genre);
       return;
@@ -573,6 +590,7 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
     metaEl.textContent = metaStr ? metaStr.toUpperCase() : '';
     updateArt(t.art_url || '', t.genre, t.artist);
     document.title = (t.title || '—') + ' · CP Player';
+    _syncPillToTrack(t.genre);
     buildQueue();
     _loadPlayerEvents(t.artist, t.genre);
   }
@@ -695,8 +713,15 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
     channels.innerHTML = '';
     var hasComing = allTracks.some(function(t) { return t.has_show_soon; });
 
+    var comingGenres = new Set();
+    if (hasComing) {
+      allTracks.forEach(function(t) { if (t.has_show_soon && t.genre) comingGenres.add(t.genre); });
+    }
+
     function pill(label, key) {
-      var b = mk('button', 'pl-ch' + (key === activeGenre ? ' active' : ''), label);
+      var cls = 'pl-ch' + (key === activeGenre ? ' active' : '');
+      if (comingGenres.has(key)) cls += ' pl-ch--hot';
+      var b = mk('button', cls, label);
       b.dataset.key = key;
       b.addEventListener('click', function() { setGenre(key); });
       channels.appendChild(b);
@@ -705,7 +730,39 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
     pill('ALL', 'ALL');
     if (hasComing) pill('COMING EVENTS', '__COMING__');
     genres.forEach(function(g) { pill(g, g); });
+
+    // Suggest-genre pill — always last
+    var sb = document.createElement('button');
+    sb.className = 'pl-suggest-pill';
+    sb.textContent = '+ genre';
+    sb.addEventListener('click', function() {
+      var box = document.getElementById('pl-suggest-box');
+      var showing = box.style.display === 'flex';
+      box.style.display = showing ? 'none' : 'flex';
+      if (!showing) {
+        var t = tracks[current];
+        var inp = document.getElementById('pl-suggest-input');
+        document.getElementById('pl-suggest-label').textContent =
+          t ? (t.artist + ' – ' + t.title).slice(0, 50) : '';
+        inp.value = (t && t.genre) ? t.genre : '';
+        document.getElementById('pl-suggest-thanks').style.display = 'none';
+        inp.focus();
+      }
+    });
+    channels.appendChild(sb);
   }
+  // Update active pill + activeGenre without re-filtering tracks[] — called on track change
+  function _syncPillToTrack(genre) {
+    var key = genre || 'ALL';
+    var exists = Array.from(channels.querySelectorAll('.pl-ch'))
+                      .some(function(b) { return b.dataset.key === key; });
+    if (!exists) key = 'ALL';
+    activeGenre = key;
+    Array.from(channels.querySelectorAll('.pl-ch')).forEach(function(b) {
+      b.classList.toggle('active', b.dataset.key === key);
+    });
+  }
+
   function setGenre(g) {
     activeGenre = g;
     Array.from(channels.querySelectorAll('.pl-ch')).forEach(function(b) {
@@ -1002,6 +1059,40 @@ if (new URLSearchParams(location.search).get('from') === 'widget') {
     .catch(function(e) { titleEl.textContent = 'Could not load tracks'; });
 
   audio.volume = 0.8;
+
+  /* ── Genre suggestion ── */
+  (function() {
+    var submitBtn = document.getElementById('pl-suggest-submit');
+    var inp       = document.getElementById('pl-suggest-input');
+    var thanks    = document.getElementById('pl-suggest-thanks');
+    var box       = document.getElementById('pl-suggest-box');
+    if (!submitBtn) return;
+    function doSubmit() {
+      var genre = (inp.value || '').trim();
+      if (!genre) { inp.focus(); return; }
+      var t = tracks[current] || {};
+      fetch('/api/suggest-genre/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+        body: JSON.stringify({
+          track_id:     t.id || null,
+          artist:       t.artist || '',
+          title:        t.title  || '',
+          current_genre: t.genre || '',
+          genre:        genre,
+        }),
+      }).then(function() {
+        inp.value = '';
+        thanks.style.display = 'inline';
+        setTimeout(function() {
+          box.style.display  = 'none';
+          thanks.style.display = 'none';
+        }, 1800);
+      }).catch(function() { inp.placeholder = 'error — try again'; });
+    }
+    submitBtn.addEventListener('click', doSubmit);
+    inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') doSubmit(); });
+  })();
 
   /* ── PWA install prompt ── */
   var _installPrompt = null;

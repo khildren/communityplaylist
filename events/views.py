@@ -6,6 +6,7 @@ from django.utils.timezone import localtime
 from django.db.models import Prefetch
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import admin, messages
 from django.template.response import TemplateResponse
@@ -3102,16 +3103,18 @@ def playlist_tracks_json(request):
     from datetime import timedelta
     qs = PlaylistTrack.objects.select_related('genre', 'artist', 'promoter', 'venue')
 
-    # Artist IDs with shows in the next 30 days → powers the COMING EVENTS pill
+    # IDs with shows in the next 30 days → powers the COMING EVENTS pill
     now = timezone.now()
+    _window = dict(start_date__gte=now, start_date__lte=now + timedelta(days=30), status='approved')
     upcoming_artist_ids = set(
-        Event.objects.filter(
-            artists__isnull=False,
-            start_date__gte=now,
-            start_date__lte=now + timedelta(days=30),
-            status='approved',
-        ).values_list('artists', flat=True).distinct()
+        Event.objects.filter(artists__isnull=False, **_window)
+        .values_list('artists', flat=True).distinct()
     )
+    upcoming_promoter_ids = set(
+        Event.objects.filter(promoters__isnull=False, **_window)
+        .values_list('promoters', flat=True).distinct()
+    )
+    upcoming_promoter_ids.discard(None)
     # Name-based fallback: PlaylistTracks often have artist_name but no artist FK
     upcoming_artist_names = set(
         Artist.objects.filter(pk__in=upcoming_artist_ids)
@@ -3119,8 +3122,8 @@ def playlist_tracks_json(request):
     )
 
     def _has_show_audio(t):
-        if t.artist_id and t.artist_id in upcoming_artist_ids:
-            return True
+        if t.artist_id and t.artist_id in upcoming_artist_ids: return True
+        if t.promoter_id and t.promoter_id in upcoming_promoter_ids: return True
         name = (t.artist_name or '').strip()
         return bool(name and name in upcoming_artist_names)
 
@@ -3167,12 +3170,39 @@ def playlist_tracks_json(request):
             })
 
     # ── YouTube VideoTracks from artist/crew/venue profiles ──────────────────
-    # Genre: use the artist's most common audio track genre as proxy
+    # Genre priority: PlaylistTrack data > Artist.genre > crew member majority vote
     artist_genre_map = {}
+    for row in (Artist.objects
+                .filter(genre__isnull=False)
+                .values('id', 'genre__name')):
+        artist_genre_map[row['id']] = row['genre__name']
     for row in (PlaylistTrack.objects
                 .filter(artist__isnull=False, genre__isnull=False)
                 .values('artist_id', 'genre__name')):
-        artist_genre_map.setdefault(row['artist_id'], row['genre__name'])
+        artist_genre_map[row['artist_id']] = row['genre__name']
+
+    # Promoter genre: manual PromoterProfile.genres first, then majority vote from members
+    from collections import Counter as _Counter
+    from events.models import PromoterProfile
+    promoter_genre_map = {}
+    # Seed from manually-set PromoterProfile.genres (first entry wins)
+    for row in (PromoterProfile.genres.through.objects
+                .values('promoterprofile_id', 'genre__name')):
+        promoter_genre_map.setdefault(row['promoterprofile_id'], row['genre__name'])
+    # Derive from member artists where no manual genre is set
+    member_rows = (PromoterProfile.members.through.objects
+                   .values('promoterprofile_id', 'artist_id'))
+    crew_votes = _Counter()  # (promoter_id, genre) → count
+    for row in member_rows:
+        g = artist_genre_map.get(row['artist_id'])
+        if g:
+            crew_votes[(row['promoterprofile_id'], g)] += 1
+    # For each promoter without a manual genre, pick the most-voted member genre
+    seen_promoters = set()
+    for (pid, genre), _ in crew_votes.most_common():
+        if pid not in promoter_genre_map and pid not in seen_promoters:
+            promoter_genre_map[pid] = genre
+            seen_promoters.add(pid)
 
     def _src_url_video(v):
         if v.artist_id   and v.artist   and v.artist.slug:   return f'/artists/{v.artist.slug}/'
@@ -3188,7 +3218,7 @@ def playlist_tracks_json(request):
     )
     video_tracks = []
     for v in yt_objs:
-        genre = artist_genre_map.get(v.artist_id, '')
+        genre = artist_genre_map.get(v.artist_id) or promoter_genre_map.get(v.promoter_id, '')
         video_tracks.append({
             'id':           None,
             'type':         'youtube',
@@ -3202,7 +3232,10 @@ def playlist_tracks_json(request):
             'art_url':      v.thumbnail_url,
             'video_id':     v.youtube_video_id,
             'embed_url':    v.embed_url,
-            'has_show_soon': bool(v.artist_id and v.artist_id in upcoming_artist_ids),
+            'has_show_soon': bool(
+                (v.artist_id   and v.artist_id   in upcoming_artist_ids) or
+                (v.promoter_id and v.promoter_id in upcoming_promoter_ids)
+            ),
         })
 
     # Interleave: 1 YouTube video per 6 audio tracks
@@ -3223,6 +3256,30 @@ def playlist_tracks_json(request):
         .order_by('name')
     )
     return JsonResponse({'tracks': tracks, 'genres': genres})
+
+
+@require_POST
+def suggest_genre(request):
+    """POST {track_id, video_id, artist, title, current_genre, genre} → save GenreSuggestion."""
+    import json as _json
+    from events.models import GenreSuggestion
+    try:
+        data = _json.loads(request.body)
+    except Exception:
+        return JsonResponse({'error': 'invalid json'}, status=400)
+    genre = (data.get('genre') or '').strip()[:100]
+    if not genre:
+        return JsonResponse({'error': 'genre required'}, status=400)
+    track_id = data.get('track_id') or None
+    video_id = data.get('video_id') or None
+    GenreSuggestion.objects.create(
+        track_id=track_id,
+        artist_name=(data.get('artist') or '')[:200],
+        track_title=(data.get('title') or '')[:300],
+        current_genre=(data.get('current_genre') or '')[:100],
+        suggested_genre=genre,
+    )
+    return JsonResponse({'ok': True})
 
 
 def api_queue(request):

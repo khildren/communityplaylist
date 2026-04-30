@@ -324,23 +324,27 @@ body.has-player .cp-bar{display:flex}
 .sh-drw-icon svg{width:1.35em;height:1.35em}
 .sh-drw-label{font-size:.58em;color:#555;text-align:center;white-space:nowrap;letter-spacing:.01em;line-height:1;margin-top:1px}
 .sh-drw-item:hover .sh-drw-label,.sh-drw-item.active .sh-drw-label{color:#ff6b35}
-/* Tablet: icon strip stays but compresses (weather + icon rules only here) */
-@media(min-width:769px) and (max-width:1100px){
+/* ≥961px: icon strip still visible — compress it as viewport narrows */
+@media(min-width:961px) and (max-width:1100px){
   .sh-weather{max-width:140px}
   .sh-weather .wextra,.sh-weather .wsep{display:none}
   .sh-icons{gap:0}
   .sh-icon{width:30px;height:30px;font-size:.92em}
 }
-/* Mobile: drawer mode */
-@media(max-width:768px){
+/* ≤960px: icons collapse to drawer FIRST — search bar stays in header */
+@media(max-width:960px){
   .sh-icons{display:none!important}
   .sh-menu-toggle{display:flex}
   .sh-weather .wcond,.sh-weather .wextra,.sh-weather .wsep{display:none}
 }
-/* Very narrow: hide weather widget entirely */
+/* ≤768px: search also moves to the drawer */
+@media(max-width:768px){
+  .sh-weather{max-width:120px}
+}
+/* Very narrow: hide weather entirely */
 @media(max-width:420px){.sh-weather{display:none!important}}
-/* Panel open: right panel consumes 380px — collapse header sooner */
-@media(min-width:769px) and (max-width:1100px){
+/* Panel open: compress search and collapse icons sooner */
+@media(min-width:961px) and (max-width:1100px){
   body.has-panel .sh-search{max-width:110px}
   body.has-panel .sh-icons{display:none!important}
   body.has-panel .sh-menu-toggle{display:flex}

@@ -12,6 +12,7 @@ urlpatterns = [
     # Music player API
     path('api/genres/filter/', views.api_genre_filter, name='api_genre_filter'),
     path('api/tracks/', views.playlist_tracks_json, name='playlist_tracks_json'),
+    path('api/suggest-genre/', views.suggest_genre, name='suggest_genre'),
     path('api/queue/', views.api_queue, name='api_queue'),
     path('api/saved-tracks/', views.saved_tracks_json, name='saved_tracks_json'),
     path('api/videos/', views.api_video_queue, name='api_video_queue'),

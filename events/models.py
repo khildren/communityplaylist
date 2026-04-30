@@ -204,7 +204,17 @@ class Artist(models.Model):
     longitude        = models.FloatField(null=True, blank=True)
     home_neighborhood = models.CharField(max_length=100, blank=True, help_text='Most frequent event neighborhood')
     auto_bio         = models.TextField(blank=True, help_text='System-generated bio from event history — replaced by artist bio on claim')
-    last_enriched_at = models.DateTimeField(null=True, blank=True, help_text='Last time enrichment was run for this artist')
+    last_enriched_at  = models.DateTimeField(null=True, blank=True, help_text='Last time enrichment was run for this artist')
+    enrichment_locked = models.BooleanField(default=False,
+                                            help_text='Skip all automated enrichment for this artist — set when API data does not match')
+    lastfm_listeners  = models.PositiveIntegerField(null=True, blank=True, help_text='Last.fm monthly listener count')
+    lastfm_similar    = models.JSONField(default=list, blank=True,
+                                         help_text='Similar artist names from Last.fm — list of strings')
+    genre            = models.ForeignKey(
+        'Genre', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='artists',
+        help_text='Primary genre — used for video track filtering when no PlaylistTrack genre exists',
+    )
 
     # Crew / alias linkage
     linked_promoter  = models.ForeignKey(
@@ -1868,3 +1878,34 @@ class VideoRoomMessage(models.Model):
 
     def __str__(self):
         return f'{self.author}: {self.content[:40]}'
+
+
+class GenreSuggestion(models.Model):
+    """Community-submitted genre suggestion for a playlist or video track."""
+    STATUS_PENDING  = 'pending'
+    STATUS_ACCEPTED = 'accepted'
+    STATUS_REJECTED = 'rejected'
+    STATUS_CHOICES  = [
+        (STATUS_PENDING,  'Pending'),
+        (STATUS_ACCEPTED, 'Accepted'),
+        (STATUS_REJECTED, 'Rejected'),
+    ]
+
+    track           = models.ForeignKey('PlaylistTrack', null=True, blank=True,
+                                        on_delete=models.SET_NULL, related_name='genre_suggestions')
+    video_track     = models.ForeignKey('VideoTrack', null=True, blank=True,
+                                        on_delete=models.SET_NULL, related_name='genre_suggestions')
+    artist_name     = models.CharField(max_length=200, blank=True)
+    track_title     = models.CharField(max_length=300, blank=True)
+    current_genre   = models.CharField(max_length=100, blank=True,
+                                       help_text='Genre on the track at time of suggestion')
+    suggested_genre = models.CharField(max_length=100)
+    status          = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    submitted_at    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-submitted_at']
+        indexes  = [models.Index(fields=['status', '-submitted_at'])]
+
+    def __str__(self):
+        return f'{self.artist_name} – {self.track_title[:40]}: {self.suggested_genre!r}'
