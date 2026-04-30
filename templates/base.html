@@ -345,7 +345,7 @@ body.has-player .cp-bar{display:flex}
 @media(max-width:420px){.sh-weather{display:none!important}}
 /* Panel open: compress search and collapse icons sooner */
 @media(min-width:961px) and (max-width:1100px){
-  body.has-panel .sh-search{max-width:110px}
+  body.has-panel .sh-search{max-width:130px;min-width:100px}
   body.has-panel .sh-icons{display:none!important}
   body.has-panel .sh-menu-toggle{display:flex}
 }
@@ -357,7 +357,7 @@ body.has-player .cp-bar{display:flex}
   body.has-panel .sh-icon{width:28px;height:28px;font-size:.85em}
 }
 /* ── Global header search ── */
-.sh-search{position:relative;flex:1;min-width:0;max-width:480px;margin:0 8px}
+.sh-search{position:relative;flex:1;min-width:130px;max-width:480px;margin:0 8px}
 .sh-search-input{width:100%;background:#111;border:1px solid #2a2a2a;border-radius:20px;color:#ddd;font-size:.82em;padding:6px 14px;outline:none;transition:border-color .18s,background .18s;box-sizing:border-box}
 .sh-search-input:focus{border-color:#ff6b35;background:#181818}
 .sh-search-input::placeholder{color:#444}
@@ -373,9 +373,7 @@ body.has-player .cp-bar{display:flex}
 .sh-sr-divider{border:none;border-top:1px solid #222;margin:2px 0}
 .sh-sr-empty{padding:14px;text-align:center;color:#555;font-size:.82em}
 /* Tablet: compress search width (must come AFTER base .sh-search rule to win) */
-@media(min-width:769px) and (max-width:1100px){.sh-search{max-width:200px}}
-/* Hide search on full-map view */
-body.view-map .sh-search{display:none}
+@media(min-width:769px) and (max-width:1100px){.sh-search{max-width:200px;min-width:130px}}
 /* Mobile: search in drawer row */
 @media(max-width:768px){
   .sh-search{display:none}
