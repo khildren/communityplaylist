@@ -377,6 +377,30 @@ def event_detail(request, slug):
     )
     can_add_lineup = request.user.is_authenticated
 
+    # Extract YouTube playlist ID for embed
+    yt_playlist_id = ''
+    if event.youtube_playlist:
+        from urllib.parse import urlparse, parse_qs as _parse_qs
+        _parsed = urlparse(event.youtube_playlist)
+        yt_playlist_id = _parse_qs(_parsed.query).get('list', [''])[0]
+
+    # Pull YouTube videos from all linked artists + promoters (max 24)
+    artist_ids   = list(event.artists.values_list('pk', flat=True))
+    promoter_ids = list(event.promoters.values_list('pk', flat=True))
+    event_videos = list(
+        VideoTrack.objects
+        .filter(
+            is_active=True,
+            source_type=VideoTrack.SOURCE_YOUTUBE,
+        )
+        .filter(
+            models.Q(artist_id__in=artist_ids) |
+            models.Q(promoter_id__in=promoter_ids)
+        )
+        .select_related('artist', 'promoter')
+        .order_by('-published_at')[:24]
+    )
+
     return render(request, 'events/event_detail.html', {
         'event': event,
         'photos': photos,
@@ -395,6 +419,8 @@ def event_detail(request, slug):
         'can_add_lineup': can_add_lineup,
         'linked_artists': event.artists.all(),
         'linked_promoters': event.promoters.all(),
+        'event_videos': event_videos,
+        'yt_playlist_id': yt_playlist_id,
     })
 
 
