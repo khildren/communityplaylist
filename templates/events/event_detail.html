@@ -712,32 +712,23 @@ h1{color:#ff6b35;font-size:1.8em;margin-bottom:10px}
 .ev-card.ev-active{border-color:#ff6b35!important}
 #ev-player-wrap{display:none;margin-bottom:4px;border-radius:10px;overflow:hidden;background:#000}
 #ev-player-wrap iframe{width:100%;aspect-ratio:16/9;border:0;display:block}
-#ev-yt-link{display:none;text-align:center;padding:6px 0 14px;font-size:.8em}
-#ev-yt-link a{color:#ff6b35;text-decoration:none}
-#ev-yt-link a:hover{text-decoration:underline}
 </style>
 <script>
 (function(){
-  var grid   = document.getElementById('ev-grid');
-  var wrap   = null;
-  var ytLink = null;
+  var grid = document.getElementById('ev-grid');
+  var wrap = null;
 
   window.evPlay = function(vid, card){
     if(!wrap){
       wrap = document.createElement('div');
       wrap.id = 'ev-player-wrap';
       wrap.innerHTML = '<iframe src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
-      ytLink = document.createElement('div');
-      ytLink.id = 'ev-yt-link';
       grid.parentNode.insertBefore(wrap, grid);
-      grid.parentNode.insertBefore(ytLink, grid);
     }
     document.querySelectorAll('.ev-card').forEach(function(c){ c.classList.remove('ev-active'); });
     card.classList.add('ev-active');
     wrap.querySelector('iframe').src = 'https://www.youtube.com/embed/'+vid+'?autoplay=1&rel=0&modestbranding=1';
     wrap.style.display = 'block';
-    ytLink.innerHTML = '<a href="https://www.youtube.com/watch?v='+vid+'" target="_blank" rel="noopener">▶ Watch on YouTube if video won\'t play ↗</a>';
-    ytLink.style.display = 'block';
     wrap.scrollIntoView({behavior:'smooth', block:'nearest'});
   };
 })();

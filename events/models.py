@@ -1552,8 +1552,10 @@ class VideoTrack(models.Model):
     live_checked_at = models.DateTimeField(null=True, blank=True)
     live_viewer_count = models.PositiveIntegerField(null=True, blank=True)
 
-    play_count  = models.PositiveIntegerField(default=0)
-    is_active   = models.BooleanField(default=True, help_text='Uncheck to hide from MTV channel')
+    play_count   = models.PositiveIntegerField(default=0)
+    is_active    = models.BooleanField(default=True, help_text='Uncheck to hide from MTV channel')
+    yt_embeddable = models.BooleanField(default=True,
+                                        help_text='False when YouTube owner has disabled embedding — never shown in inline players')
     created_at  = models.DateTimeField(auto_now_add=True)
     last_synced = models.DateTimeField(auto_now=True)
 

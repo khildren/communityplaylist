@@ -123,13 +123,13 @@ def get_channel_info(channel_id, api_key):
 
 def get_video_durations(video_ids, api_key):
     """
-    Batch-fetch duration (in seconds) for up to 50 video IDs.
-    Returns {video_id: duration_secs}.
+    Batch-fetch duration (seconds) and embeddable flag for up to 50 video IDs.
+    Returns {video_id: {'duration': int|None, 'embeddable': bool}}.
     """
     if not video_ids:
         return {}
     data = _get('videos', {
-        'part': 'contentDetails',
+        'part': 'contentDetails,status',
         'id': ','.join(video_ids),
         'maxResults': 50,
     }, api_key)
@@ -142,7 +142,10 @@ def get_video_durations(video_ids, api_key):
         return h * 3600 + mn * 60 + s
 
     return {
-        item['id']: iso_to_secs(item.get('contentDetails', {}).get('duration', ''))
+        item['id']: {
+            'duration':   iso_to_secs(item.get('contentDetails', {}).get('duration', '')),
+            'embeddable': item.get('status', {}).get('embeddable', True),
+        }
         for item in data.get('items', [])
     }
 
@@ -232,7 +235,8 @@ def harvest_channel(channel_id, channel_title, source_obj, max_videos, api_key, 
                 description        = snippet.get('description', '')[:2000],
                 thumbnail_url      = thumb_url,
                 published_at       = pub_dt,
-                duration_secs      = durations.get(vid_id),
+                duration_secs      = (durations.get(vid_id) or {}).get('duration'),
+                yt_embeddable      = (durations.get(vid_id) or {}).get('embeddable', True),
                 artist_name_display = display_name,
                 is_active          = True,
             )

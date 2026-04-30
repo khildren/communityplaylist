@@ -392,6 +392,7 @@ def event_detail(request, slug):
         .filter(
             is_active=True,
             source_type=VideoTrack.SOURCE_YOUTUBE,
+            yt_embeddable=True,
         )
         .filter(
             models.Q(artist_id__in=artist_ids) |
@@ -3238,7 +3239,7 @@ def playlist_tracks_json(request):
 
     yt_objs = (
         VideoTrack.objects
-        .filter(is_active=True, source_type=VideoTrack.SOURCE_YOUTUBE)
+        .filter(is_active=True, source_type=VideoTrack.SOURCE_YOUTUBE, yt_embeddable=True)
         .select_related('artist', 'promoter', 'venue')
         .order_by('-published_at')[:300]
     )
